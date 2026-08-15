@@ -1,0 +1,79 @@
+# NearHere Roadmap
+
+The roadmap is dependency-ordered rather than date-promised. Dates become meaningful after effort, external setup, and validation are understood.
+
+```mermaid
+flowchart LR
+    F["Foundation"] --> I["Identity"]
+    I --> A["Real activities"]
+    A --> J["Correct participation"]
+    J --> C["Coordination"]
+    C --> S["Safety and closed beta"]
+    S --> G["Launch and measured scale"]
+```
+
+## Phase 0 — Native discovery foundation: completed
+
+- Repository and living product/engineering documentation
+- Expo/React Native TypeScript application
+- Native map with clearly labeled fixtures
+- Foreground location permission and failure states
+- Persistent searchable manual location selection
+- Nearby, Plans, and Me navigation
+- Native iOS development build and Simulator workflow
+- Provider-gated phone/OTP UI, session boundary, and protected intents
+
+## Phase 1 — Identity foundation: current
+
+- Create a user-owned Supabase development project — completed
+- Configure phone authentication and a real SMS provider/test path
+- Apply versioned `profiles` migration with Row Level Security
+- Connect real OTP flow and verify session restoration
+- Add minimal display-name onboarding and generated placeholder avatar
+- Add auth/profile integration tests and abuse-control checklist
+
+Exit condition: an OTP-authenticated user receives exactly one secure public profile and can restart the app with the session restored.
+
+## Phase 2 — First real activity vertical slice
+
+- Core PostGIS activity schema and privacy-safe geometry
+- Create activity endpoint/transaction
+- Nearby discovery endpoint replacing fixtures
+- Activity detail screen with public/private field boundaries
+- Host ownership and cancellation rules
+
+Exit condition: two devices can create and discover a real activity without exposing private geometry.
+
+## Phase 3 — Participation correctness
+
+- Join, request approval, approve/reject, leave, waitlist, and removal
+- Transactions, constraints, and idempotency
+- Capacity concurrency tests
+- Participant-only meeting details
+
+Exit condition: concurrent attempts cannot violate membership invariants.
+
+## Phase 4 — Coordination and safety
+
+- Durable activity-scoped chat
+- Realtime delivery using managed capability first
+- Push notifications where needed
+- Report, block, moderation, audit events, rate limits, and operational tools
+
+Exit condition: accepted participants can coordinate and safety events are actionable and auditable.
+
+## Phase 5 — Closed neighborhood beta
+
+- Accessibility and physical-device test matrix
+- Crash/error monitoring, structured logs, metrics, and product analytics
+- TestFlight and Android internal distribution
+- Anchor-host operating process and seeded launch data
+- Privacy, retention, SMS compliance, and incident-response review
+
+## Phase 6 — Differentiation and measured growth
+
+- Custom MapLibre visual system
+- Custom avatar builder informed by onboarding evidence
+- Map/list view only if usability evidence supports it
+- Recurring host tools, recommendations, caching, Redis, or extracted services only when real usage produces the requirement
+- Monetization experiments after trust and density

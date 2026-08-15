@@ -1,0 +1,43 @@
+import { Activity } from '@/types/activity';
+
+export const PROTOTYPE_ACTIVITIES: Activity[] = [
+  {
+    id: 'walk-1',
+    kind: 'walk',
+    emoji: '🚶',
+    title: 'Golden hour park walk',
+    description: 'Easy loop, good conversation, no pace pressure.',
+    startsIn: '22 min',
+    distance: '8 min walk',
+    going: 8,
+    capacity: 12,
+    latitudeOffset: 0.006,
+    longitudeOffset: -0.004,
+  },
+  {
+    id: 'coffee-1',
+    kind: 'coffee',
+    emoji: '☕',
+    title: 'Chai and a little life admin',
+    description: 'Bring one thing you have been putting off. We will do it together.',
+    startsIn: '45 min',
+    distance: '12 min walk',
+    going: 4,
+    capacity: 8,
+    latitudeOffset: 0.002,
+    longitudeOffset: 0.009,
+  },
+  {
+    id: 'sport-1',
+    kind: 'sport',
+    emoji: '🏸',
+    title: 'Casual badminton rotation',
+    description: 'Beginner-friendly doubles. Racquets available at the court.',
+    startsIn: '1 hr',
+    distance: '18 min walk',
+    going: 6,
+    capacity: 8,
+    latitudeOffset: -0.008,
+    longitudeOffset: 0.004,
+  },
+];

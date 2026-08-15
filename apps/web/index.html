@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <title>NearHere — what's happening nearby</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="map" aria-label="Nearby activity map">
+        <div class="map-grid"></div>
+        <div class="map-label label-one">Riverside</div>
+        <div class="map-label label-two">Old Town</div>
+        <button class="activity-marker marker-one" aria-label="Open park walk activity"><span>🚶</span><b>8</b></button>
+        <button class="activity-marker marker-two" aria-label="Open coffee activity"><span>☕</span><b>4</b></button>
+        <button class="activity-marker marker-three" aria-label="Open pickup game activity"><span>🏀</span><b>12</b></button>
+        <div class="user-avatar" aria-label="You are here">✦</div>
+        <div class="map-caption"><span class="live-dot"></span> 14 things happening nearby</div>
+      </section>
+      <aside class="control-panel">
+        <div class="brand-row"><span class="brand-mark">✦</span><span>NearHere</span><button class="profile-button" aria-label="Open profile">◌</button></div>
+        <div class="welcome"><p class="eyebrow">SATURDAY · 4:18 PM</p><h1>What’s happening<br /><em>nearby?</em></h1><p class="lede">See something that feels like your kind of thing, then join in.</p></div>
+        <div class="filters"><button class="filter active">All nearby</button><button class="filter">Tonight</button><button class="filter">Active now</button></div>
+        <article class="activity-card"><div class="card-top"><span class="activity-type">OUTDOORS</span><span class="time">Starts in 22 min</span></div><h2>Golden hour park walk</h2><p>Easy loop, good conversation, no pace pressure.</p><div class="card-bottom"><div class="avatar-stack"><span>🦊</span><span>🐸</span><span>🌈</span><small>+5</small></div><button class="join-button">Join walk <span>↗</span></button></div></article>
+        <button class="host-button"><span>＋</span> Host something nearby</button>
+        <p class="privacy-note">Approximate locations keep people comfortable. Exact location is never shared continuously.</p>
+      </aside>
+    </main>
+  </body>
+</html>
