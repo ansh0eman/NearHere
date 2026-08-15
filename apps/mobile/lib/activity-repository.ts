@@ -1,11 +1,56 @@
-import { parseActivitySummaryRow, parseNearbyActivityRows } from '@/lib/activity-validation';
+import {
+  parseActivitySummaryRow,
+  parseJoinActivityResponseRow,
+  parseMyPlanRows,
+  parseNearbyActivityRows,
+} from '@/lib/activity-validation';
 import { supabase } from '@/lib/supabase';
 import type {
   CreateActivityOperationResult,
   CreateActivityRequest,
+  JoinActivityOperationResult,
+  MyPlansResult,
   NearbyActivitiesQuery,
   NearbyActivitiesResult,
 } from '@/types/activity';
+
+export async function getMyPlans(): Promise<MyPlansResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Plans are unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('my_plans', { p_limit: 50 });
+  if (error) {
+    return { ok: false, message: 'NearHere could not load your plans. Check your connection and try again.' };
+  }
+
+  try {
+    return { ok: true, plans: parseMyPlanRows(data) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid plans response. Please try again.' };
+  }
+}
+
+export async function joinActivity(activityId: string): Promise<JoinActivityOperationResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Joining is unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('join_activity', { p_activity_id: activityId });
+  if (error) {
+    if (error.code === 'P0001') return { ok: false, message: 'Complete your profile before joining.' };
+    if (error.code === 'P0002') return { ok: false, message: 'This activity is no longer available.' };
+    if (error.code === 'P0003') return { ok: false, message: 'You cannot rejoin this activity.' };
+    return { ok: false, message: 'NearHere could not join the activity. Please try again.' };
+  }
+
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one join result.');
+    return { ok: true, result: parseJoinActivityResponseRow(data[0]) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid join response. Please try again.' };
+  }
+}
 
 export async function createActivity(
   request: CreateActivityRequest,

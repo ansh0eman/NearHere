@@ -3,6 +3,9 @@ import test from 'node:test';
 
 import {
   parseActivitySummaryRow,
+  parseJoinActivityResponseRow,
+  parseMyPlanRow,
+  parseMyPlanRows,
   parseNearbyActivityRow,
   parseNearbyActivityRows,
 } from './activity-validation.ts';
@@ -33,6 +36,38 @@ test('nearby parser maps a database row into the mobile domain shape', () => {
   assert.equal(activity.participantCount, 1);
 });
 
+test('activity parser maps every public contract field without leaking private fields', () => {
+  const activity = parseNearbyActivityRow({
+    ...validRow,
+    host_user_id: 'private-host-id',
+    private_latitude: 12.931,
+    private_longitude: 77.621,
+  });
+
+  assert.deepEqual(activity, {
+    id: validRow.id,
+    kind: 'walk',
+    title: 'Evening lake walk',
+    description: 'A relaxed loop.',
+    status: 'published',
+    startsAt: validRow.starts_at,
+    endsAt: validRow.ends_at,
+    publicLocation: {
+      latitude: 12.9352,
+      longitude: 77.6245,
+      privacyRadiusM: 350,
+    },
+    hostDisplayName: 'Anshuman',
+    participantCount: 1,
+    capacity: 8,
+    joinMode: 'open',
+    distanceM: 812.4,
+  });
+  assert.equal('host_user_id' in activity, false);
+  assert.equal('private_latitude' in activity, false);
+  assert.equal('private_longitude' in activity, false);
+});
+
 test('creation parser does not require discovery-distance context', () => {
   const { distance_m: _distance, ...creationRow } = validRow;
   const activity = parseActivitySummaryRow(creationRow);
@@ -44,9 +79,80 @@ test('nearby parser handles an empty discovery result', () => {
   assert.deepEqual(parseNearbyActivityRows([]), []);
 });
 
+test('nearby list parser preserves server ordering while mapping each row', () => {
+  const secondRow = {
+    ...validRow,
+    id: '64d823ee-0d7a-4e13-a5a1-8d1774cc876e',
+    title: 'Coffee after work',
+    distance_m: 940,
+  };
+  const activities = parseNearbyActivityRows([validRow, secondRow]);
+
+  assert.deepEqual(
+    activities.map(({ id, title, distanceM }) => ({ id, title, distanceM })),
+    [
+      { id: validRow.id, title: validRow.title, distanceM: validRow.distance_m },
+      { id: secondRow.id, title: secondRow.title, distanceM: secondRow.distance_m },
+    ],
+  );
+});
+
+test('nearby list parser rejects non-lists and malformed list members', () => {
+  assert.throws(() => parseNearbyActivityRows({}), /not a list/);
+  assert.throws(() => parseNearbyActivityRows([validRow, null]), /not an object/);
+});
+
+test('activity parser accepts all server enum values', () => {
+  for (const kind of ['walk', 'coffee', 'sports', 'study', 'coworking', 'creative', 'other']) {
+    assert.equal(parseNearbyActivityRow({ ...validRow, kind }).kind, kind);
+  }
+  for (const status of ['published', 'cancelled', 'completed']) {
+    assert.equal(parseNearbyActivityRow({ ...validRow, status }).status, status);
+  }
+  for (const joinMode of ['open', 'approval']) {
+    assert.equal(parseNearbyActivityRow({ ...validRow, join_mode: joinMode }).joinMode, joinMode);
+  }
+});
+
+test('activity parser rejects unknown enum values', () => {
+  assert.throws(() => parseNearbyActivityRow({ ...validRow, kind: 'party' }), /invalid kind/);
+  assert.throws(() => parseNearbyActivityRow({ ...validRow, status: 'draft' }), /invalid status/);
+  assert.throws(() => parseNearbyActivityRow({ ...validRow, join_mode: 'invite' }), /invalid join_mode/);
+});
+
+test('activity parser accepts inclusive public coordinate and privacy boundaries', () => {
+  const lower = parseNearbyActivityRow({
+    ...validRow,
+    public_latitude: -90,
+    public_longitude: -180,
+    privacy_radius_m: 150,
+  });
+  const upper = parseNearbyActivityRow({
+    ...validRow,
+    public_latitude: 90,
+    public_longitude: 180,
+    privacy_radius_m: 1000,
+  });
+
+  assert.deepEqual(lower.publicLocation, {
+    latitude: -90,
+    longitude: -180,
+    privacyRadiusM: 150,
+  });
+  assert.deepEqual(upper.publicLocation, {
+    latitude: 90,
+    longitude: 180,
+    privacyRadiusM: 1000,
+  });
+});
+
 test('nearby parser rejects invalid public coordinates', () => {
   assert.throws(
     () => parseNearbyActivityRow({ ...validRow, public_latitude: 91 }),
+    /invalid public coordinates/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, public_longitude: -181 }),
     /invalid public coordinates/,
   );
 });
@@ -58,9 +164,164 @@ test('nearby parser rejects participant counts above capacity', () => {
   );
 });
 
+test('activity parser rejects invalid numeric metadata', () => {
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, participant_count: -1 }),
+    /invalid participant capacity/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, participant_count: 1.5 }),
+    /invalid participant_count/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, capacity: 1 }),
+    /invalid participant capacity/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, privacy_radius_m: 149 }),
+    /invalid distance metadata/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, privacy_radius_m: 1001 }),
+    /invalid distance metadata/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, distance_m: -0.1 }),
+    /invalid distance metadata/,
+  );
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, distance_m: Number.NaN }),
+    /invalid distance_m/,
+  );
+});
+
+test('activity parser requires non-empty identity and display strings', () => {
+  assert.throws(() => parseNearbyActivityRow({ ...validRow, id: '' }), /invalid id/);
+  assert.throws(() => parseNearbyActivityRow({ ...validRow, title: '' }), /invalid title/);
+  assert.throws(
+    () => parseNearbyActivityRow({ ...validRow, host_display_name: '' }),
+    /invalid host_display_name/,
+  );
+});
+
+test('activity parser normalizes a missing description to an empty public string', () => {
+  assert.equal(parseNearbyActivityRow({ ...validRow, description: null }).description, '');
+});
+
 test('nearby parser rejects malformed timestamps', () => {
   assert.throws(
     () => parseNearbyActivityRow({ ...validRow, starts_at: 'tomorrow-ish' }),
     /invalid starts_at/,
+  );
+});
+
+test('join parser maps accepted, pending, and waitlisted outcomes', () => {
+  for (const membershipStatus of ['accepted', 'pending', 'waitlisted']) {
+    assert.deepEqual(
+      parseJoinActivityResponseRow({
+        membership_status: membershipStatus,
+        participant_count: 2,
+      }),
+      { membershipStatus, participantCount: 2 },
+    );
+  }
+});
+
+test('join parser rejects unknown states and invalid counts', () => {
+  assert.throws(
+    () => parseJoinActivityResponseRow({ membership_status: 'going', participant_count: 2 }),
+    /invalid membership_status/,
+  );
+  assert.throws(
+    () => parseJoinActivityResponseRow({ membership_status: 'accepted', participant_count: 0 }),
+    /invalid participant_count/,
+  );
+});
+
+test('plans parser releases exact coordinates only for accepted membership', () => {
+  const activePlanRow = {
+    ...validRow,
+    starts_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+  };
+  const accepted = parseMyPlanRow({
+    ...activePlanRow,
+    membership_role: 'participant',
+    membership_status: 'accepted',
+    exact_latitude: 12.9279,
+    exact_longitude: 77.6717,
+  });
+  const pending = parseMyPlanRow({
+    ...activePlanRow,
+    membership_role: 'participant',
+    membership_status: 'pending',
+    exact_latitude: null,
+    exact_longitude: null,
+  });
+
+  assert.deepEqual(accepted.exactMeetingLocation, { latitude: 12.9279, longitude: 77.6717 });
+  assert.equal(pending.exactMeetingLocation, null);
+  assert.deepEqual(parseMyPlanRows([]), []);
+});
+
+test('plans parser rejects premature or missing private location data', () => {
+  const activePlanRow = {
+    ...validRow,
+    starts_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+  };
+  assert.throws(
+    () => parseMyPlanRow({
+      ...activePlanRow,
+      membership_role: 'participant',
+      membership_status: 'pending',
+      exact_latitude: 12.9279,
+      exact_longitude: 77.6717,
+    }),
+    /exposed exact coordinates/,
+  );
+  assert.throws(
+    () => parseMyPlanRow({
+      ...activePlanRow,
+      membership_role: 'participant',
+      membership_status: 'accepted',
+      exact_latitude: null,
+      exact_longitude: null,
+    }),
+    /invalid exact_latitude/,
+  );
+  assert.throws(
+    () => parseMyPlanRow({
+      ...activePlanRow,
+      membership_role: 'host',
+      membership_status: 'pending',
+      exact_latitude: null,
+      exact_longitude: null,
+    }),
+    /invalid host membership/,
+  );
+});
+
+test('plans parser removes exact coordinates from ended accepted plans', () => {
+  const endedPlan = parseMyPlanRow({
+    ...validRow,
+    ends_at: new Date(Date.now() - 60 * 1000).toISOString(),
+    membership_role: 'participant',
+    membership_status: 'accepted',
+    exact_latitude: null,
+    exact_longitude: null,
+  });
+  assert.equal(endedPlan.exactMeetingLocation, null);
+
+  assert.throws(
+    () => parseMyPlanRow({
+      ...validRow,
+      ends_at: new Date(Date.now() - 60 * 1000).toISOString(),
+      membership_role: 'participant',
+      membership_status: 'accepted',
+      exact_latitude: 12.9279,
+      exact_longitude: 77.6717,
+    }),
+    /exposed exact coordinates/,
   );
 });

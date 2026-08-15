@@ -25,7 +25,7 @@ flowchart LR
 - Authenticate with phone OTP before Join or Host.
 - Create, view, join, request approval, leave, and cancel activities.
 - Enforce capacity and waitlist/approval transitions correctly.
-- Reveal only approximate public location; later reveal an operational meeting point only to authorized participants.
+- Reveal only approximate public location publicly; reveal the operational meeting point only to an accepted member while the activity remains published and not ended.
 - Coordinate in activity-scoped chat after joining.
 - Report, block, leave, and moderate unsafe behavior.
 
@@ -48,17 +48,35 @@ flowchart TB
     U["Authenticated participant or host"] --> M
     MOD["Moderator or operator"] --> ADMIN["Future admin tools"]
     M --> AUTH["Supabase Auth"]
-    AUTH --> SMS["SMS provider"]
-    M --> API["NearHere modular API"]
-    API --> DB["Supabase PostgreSQL + PostGIS"]
-    API --> RT["Future realtime delivery"]
-    API --> JOBS["Future background jobs"]
-    ADMIN --> API
+    AUTH -. "production delivery later" .-> SMS["SMS provider"]
+    M --> DATA["Supabase Data API and RPC"]
+    AUTH --> DB["Supabase PostgreSQL + PostGIS"]
+    DATA --> DB
+    M -. "future domain HTTP" .-> API["NearHere modular API"]
+    API -.-> DB
+    API -.-> RT["Future realtime delivery"]
+    API -.-> JOBS["Future background jobs"]
+    ADMIN -.-> API
 ```
 
-An actor is a person or external system interacting with NearHere. The diagram does not imply that every box exists today. The mobile app, location flow, typed auth client boundary, and local fixtures are implemented. A hosted Supabase project, database schema deployment, activity API, realtime service, jobs, and admin tools remain planned.
+An actor is a person or external system interacting with NearHere. Solid arrows are the current deployed path; dotted arrows are planned. The mobile app uses hosted Supabase Auth, performs its narrowly authorized owner-profile operations through the Data API, and calls PostgreSQL functions through RPC for public nearby discovery and transactional activity creation. The standalone NearHere HTTP server, realtime delivery, jobs, SMS-provider delivery, and admin tools remain planned.
 
 ## 3. Initial architecture: a modular monolith
+
+The current backend is already **modular in responsibility** even though there is no standalone application-server process. Authentication is owned by Supabase Auth; PostgreSQL tables own durable facts; grants and RLS protect simple owner-profile access; and narrow database functions own multi-table activity commands and public projections.
+
+```mermaid
+flowchart LR
+    APP["Expo mobile app\nuntrusted client"] -->|"OTP and session"| AUTH["Supabase Auth"]
+    APP -->|"owner profile select/update"| DATA["Supabase Data API"]
+    APP -->|"create / nearby / join / my plans functions"| RPC["Supabase RPC"]
+    DATA --> PROFILE[("public.profiles")]
+    RPC --> PUBLIC[("public activities and memberships")]
+    RPC --> PRIVATE[("private meeting geometry")]
+    AUTH --> PROFILE
+```
+
+This is a pragmatic first deployment, not an argument that every future rule belongs in SQL. The next diagram is the intended evolution once Join, moderation, idempotency, stable error envelopes, or observability need a dedicated application runtime:
 
 ```mermaid
 flowchart LR
@@ -87,6 +105,8 @@ flowchart LR
     API --> Modules
     Modules --> DB
 ```
+
+The migration path preserves the mobile domain contracts while replacing the transport adapter: screens should not care whether a future request is served by Supabase RPC or `/v1/activities`. That separation reduces rewrite cost without paying for a server before it carries a concrete responsibility.
 
 A monolith is one deployable server. A modular monolith preserves one deployment while enforcing internal module boundaries. This is suitable because:
 
@@ -147,6 +167,27 @@ flowchart LR
 
 Moving a marker on the client is not privacy. If private data was sent to the phone, a modified client can inspect it. Privacy must be enforced at query and response boundaries.
 
+The deployed `my_plans` read model is the first participant-specific release boundary. The database derives the actor from the authenticated session, finds only that actor's durable membership rows, and joins the private point only when the membership is accepted and the activity is published and not ended. Pending, waitlisted, cancelled, completed, and ended branches receive `null`, not an exact point that the UI merely hides.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Plans as Plans screen
+    participant RPC as my_plans
+    participant Membership as Memberships
+    participant Private as Private locations
+    User->>Plans: Open Plans tab
+    Plans->>RPC: Call with bearer session and limit
+    RPC->>RPC: Derive auth.uid()
+    RPC->>Membership: Read only caller-owned memberships
+    alt accepted plus published and not ended
+        RPC->>Private: Read exact point for this activity
+        RPC-->>Plans: Plan plus exact meeting location
+    else pending, waitlisted, inactive, or ended
+        RPC-->>Plans: Plan plus null exact location
+    end
+```
+
 ## 6. Activity lifecycle and state machines
 
 Explicit state machines prevent impossible or contradictory states.
@@ -183,29 +224,37 @@ State transitions belong on the server inside database transactions. The client 
 
 Suppose one place remains and two phones join simultaneously. A read-then-write implementation can let both requests observe one open place and both accept. This is a race condition.
 
+The deployed `join_activity` RPC implements the first capacity-safe transition. It derives the actor from the authenticated session, requires a completed profile, and locks the matching activity row with `FOR UPDATE`. Every join for that activity makes its capacity decision in lock order; joins for different activity rows can proceed concurrently.
+
 ```mermaid
 sequenceDiagram
     participant A as Phone A
-    participant API
-    participant DB as PostgreSQL transaction
+    participant RPC as join_activity
+    participant Row as Activity row
+    participant M as Memberships
     participant B as Phone B
 
-    A->>API: Join with idempotency key A1
-    B->>API: Join with idempotency key B1
-    API->>DB: Lock activity / serialize capacity decision
-    DB->>DB: Check status, blocks, existing membership, capacity
-    DB-->>API: A accepted
-    API->>DB: Evaluate B after A commits
-    DB-->>API: B waitlisted or activity full
-    API-->>A: Accepted membership
-    API-->>B: Waitlisted/full result
+    A->>RPC: Join activity X
+    B->>RPC: Join activity X
+    RPC->>Row: A acquires FOR UPDATE
+    RPC->>Row: B waits
+    RPC->>M: A checks existing state and accepted count
+    RPC->>M: A writes accepted/pending/waitlisted
+    RPC-->>A: Canonical status and accepted count
+    RPC->>Row: A commits; B acquires lock
+    RPC->>M: B recounts after A and chooses outcome
+    RPC-->>B: Canonical status and accepted count
 ```
+
+Open activities accept while capacity remains and otherwise waitlist. Approval-mode activities return `pending` without consuming accepted capacity. If the actor already has an `accepted`, `pending`, or `waitlisted` membership, the operation returns it unchanged. The composite membership primary key prevents duplicates, so current Join is retry-safe without a separate client-generated idempotency key.
+
+This is a narrower guarantee than the planned general idempotency system. It does not yet store request fingerprints/responses for arbitrary commands, and the row-lock design has not yet been proven with two simultaneous hosted clients.
 
 Required invariants:
 
 - A user has at most one active membership per activity.
 - Accepted participants never exceed the configured capacity.
-- Reusing an idempotency key returns the same logical result.
+- Retrying Join for the same actor/activity returns the existing logical result.
 - A cancelled, completed, or blocked activity cannot be joined.
 - The host's membership and role cannot accidentally disappear through a normal leave operation.
 
@@ -238,6 +287,7 @@ Every network input is runtime data, even when the client and server share TypeS
 | Public profile | PostgreSQL | Request changes only | Carefully |
 | Activity status and capacity | PostgreSQL | No | Reads may be briefly stale |
 | Membership | PostgreSQL | No | UI may optimistically display pending state |
+| Exact meeting point | Private PostgreSQL schema | No | Returned only in an accepted caller projection; never public-cacheable |
 | Chat history | PostgreSQL | No | Paginated client cache |
 | Online presence | Future ephemeral store | Heartbeat only | Yes, short TTL |
 
@@ -251,7 +301,7 @@ Every network input is runtime data, even when the client and server share TypeS
 | Session expired | Refresh once; if invalid, return to phone auth while preserving safe protected intent. |
 | Nearby API timeout | Keep the last labeled result if appropriate, show retry, do not invent live activities. |
 | Duplicate Join retry | Idempotency returns the existing result. |
-| Concurrent last-place joins | Transaction accepts at most one; the other is waitlisted/full. |
+| Concurrent last-place joins | Row lock is designed to accept at most one and waitlist the other; two-client proof remains pending. |
 | Realtime disconnected | Persisted API remains authoritative; reconnect and refetch from a cursor. |
 | Redis unavailable in the future | Lose ephemeral presence/rate-limit optimization gracefully; never lose memberships. |
 
@@ -307,8 +357,8 @@ Scaling is a response to evidence. Adding Redis, queues, replicas, or microservi
 
 ## 13. What exists today
 
-**Implemented:** Expo/React Native native app, TypeScript/runtime boundaries, native live-discovery map states, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, profile onboarding, and a first native Host form.
+**Implemented:** Expo/React Native native app, TypeScript/runtime boundaries, native live-discovery map states, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, profile onboarding, first native Host form, Join feedback, and My Plans signed-out/loading/empty/error/populated states.
 
-**Deployed to development:** versioned identity/profile plus PostGIS activity migrations; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; and anonymous-safe nearby discovery. Remote migration history matches local history. Anonymous discovery, input rejection, and direct-table denial are proven; authenticated creation and two-actor profile tests remain pending.
+**Deployed to development:** versioned identity/profile, PostGIS activity, capacity-safe Join, Join hardening, caller-scoped My Plans, and forward-only Plans privacy-hardening migrations; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; anonymous-safe nearby discovery; authenticated `join_activity` with per-activity row locking/natural-key idempotency; and authenticated `my_plans` with accepted-plus-active exact-location release. Anonymous discovery/direct-table/Join/Plans denial and authenticated Host/host-idempotency/accepted-host Plans Simulator paths are proven.
 
-**Not yet production functionality:** seeded live activity data, authenticated creation acceptance, activity detail/cancellation, transactional participant joins, real SMS delivery, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration.
+**Not yet verified or implemented:** second-user acceptance/capacity/waitlist/approval behavior, concurrent last-place proof, signed-out and locked-location Plans interaction acceptance, cross-user Plans isolation proof, approve/reject/Leave/removal, useful plan-detail/directions UI, activity cancellation, real SMS delivery, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration. The two-actor profile RLS matrix also remains pending.

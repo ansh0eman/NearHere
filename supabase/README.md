@@ -379,17 +379,84 @@ Deployment and black-box evidence recorded on 2026-08-15:
 | Anonymous direct activity select | HTTP 401 / `42501` | The RPC projection does not imply table access. |
 | Hosted lint, schemas `public,private` | No schema errors | NearHere-owned functions pass Supabase's PL/pgSQL checks. |
 
-Still pending: authenticated creation, atomic host-membership proof, exact/public displacement measurement, private-schema denial through a privileged integration harness, and `EXPLAIN (ANALYZE, BUFFERS)` with representative data.
+Authenticated creation and its existing host membership were subsequently accepted in Simulator. Still pending: exact/public displacement measurement through a protected check, private-schema denial through a privileged integration harness, and `EXPLAIN (ANALYZE, BUFFERS)` with representative data.
 
 A broad lint including `extensions` reported static-analysis errors inside vendor-owned PostGIS functions that use dynamic SQL and extension-specific name resolution. Restricting the same hosted lint to NearHere-owned `public,private` schemas returned `No schema errors found`. This distinction prevents third-party analyzer noise from being mislabeled as an application defect.
 
 Official references used for this slice: [Supabase PostGIS geo queries](https://supabase.com/docs/guides/database/extensions/postgis), [Supabase database functions](https://supabase.com/docs/guides/database/functions), [Supabase data security](https://supabase.com/docs/guides/database/secure-data), and [PostGIS spatial indexes](https://postgis.net/documentation/faq/spatial-indexes/).
 
+## Lesson 7 deployed capacity-safe Join
+
+`migrations/202608150003_join_activities.sql` adds one authenticated command, `join_activity(activity_id)`. It does not grant clients direct access to the membership table.
+
+```mermaid
+flowchart TD
+    CALL["Authenticated Join RPC"] --> PROFILE{"Profile complete?"}
+    PROFILE -->|"No"| DENY["Reject"]
+    PROFILE -->|"Yes"| LOCK["Lock published activity row FOR UPDATE"]
+    LOCK --> EXIST{"Existing accepted/pending/waitlisted?"}
+    EXIST -->|"Yes"| SAME["Return durable state unchanged"]
+    EXIST -->|"No"| MODE{"Join mode and accepted count"}
+    MODE -->|"Approval"| PENDING["pending"]
+    MODE -->|"Open, space"| ACCEPTED["accepted"]
+    MODE -->|"Open, full"| WAITLISTED["waitlisted"]
+```
+
+The lock is scoped to the activity row. Two simultaneous requests for the same activity cannot both make a capacity decision from the same old count: one waits, then recounts after the other commits. Requests for different activity rows do not block one another through this lock.
+
+Join retry safety currently comes from domain identity rather than a general idempotency table. `(activity_id, user_id)` is the membership primary key, and the function returns an existing active state before writing. This prevents a retry from adding a second membership or consuming capacity twice. General idempotency keys are still required for later commands that cannot be uniquely identified this way.
+
+Deployment and acceptance evidence recorded on 2026-08-15:
+
+| Check | Result | What it proves |
+| --- | --- | --- |
+| Migration history | Local and remote include `202608150003` | Hosted schema accepted the Join function and privilege changes. |
+| Anonymous Join call | HTTP 401 / PostgreSQL `42501` | `anon` cannot execute the protected command. |
+| Host activity in Simulator | Created and rediscovered from hosted data | The authenticated create/discovery path works against a real row. |
+| Existing host taps Join | Returned `accepted`; participant count remained one | Existing active membership is returned without duplication, preserving the host path. |
+| Mobile runtime checks | Join response parser accepts only known status/count shapes | Untrusted RPC JSON does not enter UI state unchecked. |
+
+The evidence does **not** yet prove the most important multi-actor branches. A second fictional authenticated user must still demonstrate open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. Host approval/rejection, Leave, removal, and general idempotency records are not implemented. Accepted-only meeting-point release is now implemented separately through `my_plans`.
+
+## Lesson 8 deployed caller-scoped My Plans
+
+`migrations/202608150005_create_my_plans.sql` adds an authenticated read model called `my_plans(limit)`. A read model is a query result shaped for one screen; it is not another source of truth. Activities, memberships, profiles, and private locations remain authoritative in their existing tables.
+
+```mermaid
+flowchart LR
+    APP["Plans screen + access token"] --> RPC["my_plans(50)"]
+    RPC --> ID["Derive auth.uid()"]
+    ID --> MEMBER["Filter caller memberships"]
+    MEMBER --> SAFE["Public activity projection"]
+    MEMBER --> ACCEPT{"accepted?"}
+    ACCEPT -->|"yes"| ACTIVE{"published and not ended?"}
+    ACTIVE -->|"yes"| PRIVATE["Include exact meeting point"]
+    ACTIVE -->|"no"| NULL
+    ACCEPT -->|"no"| NULL["Return null exact point"]
+```
+
+The client never submits a user ID. That avoids an insecure direct-object-reference design in which changing a request parameter could request another person's plans. `security definer` is necessary because the client roles have no direct table access, so the function constrains its elevated execution with `search_path = ''`, fully qualified objects, an authentication check, a 1–100 limit, explicit return columns, and an execute grant only to `authenticated`.
+
+Migration `202608150006_harden_my_plans_privacy.sql` forward-hardens the first read model without rewriting deployed history. Exact-location disclosure now requires accepted membership, `published` lifecycle state, and an end time after the current database time. It also rejects a `null` limit so `LIMIT NULL` cannot bypass the 100-row ceiling. The React Native parser independently rejects exact coordinates for pending, waitlisted, cancelled, completed, or ended plans, but this is a bug/leak detector—not a replacement for database authorization.
+
+Deployment and acceptance evidence recorded on 2026-08-15:
+
+| Check | Result | What it proves |
+| --- | --- | --- |
+| Hosted migrations | `202608150005` and forward-hardening `202608150006` deployed | The development database accepted the read model, privilege boundary, lifecycle privacy rule, and bounded limit. |
+| Anonymous `my_plans` call | HTTP 401 / PostgreSQL `42501` | `anon` cannot execute the caller-private read function. |
+| Hosted lint for `public,private` | No schema errors | NearHere-owned schema/function lint is clean. |
+| Signed-in Simulator card | Real `NearHere development walk` shown as `Hosting`, `1/8 going`, hosted by Anshuman | The mobile repository, runtime parser, state hook, and populated card consumed a hosted caller row. |
+| Accepted host location | `Private meeting point unlocked`, `12.9279, 77.6717` | An accepted host membership receives its exact stored meeting point. |
+| Runtime parser tests | Active accepted requires valid exact coordinates; pending/waitlisted/inactive plans reject non-null exact coordinates | Malformed or prematurely revealing JSON is stopped before UI state. |
+
+Not yet proven: signed-out intent in Simulator; a second actor seeing only their own plans; pending/waitlisted hosted rows returning `null`; pagination beyond the first 50; or plan-detail/copy/directions behavior. The coordinate above is deliberate development activity data, not public discovery geometry or a production user's home.
+
 ## Historical local-tooling limitation
 
-At the time this migration was authored, neither `supabase` CLI nor `psql` was installed in the workspace environment. Static review can verify intent and syntax shape, but only running the migration against Supabase-compatible PostgreSQL can verify triggers, grants, and RLS behavior. The backlog keeps that work open until the development project and toolchain exist.
+At the time the first migration was authored, neither `supabase` CLI nor `psql` was installed in the workspace environment. Static review could verify intent and syntax shape, but could not honestly prove triggers, grants, or RLS behavior.
 
-That limitation has partially changed: the CLI is now available through `npx`, both migrations are deployed, and hosted black-box checks cover the evidence listed above. A disposable local reset/test environment still requires Docker.
+That limitation has now narrowed: the CLI is available through `npx`, migrations through `202608150006` are deployed, and hosted black-box checks cover the evidence listed above. The remaining gap is a disposable local reset/test environment, which still requires Docker, plus the explicitly pending two-actor/concurrency acceptance checks.
 
 ## Rollback thinking
 

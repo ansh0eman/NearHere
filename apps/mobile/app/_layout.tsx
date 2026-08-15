@@ -49,7 +49,12 @@ function AppNavigator() {
         />
         <Stack.Screen
           name="auth"
-          options={{ animation: 'slide_from_bottom', headerShown: false, presentation: 'modal' }}
+          options={{
+            animation: 'slide_from_bottom',
+            gestureEnabled: false,
+            headerShown: false,
+            presentation: 'modal',
+          }}
         />
         <Stack.Screen
           name="onboarding"

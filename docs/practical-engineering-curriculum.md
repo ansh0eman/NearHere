@@ -77,7 +77,7 @@ Practical outcome: model an activity, membership, join request, and API response
 
 ### Module 3: React and client-side state
 
-Progress: **in progress** — location behavior is isolated in a custom hook with explicit status and source state.
+Progress: **in progress** — location and live nearby discovery are isolated in custom hooks, while authentication and profile onboarding use app-wide providers with explicit state transitions and stale-request protection.
 
 NearHere work: decompose the Nearby screen into focused components and hooks.
 
@@ -111,7 +111,7 @@ Practical outcome: explain what happens if NearHere is killed during login and r
 
 ### Module 5: Networking, HTTP, and API design
 
-Progress: **started** — manual place search crosses a real HTTP/JSON boundary with load control, runtime validation, and failure states; the product API contract is designed but not implemented.
+Progress: **in progress** — manual place search crosses a public HTTP/JSON boundary; hosted phone Auth uses provider APIs; owner-profile reads/updates use the Supabase Data API; and activity creation/discovery use deployed RPC operations with runtime-validated responses. A standalone `/v1` NearHere application server remains planned.
 
 NearHere work: connect the mobile client to the first real backend endpoint.
 
@@ -124,7 +124,7 @@ Must-know concepts:
 - Pagination, filtering, versioning, and API contracts.
 - Why mobile networks are unreliable and how clients should behave.
 
-Practical outcome: design and call `GET /v1/activities/nearby` with explicit loading, empty, success, and error states.
+Practical outcome: trace today's `nearby_activities` RPC from mobile state through HTTP, database execution, JSON parsing, and loading/empty/success/error UI; then explain how a future `GET /v1/activities/nearby` adapter can preserve the same domain contract.
 
 ### Module 6: Authentication and sessions
 
@@ -162,7 +162,9 @@ Practical outcome: query activities within a radius without exposing the host's 
 
 ### Module 8: Correct joins under concurrency
 
-NearHere work: implement join, leave, capacity, approval, and waitlist behavior.
+Progress: **first command deployed** — `join_activity` authenticates the actor, requires profile completion, serializes same-activity decisions with `FOR UPDATE`, and returns accepted/pending/waitlisted outcomes. Natural membership identity makes retries non-duplicating. Anonymous denial and the existing-host retry path are verified; second-user capacity and concurrent last-place tests remain pending.
+
+NearHere work: finish the two-user Join evidence, then implement Leave and host approval/rejection without weakening the state machine.
 
 Must-know concepts:
 
@@ -323,9 +325,11 @@ flowchart LR
     L2 --> L3["3. Phone auth client boundary"]
     L3 --> L31["3.1 Place search"]
     L31 --> L4["4. Identity database foundation"]
-    L4 --> L5["5. Real activity creation and nearby API"]
-    L5 --> L6["6. Transactional participation"]
-    L6 --> L7["7. Chat, safety, and operations"]
+    L4 --> L5["5. Runtime-safe profile onboarding"]
+    L5 --> L6["6. PostGIS activity creation and discovery"]
+    L6 --> L7["7. Transactional participation"]
+    L7 --> L8["8. Caller-scoped Plans and private detail"]
+    L8 --> L9["9. Chat, safety, and operations"]
 ```
 
-Lesson 4 is intentionally split into local design and external integration. The migration/contracts exist; the Supabase development project, SMS path, migration execution, RLS tests, and real session test remain the next hands-on work.
+Lessons 1–8 have executable code. Hosted development now includes fixed-OTP Auth, profile migration/trigger, PostGIS activity/discovery, capacity-safe Join, and a caller-scoped Plans projection with active accepted-only exact-location release. Authenticated Host, existing-host idempotent Join, and the populated host Plans card were accepted in Simulator. Remaining evidence is explicit: run the two-actor profile/Plans authorization matrix; verify accepted, pending, and waitlisted outcomes; race the final place; measure public/private displacement through a protected check; and inspect a representative geospatial query plan. Leave and host approval/rejection are the next product commands.

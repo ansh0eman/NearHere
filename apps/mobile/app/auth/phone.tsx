@@ -18,7 +18,7 @@ import { useAuth } from '@/providers/auth-provider';
 
 export default function PhoneScreen() {
   const router = useRouter();
-  const { isConfigured, requestOtp, status } = useAuth();
+  const { isConfigured, requestOtp, setPendingIntent, status } = useAuth();
   const [phone, setPhone] = useState('+91 ');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const normalizedPhone = normalizePhoneNumber(phone);
@@ -40,6 +40,11 @@ export default function PhoneScreen() {
     router.push('/auth/verify');
   }
 
+  function cancelSignIn() {
+    setPendingIntent(null);
+    router.back();
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView
@@ -48,7 +53,7 @@ export default function PhoneScreen() {
         <Pressable
           accessibilityLabel="Close phone sign in"
           accessibilityRole="button"
-          onPress={() => router.back()}
+          onPress={cancelSignIn}
           style={styles.closeButton}>
           <Ionicons name="close" size={23} color="#16202A" />
         </Pressable>

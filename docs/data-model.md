@@ -14,18 +14,27 @@ The data model turns product rules into durable database structure. PostgreSQL i
 
 ## 2. Entity relationship model
 
+The first diagram is the schema deployed today. It is intentionally smaller than the beta domain: only model relationships that an executable migration actually creates are shown as current.
+
 ```mermaid
 erDiagram
     AUTH_USERS ||--|| PROFILES : "has public identity"
     PROFILES ||--o{ ACTIVITIES : hosts
     PROFILES ||--o{ ACTIVITY_MEMBERSHIPS : joins
     ACTIVITIES ||--o{ ACTIVITY_MEMBERSHIPS : contains
-    ACTIVITIES ||--o{ CHAT_MESSAGES : contains
-    PROFILES ||--o{ CHAT_MESSAGES : authors
-    ACTIVITIES ||--o{ ACTIVITY_EVENTS : emits
-    PROFILES ||--o{ REPORTS : files
-    ACTIVITIES ||--o{ REPORTS : concerns
-    PROFILES ||--o{ USER_BLOCKS : blocks
+    ACTIVITIES ||--|| PRIVATE_ACTIVITY_LOCATIONS : "has exact point"
+```
+
+The following relationships are planned and must not be mistaken for deployed tables:
+
+```mermaid
+erDiagram
+    ACTIVITIES ||--o{ PLANNED_CHAT_MESSAGES : contains
+    PROFILES ||--o{ PLANNED_CHAT_MESSAGES : authors
+    ACTIVITIES ||--o{ PLANNED_ACTIVITY_EVENTS : emits
+    PROFILES ||--o{ PLANNED_REPORTS : files
+    ACTIVITIES ||--o{ PLANNED_REPORTS : concerns
+    PROFILES ||--o{ PLANNED_USER_BLOCKS : blocks
 ```
 
 ## 3. Lesson 4 deployed development schema: profiles
@@ -59,25 +68,70 @@ The original sketch included `phone_or_email_hash` in a public users table. That
 | Identity/owner | `id`, `host_user_id` | Host references profile/auth identity |
 | Content | `kind`, `title`, `description` | Server-defined kinds; bounded text |
 | Lifecycle | `starts_at`, `ends_at`, `status` | End after start; explicit transitions |
-| Location | `private_point`, `public_point`, `privacy_radius_m` | Private point excluded from discovery |
+| Public location | `public_point`, `privacy_radius_m` | Contains only server-derived approximate geometry |
 | Participation | `capacity`, `join_mode` | Capacity bounded; `open` or `approval` |
 | Audit | `created_at`, `updated_at`, `cancelled_at` | Server time |
 
-`private_point` and `public_point` should use PostGIS `geography(Point, 4326)` or a deliberately selected equivalent. `public_point` is derived by trusted code and indexed with GiST for discovery. Whether to retain the exact point and when to disclose it requires a documented retention/release policy.
+Both `public.activities.public_point` and `private.activity_locations.meeting_point` use PostGIS `geography(Point, 4326)`. The separation is structural: there is no exact-coordinate column to accidentally select from the public activity table. `public_point` is derived by trusted code and indexed with GiST for discovery. The first disclosure policy requires accepted membership plus a still-published, not-ended activity through `my_plans`. The row is retained after completion/cancellation for now, but the operational coordinate is no longer returned; deletion/anonymization retention still requires a decision.
 
 The deployed migration stores public-safe activity facts in `public.activities` and the exact meeting point in `private.activity_locations`. The `private` schema is not exposed through the Data API and grants no access to client roles. `create_activity` writes both records atomically and derives `public_point` by displacing the exact point into the outer 40% of a 150–1,000 metre privacy radius.
 
 Anonymous discovery calls `nearby_activities`; it cannot select the table directly. The function validates coordinates/radius/limit, uses `ST_DWithin` against a GiST index, filters published non-ended activities, and returns latitude/longitude only from `public_point`.
 
+### Why two geometry records are stronger than one response filter
+
+If exact and approximate coordinates shared a client-readable row, every query, view, serializer, and future policy would need to remember to exclude the exact field. Storing the exact point in a non-exposed schema makes the safe path the default. This is **defense in depth**: response shaping still matters, but one accidental `SELECT *` cannot disclose the meeting point through normal client roles.
+
 ### `activity_memberships`
 
 Composite identity: `(activity_id, user_id)`.
 
-The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The first creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. Later participation commands will use the existing pending, accepted, waitlisted, rejected, left, and removed states rather than exposing arbitrary table mutation.
+The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. The deployed `join_activity` command now creates or returns participant membership through the existing `pending`, `accepted`, and `waitlisted` states. `rejected`, `left`, and `removed` exist in the enum but their commands are not implemented yet.
+
+The composite primary key is also the natural idempotency key for this one operation: the same actor/activity pair cannot produce a second membership row. If an active membership already exists, the function returns that durable status before attempting an insert. This is narrower than a general request-idempotency system because it cannot distinguish two different payloads under the same client-generated key or replay an arbitrary stored HTTP response.
+
+Capacity correctness is a cross-row invariant, so a uniqueness constraint alone is insufficient. `join_activity` locks the selected `activities` row with `FOR UPDATE`, counts accepted memberships while holding that lock, chooses the next state, and commits before the next join decision for that activity proceeds:
+
+```mermaid
+sequenceDiagram
+    participant A as Join request A
+    participant Row as Activity row lock
+    participant M as Memberships
+    participant B as Join request B
+    A->>Row: FOR UPDATE
+    B->>Row: Wait for same activity
+    A->>M: Count accepted and insert outcome
+    A-->>Row: Commit/release
+    Row-->>B: Acquire after A
+    B->>M: Recount including A, then choose outcome
+```
+
+### Lesson 8 caller-scoped Plans projection
+
+Migration `202608150005_create_my_plans.sql` adds a read function rather than granting the mobile app `SELECT` access to the underlying activity, profile, membership, or private-location tables. A **projection** is a purpose-shaped read result: it can combine stored facts while returning fewer and safer fields than the base tables contain.
+
+```mermaid
+flowchart TB
+    U["auth.uid(): trusted caller identity"] --> M["Only memberships where user_id = caller"]
+    M --> A["Public activity facts"]
+    A --> H["Host display name"]
+    M --> S{"Membership status"}
+    S -->|"accepted"| ACTIVE{"Published and not ended?"}
+    ACTIVE -->|"yes"| L["private.activity_locations meeting point"]
+    ACTIVE -->|"no"| N["exact latitude/longitude = null"]
+    S -->|"pending or waitlisted"| N
+    H --> R["One MyPlanSummary row"]
+    L --> R
+    N --> R
+```
+
+The function is `stable` because it reads but does not intentionally modify data. It is `security definer` because normal client roles deliberately lack direct access to these tables; its empty `search_path`, schema-qualified names, explicit return columns, actor check, non-null bounded limit, status filter, and authenticated-only execute grant constrain that elevated privilege. The host already has an `accepted` host membership by database constraint, so the same accepted/active release rule unlocks the host's exact point without a special client-side exception.
+
+The ordering places non-ended plans first by nearest start time, followed by ended plans from newest start time backward. This is useful presentation ordering, not an archival or retention policy. Cancelled/completed activities can still be projected if the caller retains an active membership; the screen does not yet provide cancellation, leave, approval, or removal commands.
 
 ### `idempotency_records`
 
-Representative fields: actor, operation scope, idempotency key, request fingerprint, stored response, status code, and expiration. A uniqueness constraint prevents the same logical write from being executed twice.
+This table remains planned for general commands. Representative fields: actor, operation scope, idempotency key, request fingerprint, stored response, status code, and expiration. A uniqueness constraint prevents the same logical write from being executed twice. The current Join command instead uses membership identity plus an existing-state early return.
 
 ### `chat_messages`
 
@@ -115,6 +169,17 @@ Use `EXPLAIN (ANALYZE, BUFFERS)` on realistic data before claiming an index impr
 ## 6. Row Level Security model
 
 RLS acts like an automatic row filter/check on every data operation made through exposed Postgres roles.
+
+The deployed access surface is deliberately narrower than the beta target:
+
+| Deployed object | Direct client table access | Intended operation |
+| --- | --- | --- |
+| `public.profiles` | Authenticated owner can select and update granted columns under RLS | Minimal profile onboarding/editing |
+| `public.activities` | None for `anon` or `authenticated` | Read through `nearby_activities` and caller-scoped `my_plans`; write through `create_activity` |
+| `public.activity_memberships` | None for `anon` or `authenticated` | Host row is written inside `create_activity`; participant Join is written inside `join_activity`; caller state is projected by `my_plans` |
+| `private.activity_locations` | None; schema and table are not client-exposed | `my_plans` releases the exact point only to an accepted caller while the activity is published and not ended |
+
+The following table is the **target authorization model**, not a claim that participant/chat policies already exist:
 
 | Actor | Profiles | Public activities | Private meeting data | Memberships/chat |
 | --- | --- | --- | --- | --- |

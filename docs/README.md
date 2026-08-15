@@ -48,10 +48,27 @@ flowchart TD
 - NearHere is an installable iOS/Android app built with Expo, React Native, and TypeScript; the old web concept is reference material only.
 - Anyone may browse activities without an account. Joining or hosting requires phone OTP authentication.
 - The app asks for foreground location permission. Denial leads to searchable manual location and map-pin selection.
-- Public activity locations are approximate. An authorized participant-only meeting point can be introduced later.
+- Public activity locations are approximate. The exact meeting point is released through the caller-scoped Plans read model only for an accepted member while the activity is published and not ended.
 - The custom avatar experience is important differentiation, but its builder is deferred until the discovery, identity, and activity core is correct.
 - Supabase provides hosted phone authentication and PostgreSQL. PostGIS provides geospatial querying.
 - A modular monolith is the initial application architecture. Redis, custom WebSockets, payments, direct messages, recurring-event administration, and complex recommendations are deferred until requirements and measurements justify them.
+
+## Current implementation snapshot
+
+This table prevents an architectural design from being confused with deployed evidence:
+
+| Capability | Current state | Remaining proof/work |
+| --- | --- | --- |
+| Native map and location | Implemented in the Expo development build | Physical-device and accessibility matrix |
+| Phone identity | Hosted fixed development OTP and session restoration verified | Real SMS provider, rate limits, production compliance |
+| Profile | Migration, trigger, owner repository, runtime parser, and onboarding implemented | Simulator onboarding acceptance and two-actor RLS run |
+| Activity discovery | PostGIS migration/RPC deployed; anonymous empty result and denial paths verified | Representative rows, query-plan measurement, pagination |
+| Activity hosting | Transaction and native form accepted in Simulator; real activity rediscovered | Protected exact/public displacement measurement |
+| Join participation | Deployed row-locking RPC, mobile flow, anonymous denial, and same-host idempotent acceptance | Second-user capacity, waitlist, approval, and concurrency proof |
+| My Plans | Migrations/RPC deployed and privacy-hardened; accepted active-host card/exact point accepted in Simulator; anonymous execute denied | Signed-out interaction and second-user pending/waitlisted isolation; inactive-card acceptance, pagination, and plan detail actions |
+| Leave/approval/chat/safety | Designed only | Leave and host decision commands are the next product operations |
+
+“Implemented” means source exists and local checks pass. “Deployed” means the hosted development environment accepted it. “Verified” names a specific observed behavior. These words are intentionally not interchangeable.
 
 ## Documentation conventions for the future LaTeX book
 

@@ -1,8 +1,12 @@
 import type {
   ActivityKind,
+  ActivityMembershipRole,
   ActivitySummary,
   ActivityStatus,
   JoinMode,
+  JoinActivityResponse,
+  JoinActivityOutcome,
+  MyPlanSummary,
   NearbyActivitySummary,
 } from '@/types/activity';
 
@@ -17,6 +21,9 @@ const ACTIVITY_KINDS: ActivityKind[] = [
 ];
 const ACTIVITY_STATUSES: ActivityStatus[] = ['published', 'cancelled', 'completed'];
 const JOIN_MODES: JoinMode[] = ['open', 'approval'];
+const JOIN_OUTCOMES: JoinActivityOutcome[] = ['pending', 'accepted', 'waitlisted'];
+const MEMBERSHIP_ROLES: ActivityMembershipRole[] = ['host', 'participant'];
+const PLAN_MEMBERSHIP_STATUSES = ['pending', 'accepted', 'waitlisted'] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -107,4 +114,59 @@ export function parseNearbyActivityRow(value: unknown): NearbyActivitySummary {
 export function parseNearbyActivityRows(value: unknown): NearbyActivitySummary[] {
   if (!Array.isArray(value)) throw new Error('Nearby activities response is not a list.');
   return value.map(parseNearbyActivityRow);
+}
+
+export function parseMyPlanRow(value: unknown): MyPlanSummary {
+  if (!isRecord(value)) throw new Error('Plan response is not an object.');
+
+  const membershipRole = value.membership_role;
+  const membershipStatus = value.membership_status;
+  if (!MEMBERSHIP_ROLES.includes(membershipRole as ActivityMembershipRole)) {
+    throw new Error('Plan response has an invalid membership_role.');
+  }
+  if (!PLAN_MEMBERSHIP_STATUSES.includes(membershipStatus as (typeof PLAN_MEMBERSHIP_STATUSES)[number])) {
+    throw new Error('Plan response has an invalid membership_status.');
+  }
+  if (membershipRole === 'host' && membershipStatus !== 'accepted') {
+    throw new Error('Plan response has an invalid host membership.');
+  }
+
+  const exactLatitude = value.exact_latitude;
+  const exactLongitude = value.exact_longitude;
+  let exactMeetingLocation = null;
+  const isActivePublishedPlan = value.status === 'published'
+    && Date.parse(String(value.ends_at)) > Date.now();
+  if (membershipStatus === 'accepted' && isActivePublishedPlan) {
+    const latitude = requireFiniteNumber(value, 'exact_latitude');
+    const longitude = requireFiniteNumber(value, 'exact_longitude');
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new Error('Plan response contains invalid exact coordinates.');
+    }
+    exactMeetingLocation = { latitude, longitude };
+  } else if (exactLatitude !== null || exactLongitude !== null) {
+    throw new Error('Plan response exposed exact coordinates before acceptance.');
+  }
+
+  return {
+    ...parseActivitySummaryRow(value),
+    membershipRole: membershipRole as ActivityMembershipRole,
+    membershipStatus: membershipStatus as MyPlanSummary['membershipStatus'],
+    exactMeetingLocation,
+  };
+}
+
+export function parseMyPlanRows(value: unknown): MyPlanSummary[] {
+  if (!Array.isArray(value)) throw new Error('Plans response is not a list.');
+  return value.map(parseMyPlanRow);
+}
+
+export function parseJoinActivityResponseRow(value: unknown): JoinActivityResponse {
+  if (!isRecord(value)) throw new Error('Join response is not an object.');
+  const membershipStatus = value.membership_status;
+  if (!JOIN_OUTCOMES.includes(membershipStatus as JoinActivityOutcome)) {
+    throw new Error('Join response has an invalid membership_status.');
+  }
+  const participantCount = requireInteger(value, 'participant_count');
+  if (participantCount < 1) throw new Error('Join response has an invalid participant_count.');
+  return { membershipStatus: membershipStatus as JoinActivityOutcome, participantCount };
 }

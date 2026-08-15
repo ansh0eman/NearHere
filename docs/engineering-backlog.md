@@ -2,7 +2,7 @@
 
 Checkboxes record implementation, not aspiration. Items are ordered by dependency and user value.
 
-## Current slice — Lesson 4: identity foundation
+## Identity foundation — Lessons 4 and 5
 
 - [x] Design browse-first phone OTP and protected-intent state model
 - [x] Build provider-gated phone and verification screens
@@ -21,7 +21,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add runtime profile-boundary unit tests and a dependency-free hosted RLS harness
 - [ ] Test profile trigger and policies as owner, other user, and protected service operation
 
-## Current slice — real activity creation and discovery
+## Current slice — Lesson 6: real activity creation and discovery
 
 - [x] Define shared activity request/response contracts and runtime schemas
 - [x] Add and deploy PostGIS activity/status/membership tables with private and public location separation
@@ -30,18 +30,31 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Implement and verify anonymous-safe `nearby_activities` discovery RPC
 - [x] Replace map fixtures with explicit loading/empty/success/error server state
 - [x] Build the first native Host form and profile gate
-- [ ] Complete one authenticated Host write and confirm only approximate geometry is returned publicly
+- [x] Complete one authenticated Host write and rediscover only the public-safe projection in Simulator
+- [ ] Measure exact/public displacement through a protected operational test without exposing the exact point publicly
 - [ ] Build full activity detail boundary
 - [ ] Add contract, integration, privacy, and query-plan tests
 
 ## Participation correctness
 
 - [x] Add the initial membership schema and atomic host membership creation
-- [ ] Add idempotency schema
-- [ ] Implement open join, approval request, approve/reject, leave, removal, and waitlist transitions
-- [ ] Enforce capacity inside database transactions
+- [x] Implement open Join, approval-mode pending request, and full-capacity waitlist outcomes
+- [x] Make Join retry-safe for the natural `(activity_id, user_id)` membership identity
+- [x] Enforce Join capacity decisions with a per-activity row lock inside one transaction
+- [x] Wire authentication/profile gates, protected-intent resumption, runtime parsing, and status-specific mobile feedback
+- [x] Verify anonymous Join denial and existing-host idempotent acceptance in Simulator
+- [ ] Add general idempotency-key records for commands whose identity is not sufficient
+- [ ] Implement approve/reject, leave, and removal transitions
 - [ ] Prove last-place behavior with concurrent integration tests
-- [ ] Release participant-only meeting details through server authorization
+- [ ] Verify second-user accepted, pending, and waitlisted outcomes against hosted data
+- [x] Add an authenticated caller-scoped Plans read model and native Plans states
+- [x] Release exact coordinates only for accepted membership while the activity is published and not ended
+- [x] Verify the accepted host Plans card and exact coordinate in Simulator
+- [x] Prevent cross-account cached-plan rendering and suppress inactive-plan exact coordinates
+- [x] Make Auth cancellation explicit by disabling modal dismissal gestures and clearing protected intent on close
+- [ ] Exercise signed-out Plans intent and pending/waitlisted locked-location cards in Simulator
+- [ ] Exercise cancelled/ended card labels and exact-location suppression in Simulator
+- [ ] Add cursor pagination, upcoming/past sections, plan details, and useful meeting-point actions
 
 ## Coordination, safety, and beta quality
 

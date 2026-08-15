@@ -584,13 +584,13 @@ Deferring the builder does not mean abandoning the differentiator. It means prov
 
 Redis is an in-memory data store. NearHere may later use it for rate limits, short-lived presence, caching, and realtime fan-out. PostgreSQL remains the durable source of truth.
 
-Redis is not needed for local fixtures and would introduce another service to configure, secure, monitor, and debug.
+At this lesson's prototype stage, Redis was not needed for local fixtures and would have introduced another service to configure, secure, monitor, and debug. That conclusion still holds after live discovery: PostgreSQL answers the current query within one hosted system, and no measured cache or distributed rate-limit requirement exists yet.
 
 ### WebSockets
 
 Normal HTTP follows request/response: the client asks and the server replies. A WebSocket maintains a connection so the server can push events such as new chat messages or changed participant counts immediately.
 
-There is currently no server and no concurrent user state, so a WebSocket would provide no benefit yet.
+At this lesson's prototype stage there was no server or concurrent user state, so a WebSocket would have provided no benefit. The backend now exists, but the product still has no implemented chat/presence requirement; durable HTTP/RPC operations remain the correct current transport.
 
 ### Continuous presence
 
@@ -638,15 +638,15 @@ Be ready for follow-up questions:
 - When would Redis or WebSockets become justified?
 - How would the app resume a Join action after OTP verification?
 
-## 15. Honest resume language at the current stage
+## 15. Historical resume checkpoint after Lesson 1
 
-Use language that matches what exists today:
+At the end of Lesson 1, the honest claims were:
 
 - Built a cross-platform location-aware mobile prototype with Expo, React Native, and TypeScript, featuring native map discovery, activity filtering, and marker-linked detail state.
 - Designed a privacy-conscious foreground location flow with explicit permission handling and a manual-location fallback boundary.
 - Established file-based mobile navigation and validated the application through linting, static type checks, Expo dependency checks, and native iOS bundle generation.
 
-Do not yet claim production authentication, real-time chat, a deployed backend, active users, scalability results, or App Store distribution.
+At that checkpoint it was not honest to claim authentication or a deployed backend. Later lessons now support stronger identity and PostGIS claims, recorded in their own resume sections. Real SMS delivery, realtime chat, active-user/scale results, and App Store distribution still must not be claimed.
 
 # Lesson 2: A complete manual-location vertical slice
 
@@ -1161,8 +1161,8 @@ A migration is an ordered source-controlled program that changes the database sc
 ```text
 empty database
   -> 202608150001_create_profiles.sql
-  -> future activity migration
-  -> future membership migration
+  -> 202608150002_create_activities.sql
+  -> future participation-command migration
 ```
 
 Dashboard clicks are difficult to review, reproduce, or apply consistently across development, staging, and production. A migration provides an auditable record and lets a fresh database reach the same shape.
@@ -1425,7 +1425,7 @@ It does not prove that one user cannot read another user's profile. Session rest
 
 ## 12. Lesson 4 interview explanation
 
-> I designed the initial identity data boundary for a mobile application using Supabase Auth and PostgreSQL. Authentication-sensitive phone data remains in the protected Auth schema, while a one-to-one public profile is created by a minimal database trigger. I added constraints, column-level grants, and Row Level Security so authenticated users can update only permitted fields on their own profile. I captured the change in a versioned migration and explicitly separated static validation from pending database integration tests.
+> I designed and deployed the initial identity data boundary for a mobile application using Supabase Auth and PostgreSQL. Authentication-sensitive phone data remains in the protected Auth schema, while a one-to-one application profile is created by a minimal database trigger. I added constraints, column-level grants, and Row Level Security so authenticated users can update only permitted fields on their own profile. I verified migration history, anonymous denial, hosted fixed-OTP session issuance, trigger execution, and one owner read while keeping the remaining two-actor authorization matrix explicit.
 
 ## 13. Lesson 4 honest resume addition
 
@@ -1634,7 +1634,7 @@ Join/Host intent and the pending phone number survive the continuous OTP flow bu
 
 # Next lesson
 
-Run the two-actor hosted RLS matrix and accept the display-name flow in Simulator. Then begin the first real activity slice: PostGIS schema, privacy-separated geometry, transactional host creation, and nearby discovery replacing fixtures.
+At the time Lesson 5 ended, the next planned slice was PostGIS activity creation/discovery. That slice is now implemented in Lesson 6; its remaining acceptance checks are listed at the end of that lesson.
 
 # Lesson 6: The first real PostGIS activity slice
 
@@ -1674,7 +1674,7 @@ flowchart TB
     COMMAND --> TRANSFORM["bounded displacement"]
     TRANSFORM --> PUBLIC["public.activities\napproximate point"]
     PUBLIC --> DISCOVERY["anonymous nearby response"]
-    PRIVATE --> LATER["future participant-only release"]
+    PRIVATE --> PLANS["accepted-only release through my_plans"]
 ```
 
 The `private` schema is not exposed through the Data API and client roles receive no grant. The public table never contains exact geometry, reducing the chance that a future `SELECT *`, generated client, or permissive policy leaks it.
@@ -1778,6 +1778,251 @@ Discovery distance means distance from the search center; creation has no search
 
 - Built and deployed a PostGIS-backed mobile activity discovery/creation slice with privacy-separated geometry, transactional host membership, indexed radius queries, least-privilege RPC boundaries, runtime-validated TypeScript adapters, and native loading/error/empty states.
 
+# Lesson 7: Capacity-safe and retry-safe Join
+
+## 1. Why Join is a transaction, not a table update
+
+A naive client could read `participant_count = 7`, see capacity 8, and insert itself. If two clients do this concurrently, both can observe the old count and both can accept. This is a **race condition**: individually reasonable operations produce an invalid combined result because their critical steps interleave.
+
+The decision must happen next to authoritative membership data inside one database transaction:
+
+```mermaid
+flowchart LR
+    AUTH["Derive actor from session"] --> PROFILE["Require complete profile"]
+    PROFILE --> LOCK["Lock activity row"]
+    LOCK --> EXIST["Check existing membership"]
+    EXIST --> COUNT["Count accepted memberships"]
+    COUNT --> DECIDE["accepted / pending / waitlisted"]
+    DECIDE --> WRITE["Write one membership"]
+    WRITE --> RETURN["Return canonical status and count"]
+```
+
+The mobile app requests a transition; it never writes `status = accepted` directly.
+
+## 2. Row locking from first principles
+
+`SELECT ... FOR UPDATE` acquires an exclusive row lock until the transaction ends. Another transaction that needs the same activity row waits. When it resumes, it counts after the first transaction's commit, so the last place cannot be decided twice from one stale count.
+
+The lock is deliberately **per activity**, not global. People joining activity A do not wait for activity B. This is the smallest serialization boundary that protects the capacity invariant.
+
+Row locking is a correctness design, not proof by itself. A second-user concurrent hosted test remains necessary to demonstrate that one final-place request is accepted and the other is waitlisted.
+
+## 3. Outcome semantics
+
+| Condition | Outcome | `joined_at` | Accepted-capacity effect |
+| --- | --- | --- | --- |
+| Approval mode | `pending` | `null` | None until future host approval |
+| Open mode with room | `accepted` | Server time | Increases accepted count |
+| Open mode at capacity | `waitlisted` | `null` | None |
+| Existing active membership | Existing state | Unchanged | No duplicate effect |
+
+`pending` is a request awaiting a host decision. `waitlisted` means open joining was allowed but accepted capacity was full. They are different business states even though neither consumes a place yet.
+
+The schema already contains `rejected`, `left`, and `removed`, but Lesson 7 does not implement those commands. An enum value existing in PostgreSQL is not the same as a user journey being complete.
+
+## 4. Natural-key idempotency
+
+Mobile networks retry. A user can also tap again after a response is delayed. If retrying Join inserted another row or incremented a counter again, the system would corrupt capacity.
+
+NearHere's membership primary key is `(activity_id, user_id)`: one actor has one durable membership identity per activity. `join_activity` first returns an existing `accepted`, `pending`, or `waitlisted` status. The unique key and early return make this command semantically idempotent without a client-generated key.
+
+This is not a universal idempotency solution. A later create/payment/message command may need a supplied key, request fingerprint, stored response, expiration, and mismatch detection. Use natural identity when it completely represents “the same logical operation”; use explicit idempotency records when it does not.
+
+## 5. Authentication, authorization, and profile gates
+
+The server derives `auth.uid()` from the verified session. It rejects anonymous calls and requires `profiles.onboarding_status = complete`. The mobile layer mirrors those gates for UX:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App
+    participant Auth as Supabase Auth
+    participant Profile as Profile provider
+    participant Join as join_activity
+    User->>App: Tap Join
+    alt Signed out
+        App->>App: Preserve joinActivity intent
+        App->>Auth: Phone OTP
+    end
+    App->>Profile: Load/complete minimum profile
+    Profile-->>App: ready
+    App->>Join: Resume activity ID with session
+    Join-->>App: accepted / pending / waitlisted
+    App->>App: Refresh discovery and show exact outcome
+```
+
+Client gates are helpful but bypassable. Database authentication, execute privilege, actor derivation, profile check, lock, primary key, and transaction remain authoritative.
+
+## 6. Mobile boundary and failure states
+
+`activity-repository.ts` calls the RPC and maps stable server errors into user-safe messages. `activity-validation.ts` treats the response as unknown and accepts only a known membership status plus a non-negative authoritative count. The map disables the active Join control, resumes a protected intent after Auth/onboarding, refreshes nearby activity counts after success, and displays outcome-specific copy.
+
+This layering separates concerns:
+
+- the screen owns interaction and feedback;
+- the repository owns transport/provider syntax;
+- the parser owns runtime trust;
+- PostgreSQL owns identity, capacity, idempotency, and durable state.
+
+## 7. Deployment and acceptance evidence
+
+- migration `202608150003` is present in local and hosted history;
+- anonymous Join returned HTTP 401 / PostgreSQL `42501`;
+- an authenticated Host activity was created and rediscovered in Simulator;
+- tapping Join as that existing host returned `accepted` and kept participant count at one;
+- retry semantics therefore preserved the existing host membership instead of inserting a participant duplicate;
+- mobile lint, strict TypeScript, unit tests, and production bundling cover their respective static/runtime build boundaries.
+
+The same-host path is valuable idempotency evidence but not a substitute for a second actor. Still unverified: a new participant accepted into open capacity, approval-mode `pending`, full-capacity `waitlisted`, and two simultaneous requests racing for the final place.
+
+## 8. Challenge: idempotency without overbuilding infrastructure
+
+**Risk:** adding a general idempotency table, request fingerprints, response replay, cleanup jobs, and API headers before the first Join could delay the vertical slice.
+
+**Observation:** membership already has a durable natural identity and Join has no payload beyond the activity ID.
+
+**Resolution:** use the composite primary key plus existing-state early return for Join, document its exact limits, and keep the general idempotency-record design for commands that need it.
+
+**Lesson:** reuse a domain invariant when it provides the whole guarantee, but do not generalize a narrow guarantee into a false system-wide claim.
+
+## 9. Interview explanation
+
+> I implemented a capacity-safe Join command in PostgreSQL and React Native. The database derives the actor from the session, requires profile completion, and locks one activity row before evaluating membership and capacity, which serializes competing decisions without blocking unrelated activities. A composite membership key and existing-state return make retries idempotent. The mobile client preserves protected intent through OTP/onboarding, runtime-validates the RPC response, refreshes server state, and renders accepted, pending, or waitlisted outcomes. I verified anonymous denial and the existing-host retry path while keeping the second-user concurrency matrix explicitly pending.
+
+## 10. Honest resume addition
+
+- Built and deployed a transactional activity-Join workflow using PostgreSQL row locks, natural-key idempotency, session-derived authorization, runtime-validated TypeScript adapters, and resumable React Native authentication/profile gates.
+
+# Lesson 8: Caller-scoped My Plans and accepted-only private details
+
+## 1. Why a list screen is a backend/security slice
+
+It is easy to think “Plans” means rendering cards. The screen actually asks a security-sensitive question: **which activity facts may this authenticated caller see, and which private fields may be released for each membership state?** A client-side filter is not enough because the phone is controlled by the user. The safe response must be shaped before private data crosses the network.
+
+```mermaid
+flowchart LR
+    UI["Plans UI"] --> HOOK["State/lifecycle hook"]
+    HOOK --> REPO["Supabase repository"]
+    REPO --> RPC["my_plans read model"]
+    RPC --> TABLES["Authoritative tables"]
+    TABLES --> RPC
+    RPC --> PARSER["Runtime validation"]
+    PARSER --> HOOK
+    HOOK --> UI
+```
+
+This is a vertical slice because it crosses database authorization, response shaping, shared TypeScript contracts, runtime validation, a repository adapter, React lifecycle/state, navigation/Auth intent, UI states, tests, hosted deployment, and Simulator acceptance.
+
+## 2. Caller-scoped authorization from first principles
+
+The mobile app does not call `my_plans(userId)`. It calls `my_plans(limit)` with its access token. Supabase validates the token, and PostgreSQL's `auth.uid()` supplies the actor identity. The query then includes `membership.user_id = actor`.
+
+This distinction matters:
+
+```text
+Unsafe: client says userId = X -> server trusts X -> changing X may expose another account
+Safe:   verified token -> server derives actor -> query scopes rows to that actor
+```
+
+Authentication answers “who is calling?” Authorization answers “which rows and fields may that caller receive?” The read model performs both the caller row filter and the field-level release decision. Anonymous execution is revoked, and the base tables remain unavailable to normal client roles.
+
+## 3. Read models and projections
+
+The database stores normalized facts in separate places: activities, memberships, host profiles, accepted counts, and private locations. The Plans screen should not issue five client queries and combine them. That would create extra round trips, inconsistent snapshots, and more opportunities to mishandle private data.
+
+`my_plans` is a **read model** or **projection**: one server-side query assembles exactly the fields the screen needs. It does not duplicate the system of record. The result includes public activity facts, the caller's membership role/status, accepted participant count, and conditionally the exact meeting point.
+
+The function returns active membership states (`pending`, `accepted`, `waitlisted`), sorts upcoming rows before ended rows, and accepts a bounded 1–100 limit. The mobile client requests 50. Cursor pagination and explicit upcoming/past sections remain future work.
+
+## 4. Accepted-only exact location
+
+NearHere stores approximate public geometry separately from the exact operational meeting point. The first deployed release policy is simple and auditable:
+
+| Caller membership | Public approximate point | Exact meeting point |
+| --- | --- | --- |
+| No membership | Through public discovery | Never |
+| `pending` | Yes | `null` |
+| `waitlisted` | Yes | `null` |
+| `accepted` participant | Yes | Included in My Plans |
+| `accepted` host | Yes | Included in My Plans |
+
+The conditional private join and `CASE` expressions live inside PostgreSQL. A UI lock icon is only communication; it is not protection. The mobile parser adds defense in depth by throwing if a pending/waitlisted row contains either exact coordinate or if an accepted row lacks valid coordinates.
+
+## 5. Why TypeScript still needs runtime validation
+
+`MyPlanSummary` helps the compiler catch mistakes while developers write code, but TypeScript types are erased when JavaScript runs. Supabase can still return malformed JSON because of a migration mismatch, server bug, stale deployment, or compromised boundary.
+
+The Plans parser therefore treats RPC data as `unknown` and checks:
+
+- the outer value is a list and every row is an object;
+- activity kind/status/join mode and membership role/status are known values;
+- timestamps parse, coordinates are finite/in range, and counts/capacity are valid;
+- a host membership is accepted;
+- accepted rows contain valid exact coordinates;
+- pending/waitlisted rows contain `null` exact coordinates.
+
+Only then does it map database `snake_case` keys into the app's `camelCase` contract. Compile-time types improve authoring; runtime validation protects trust boundaries; database rules remain authoritative.
+
+## 6. React state and lifecycle
+
+`useMyPlans` models four explicit states: `signedOut`, `loading`, `ready`, and `error`. An empty successful list is `ready`, not an error. On tab focus, a signed-in screen refreshes because Join or Host may have changed membership while the Plans tab was not visible.
+
+During a background refresh, existing rows stay visible with a small progress indicator. A recoverable error can also retain old rows with a retry banner. This is better than replacing useful known data with a blank screen, while the UI still labels that freshness failed.
+
+The hook increments a request identifier for every request/session transition. If an older request finishes after a newer request, its identifier no longer matches and it cannot overwrite current state. This protects against a stale-response race without adding global state infrastructure.
+
+## 7. Signed-out protected intent
+
+Browsing remains account-free. A signed-out Plans screen explains why an account is needed and offers “Sign in to see plans.” Pressing it stores `{ kind: 'openPlans' }` before phone Auth. After verification, the root flow consumes that intent and returns to Plans.
+
+The distinction is intentional: the app may show the signed-out screen and remember navigation intent, but only a server-issued session can make the protected RPC succeed. Anonymous `my_plans` execution returned HTTP 401 / PostgreSQL `42501` in the hosted environment.
+
+## 8. Deployment and Simulator evidence
+
+Observed on 2026-08-15:
+
+- migration `202608150005` was deployed to the hosted development project;
+- hosted lint scoped to NearHere-owned `public,private` schemas reported no errors;
+- anonymous `my_plans` execution was denied with HTTP 401 / PostgreSQL `42501`;
+- signed-in hosted test user Anshuman opened Plans in an iPhone 17 Pro Simulator after a Metro reload;
+- one real card appeared: `NearHere development walk`, `WALK`, `Hosting`, `15 Aug at 6:29 PM`, `1/8 going`, `Hosted by Anshuman`;
+- the card displayed `Private meeting point unlocked` and exact development coordinate `12.9279, 77.6717`.
+
+This proves the accepted-host branch across hosted database, RPC, mobile repository/parser/hook, and rendered UI. It does **not** prove the signed-out interaction, cross-user isolation, pending/waitlisted hosted privacy branches, or second-user presentation. Unit tests cover parser behavior for accepted and locked states, but an in-memory test is not hosted authorization proof.
+
+## 9. Challenge: avoiding three meanings of “protected”
+
+**Symptom:** the UI can show a lock, TypeScript can mark a field nullable, and PostgreSQL can conditionally omit a field; all three may be described casually as “protected.”
+
+**Risk:** a team could mistake visual hiding or a static type for authorization and accidentally send exact coordinates to an unauthorized phone.
+
+**Resolution:** assign each layer a precise responsibility. PostgreSQL decides disclosure before transmission. The runtime parser detects contract/privacy violations. TypeScript makes correct use easier during development. The UI explains the current state to the user.
+
+**Lesson:** security properties must be enforced at the trusted boundary; client layers can validate and communicate them but cannot establish them.
+
+## 10. Known gaps and next work
+
+- Exercise the signed-out `openPlans` intent in Simulator.
+- Use a second fictional account to prove caller isolation and pending/waitlisted `null` geometry against hosted data.
+- Add SQL/integration tests for invalid limits, cross-user rows, state ordering, and accepted-only geometry.
+- Add cursor pagination rather than treating the first 50 plans as a permanent design.
+- Separate upcoming and past/cancelled presentation.
+- Add activity detail, copy/open-in-maps, Leave, approve/reject, removal, and cancellation actions.
+- Decide retention rules for exact meeting geometry after cancellation/completion.
+- Replace raw coordinate presentation with a safe useful place experience while retaining the authorization boundary.
+
+## 11. Interview explanation
+
+> I built a caller-scoped My Plans vertical slice across PostgreSQL and React Native. A least-privilege security-definer function derives the actor from the verified session, projects only that actor's membership rows, and releases exact private geometry only for accepted membership. The TypeScript client treats RPC JSON as unknown, rejects malformed or prematurely revealing private coordinates, prevents stale-response races, refreshes on navigation focus, and renders signed-out/loading/empty/error/populated states. I deployed the migration, verified anonymous denial, and accepted the real hosted accepted-host card in the iOS Simulator while documenting the untested second-user branches honestly.
+
+## 12. Honest resume addition
+
+- Built and deployed a caller-scoped mobile Plans read model with session-derived PostgreSQL authorization, accepted-member-only private-location release, runtime-validated TypeScript contracts, stale-request protection, and React Native lifecycle/error states.
+
+# Next lesson
+
+Use a second fictional user to prove caller isolation plus accepted, pending, waitlisted, and concurrent last-place behavior. Then implement Leave and host approve/reject as explicit idempotent transitions, followed by safe copy/directions actions from the existing Plans surface.
+
 # Engineering challenge log
 
 This chronological log collects cross-cutting challenges that are useful beyond a single lesson. Lesson-specific sections retain the full investigation.
@@ -1815,6 +2060,18 @@ This chronological log collects cross-cutting challenges that are useful beyond 
 **Current status:** unresolved as a dependency-review item; the application passes Expo's SDK compatibility validation. This is not equivalent to proving that every transitive dependency is vulnerability-free.
 
 **Lesson:** security tooling produces evidence, not automatic architecture decisions. Remediation must preserve framework compatibility and consider exploitability, reachability, and supported upgrade paths.
+
+## 4. Vendor-extension lint noise versus application defects
+
+**Context:** the hosted database lint was run after deploying PostGIS activity functions.
+
+**Observed symptom:** linting every schema reported static-analysis findings inside extension-owned PostGIS functions, even though NearHere did not author those functions.
+
+**Investigation:** the same lint was scoped to the NearHere-owned `public` and `private` schemas and returned no schema errors. Anonymous black-box calls separately proved that the application RPC executed and rejected invalid input as designed.
+
+**Resolution:** record the broad result as vendor/analyzer noise, retain the scoped clean result as application evidence, and do not edit extension internals.
+
+**Lesson:** define ownership and scope before triaging automated findings. A tool output is evidence to classify, not proof that every named object is an application bug.
 
 ## Challenge-entry template
 

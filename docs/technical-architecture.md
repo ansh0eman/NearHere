@@ -15,7 +15,8 @@ This document records concrete technologies and responsibility boundaries. See [
 | Authentication | Supabase Auth | Phone OTP identity and sessions | Hosted auth boundary with React Native SDK |
 | Database | Supabase PostgreSQL | Durable system of record | Transactions, constraints, relational queries, managed operations |
 | Geospatial | PostGIS | Geographic types, indexes, and distance queries | Correct spatial operations inside PostgreSQL |
-| API | TypeScript modular monolith, framework TBD | Trusted business operations | Keep deploy/runtime choice open until first endpoint/deployment target |
+| Current backend transport | Supabase Data API + PostgreSQL RPC | Owner profile operations and trusted activity create/discover/join/plans boundaries | Uses deployed security/transaction boundaries without another runtime |
+| Future application API | TypeScript modular monolith, framework TBD | Complex participation, safety, stable errors, observability | Add when an application process owns a concrete requirement |
 | Realtime | Managed capability first, later | Chat/activity event freshness | No custom WebSocket infrastructure until required |
 | Cache/ephemeral | None initially; Redis later if measured | Rate limits, presence, or hot read cache | Avoid an unnecessary second data system |
 
@@ -53,17 +54,36 @@ flowchart LR
 
 ## 4. Backend responsibility split
 
-The mobile app calls Supabase Auth directly, reads/updates only its own simple profile row, and calls narrowly shaped database functions for activity creation/discovery. Direct profile access is safe because grants, owner-only RLS, and constraints express the whole rule. Multi-table creation already uses a trusted transaction; future Join/Leave commands must do the same so capacity, idempotency, privacy shaping, and auditing remain centralized.
+The mobile app calls Supabase Auth directly, reads/updates only its own simple profile row, and calls narrowly shaped database functions for activity creation, discovery, Join, and Plans. Direct profile access is safe because grants, owner-only RLS, and constraints express the whole rule. Multi-table creation is atomic, Join serializes the capacity decision by locking one activity row, and `my_plans` creates a caller-scoped read model whose exact-location release also requires a published, not-ended activity. Future Leave/approval commands must preserve equally explicit state-transition, authorization, and idempotency rules.
 
 ```mermaid
 flowchart LR
     APP["Mobile"] -->|"phone OTP"| AUTH["Supabase Auth"]
-    APP -->|"browse/create/join/chat"| API["NearHere API"]
-    API --> DB[("PostgreSQL + PostGIS")]
+    APP -->|"own profile"| DATA["Data API + RLS"]
+    APP -->|"create / nearby / join / my plans RPC"| FN["PostgreSQL functions"]
+    APP -. "future Leave/chat/safety" .-> API["NearHere application API"]
+    DATA --> DB[("PostgreSQL + PostGIS")]
+    FN --> DB
+    API -.-> DB
     AUTH --> DB
 ```
 
 Direct client-to-table access is acceptable only when Row Level Security expresses the complete rule clearly. Complex transitions such as capacity-limited joining should use one transactional server/database operation rather than several client writes.
+
+The Plans client keeps UI, transport, validation, and authorization separate:
+
+```mermaid
+flowchart LR
+    SCREEN["Plans route"] --> HOOK["useMyPlans state machine"]
+    HOOK --> REPO["Repository calls my_plans"]
+    REPO --> PARSER["Runtime parser maps unknown JSON"]
+    PARSER --> CONTRACT["MyPlanSummary"]
+    RPC["PostgreSQL authorization and projection"] --> REPO
+```
+
+`useMyPlans` distinguishes signed-out, loading, ready, and error states, refreshes on tab focus, retains previous rows during a refresh/error, and uses a monotonically increasing request ID so a stale response cannot overwrite a newer one. Cached rows are stored with the user ID that authorized them, and the hook synchronously gates rendering on that ID; this prevents account B from painting account A's exact coordinate for one frame while React's session-change effect is still pending. These are client reliability/privacy behaviors; the RPC remains authoritative for which rows and coordinates the caller may receive.
+
+The Auth modal disables swipe-to-dismiss because an OS gesture cannot reliably run NearHere's protected-intent cleanup. Its explicit close control clears the intent and then navigates back; the verification screen navigates back to that phone screen. This prevents a cancelled Plans/Join/Host sign-in from unexpectedly resuming later.
 
 ## 5. Security model
 

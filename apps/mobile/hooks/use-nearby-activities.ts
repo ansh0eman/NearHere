@@ -31,12 +31,12 @@ export function useNearbyActivities(
     setState({ status: 'ready', activities: result.activities });
   }, [filter, latitude, longitude]);
 
-  useEffect(() => {
-    void refresh();
-    return () => {
+  useEffect(
+    () => () => {
       requestId.current += 1;
-    };
-  }, [refresh]);
+    },
+    [],
+  );
 
   return { refresh, state };
 }

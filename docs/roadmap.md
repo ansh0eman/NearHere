@@ -23,7 +23,7 @@ flowchart LR
 - Native iOS development build and Simulator workflow
 - Provider-gated phone/OTP UI, session boundary, and protected intents
 
-## Phase 1 — Identity foundation: current
+## Phase 1 — Identity foundation: implemented, final security acceptance pending
 
 - Create a user-owned Supabase development project — completed
 - Configure phone authentication and a fixed server-side development OTP — completed through a narrow hosted Management API update
@@ -36,22 +36,31 @@ flowchart LR
 
 Exit condition: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. The remaining proof is the two-actor hosted RLS matrix and onboarding interaction acceptance.
 
-## Phase 2 — First real activity vertical slice: in progress
+## Phase 2 — First real activity vertical slice: implemented, privacy acceptance pending
 
 - Core PostGIS activity schema and privacy-safe geometry — deployed
-- Create activity RPC/transaction and native Host form — implemented; authenticated acceptance pending
+- Create activity RPC/transaction and native Host form — authenticated Simulator acceptance completed
 - Nearby discovery RPC replacing fixtures — deployed and anonymous empty-state verified
 - Activity detail screen with public/private field boundaries
 - Host ownership and cancellation rules
 
 Exit condition: two devices can create and discover a real activity without exposing private geometry.
 
-## Phase 3 — Participation correctness
+## Phase 3 — Participation correctness: current
 
-- Join, request approval, approve/reject, leave, waitlist, and removal
-- Transactions, constraints, and idempotency
-- Capacity concurrency tests
-- Participant-only meeting details
+- Join with open acceptance, approval-mode pending, and full-capacity waitlist outcomes — deployed
+- Per-activity row locking and natural-key retry idempotency — deployed
+- Mobile auth/profile gates, protected-intent resume, runtime parsing, and Join feedback — implemented
+- Anonymous denial and same-host idempotent acceptance — verified
+- Caller-scoped My Plans read model with accepted, published, not-ended exact-location release — deployed and forward-hardened
+- Native Plans loading/error/empty/list states and signed-out Auth intent — implemented
+- Account-keyed plan cache, inactive location suppression, and explicit Auth cancellation — implemented
+- Accepted host plan and unlocked exact point — accepted in Simulator
+- Signed-out, pending, and waitlisted Plans interactions — pending Simulator/second-user acceptance
+- Second-user accepted/pending/waitlisted and concurrent last-place tests — pending
+- Approve/reject, Leave, and removal — pending
+- General idempotency-key records for later commands — pending
+- Plans pagination/detail actions and useful meeting-point navigation — pending
 
 Exit condition: concurrent attempts cannot violate membership invariants.
 

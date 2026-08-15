@@ -94,10 +94,12 @@ These checks answer different questions: lint checks configured code-quality rul
 
 ## Current versus planned behavior
 
-**Implemented:** live nearby-activity loading/empty/error states, map markers for public approximate geometry, a first Host form, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration, owner-profile loading, runtime boundary validation, and display-name onboarding.
+**Implemented:** live nearby-activity loading/empty/error states, map markers for public approximate geometry, a Host form, capacity-safe Join with accepted/pending/waitlisted outcomes, a caller-scoped Plans screen with accepted-active exact-location release, protected-intent resumption, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration, owner-profile loading, runtime boundary validation, and display-name onboarding.
 
 **Hosted configuration verified:** a fixed development OTP requests and verifies successfully, issues a real hosted session, creates the triggered profile, and restores the session after an app restart. Real SMS-provider delivery remains deferred.
 
-**Planned:** authenticated Host happy-path acceptance, the second-actor profile RLS matrix, transactional Join/Leave, activity detail, chat, safety flows, MapLibre styling, and avatar builder.
+**Hosted/Simulator activity evidence:** a real activity was created and rediscovered. Joining as its existing host returned the durable accepted membership without duplicating the row or increasing the participant count. Plans then returned that caller's host card and active exact meeting point. Anonymous Join and Plans execution were denied. A second-user run is still required to prove caller isolation, new-participant acceptance, full-capacity waitlisting, approval-mode pending state, and concurrent last-place behavior.
+
+**Planned:** Leave and host approval/rejection commands, full activity detail and useful meeting-point actions, the second-actor profile/Plans authorization matrix, chat, safety flows, MapLibre styling, and avatar builder.
 
 For the complete runbook, see [`../../docs/ios-simulator-workflow.md`](../../docs/ios-simulator-workflow.md). For architecture, see [`../../docs/system-design.md`](../../docs/system-design.md).

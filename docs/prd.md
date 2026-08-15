@@ -39,7 +39,7 @@ Ship a trustworthy beta in one deliberately seeded launch neighborhood where a p
 
 - Trigger authentication only at Join, Host, or account-management boundaries.
 - Normalize phone input to E.164, request SMS OTP through Supabase Auth, verify the code server-side, and restore the session after restart.
-- Resume the protected Join or Host intent after successful authentication.
+- After successful authentication, load the application profile; require minimum display-name onboarding when incomplete, then resume the protected Join or Host intent.
 - Create an application profile row automatically for every authenticated identity; expose only deliberate host/participant projections through product APIs.
 - Store phone identity inside the protected Supabase Auth schema, not in a public application table.
 - Allow a display name and optional interests; defer the custom avatar builder.
@@ -82,7 +82,15 @@ Ship a trustworthy beta in one deliberately seeded launch neighborhood where a p
 - Direct messages are out of scope.
 - Realtime delivery improves freshness; durable message history remains in PostgreSQL.
 
-### 4.8 Safety and privacy
+### 4.8 Plans
+
+- Signed-out users see why Plans requires identity and can start phone Auth without losing the intended destination.
+- Signed-in users see activities they host, joined activities, pending requests, and waitlisted activities.
+- A trusted caller-scoped read model derives identity from the session rather than accepting a client-supplied user ID.
+- Exact meeting coordinates are returned only for an accepted membership while the activity remains published and not ended; pending, waitlisted, inactive, ended, non-member, and anonymous callers cannot receive them.
+- Loading, empty, refresh, stale-with-error, and retry states are explicit.
+
+### 4.9 Safety and privacy
 
 - Approximate public geometry is derived server-side.
 - Private meeting coordinates are never included in anonymous discovery responses.
@@ -99,7 +107,8 @@ flowchart LR
     MAP --> DETAIL["Open activity detail"]
     DETAIL --> JOIN["Tap Join"]
     JOIN --> AUTH["Phone OTP if signed out"]
-    AUTH --> DECIDE["Server join transaction"]
+    AUTH --> PROFILE["Complete minimum profile if needed"]
+    PROFILE --> DECIDE["Server join transaction"]
     DECIDE --> CHAT["Accepted: activity coordination"]
     DECIDE --> WAIT["Pending, waitlisted, full, or rejected"]
 ```
@@ -121,7 +130,7 @@ flowchart LR
 
 - Which first neighborhood and activity categories create adequate density?
 - Should waitlisting be automatic or host-enabled?
-- At what membership state should the exact meeting point become visible?
+- Does accepted-plus-not-ended release still reveal too early, or should a later policy also require proximity to the start time?
 - Which host trust signals are understandable without creating false safety guarantees?
 - How much public location approximation balances discoverability and privacy?
 - When does the avatar builder improve activation enough to justify onboarding friction?

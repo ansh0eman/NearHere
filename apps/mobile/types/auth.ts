@@ -10,6 +10,7 @@ export type AuthStatus =
 export type ProtectedIntent =
   | { kind: 'joinActivity'; activityId: string }
   | { kind: 'hostActivity' }
+  | { kind: 'openPlans' }
   | { kind: 'openAccount' };
 
 export type AuthOperationResult =

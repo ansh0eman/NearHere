@@ -32,17 +32,24 @@ flowchart TD
     PHONE --> OTP["Enter SMS code"]
     OTP --> VERIFY{"Server verifies?"}
     VERIFY -->|"No"| OTP
-    VERIFY -->|"Yes"| RESUME["Resume saved join intent"]
+    VERIFY -->|"Yes"| PROFILE{"Profile complete?"}
+    PROFILE -->|"No"| ONBOARD["Choose display name"]
+    ONBOARD -->|"Save succeeds"| RESUME["Resume saved join intent"]
+    ONBOARD -->|"Save fails"| ONBOARD
+    PROFILE -->|"Yes"| RESUME
     SESSION -->|"Yes"| REQUEST["Submit join transaction"]
     RESUME --> REQUEST
     REQUEST --> OUTCOME{"Outcome"}
-    OUTCOME -->|"Accepted"| CHAT["Participant details and chat"]
+    OUTCOME -->|"Accepted"| PLANS["Plans unlocks exact meeting point"]
+    PLANS --> CHAT["Future participant chat"]
     OUTCOME -->|"Pending"| PENDING["Waiting for host"]
     OUTCOME -->|"Waitlisted"| WAIT["Queue position/status"]
     OUTCOME -->|"Full/rejected/error"| DETAIL
 ```
 
-Authentication success is not Join success. The server still evaluates activity status, capacity, duplicate membership, blocks, and join mode.
+Authentication success is not onboarding success, and onboarding success is not Join success. Authentication proves identity; profile completion supplies the minimum application identity; the deployed Join transaction then evaluates availability, existing membership, capacity, and join mode. Blocking/safety rules remain future work.
+
+Current result semantics are explicit: an open activity returns `accepted` while capacity remains and `waitlisted` when full; an approval activity returns `pending`; an existing active membership is returned unchanged on retry. The mobile flow disables repeat taps while submitting, refreshes nearby data, and shows status-specific feedback. Only the existing-host idempotent path has been accepted in Simulator; a second actor is still needed to observe new accepted, pending, and waitlisted outcomes end to end.
 
 ## 3. Host creation
 
@@ -50,8 +57,11 @@ Authentication success is not Join success. The server still evaluates activity 
 flowchart TD
     MAP["Tap Host"] --> SESSION{"Valid session?"}
     SESSION -->|"No"| AUTH["Save host intent and complete phone OTP"]
-    AUTH --> BASICS
-    SESSION -->|"Yes"| BASICS["Choose activity type and title"]
+    AUTH --> PROFILE{"Profile complete?"}
+    SESSION -->|"Yes"| PROFILE
+    PROFILE -->|"No"| ONBOARD["Choose display name"]
+    ONBOARD --> BASICS
+    PROFILE -->|"Yes"| BASICS["Choose activity type and title"]
     BASICS --> TIME["Select start and end time"]
     TIME --> PLACE["Search or pin private meeting point"]
     PLACE --> RULES["Description, capacity, open/approval"]
@@ -61,6 +71,8 @@ flowchart TD
     PUBLISH -->|"No"| RECOVER["Preserve draft and show actionable error"]
     RECOVER --> PREVIEW
 ```
+
+The first Host form and transactional creation operation now exist. The current form uses the selected discovery coordinate as the private meeting point and offers bounded start presets; richer place/time editing and the public-area preview remain planned. The diagram describes the intended complete UX, while the backlog records which steps are accepted end to end.
 
 ## 4. Approval and waitlist
 
@@ -88,9 +100,32 @@ flowchart LR
     POLICY --> PRIVATE["Authorized operational meeting point"]
 ```
 
-The release policy remains a product/safety decision. The implementation must enforce it on the server; hiding a field in the UI is insufficient.
+The deployed release policy requires `membership.status = accepted`, `activity.status = published`, and `ends_at > now()`. `my_plans` enforces it inside PostgreSQL: only accepted members of active published activities receive exact coordinates; pending, waitlisted, cancelled, completed, and ended cases receive `null`. Hiding a field in the UI would be insufficient because a modified client can inspect any data already received.
 
-## 6. Required interface states
+## 6. My Plans
+
+```mermaid
+flowchart TD
+    OPEN["Open Plans tab"] --> SESSION{"Signed in?"}
+    SESSION -->|"No"| CTA["Explain browse-first model and offer sign in"]
+    CTA --> AUTH["Save openPlans intent and complete OTP"]
+    AUTH --> RETURN["Return to Plans"]
+    SESSION -->|"Yes"| LOAD["Load caller-scoped plans on focus"]
+    RETURN --> LOAD
+    LOAD --> RESULT{"Result"}
+    RESULT -->|"Empty"| EXPLORE["Explore nearby"]
+    RESULT -->|"Error"| RETRY["Keep safe state and retry"]
+    RESULT -->|"Rows"| CARDS["Hosting / Going / Requested / Waitlisted cards"]
+    CARDS --> ACCEPTED{"Accepted and active published?"}
+    ACCEPTED -->|"Yes"| UNLOCK["Show exact meeting point"]
+    ACCEPTED -->|"No"| LOCK["Explain locked or no-longer-available point"]
+```
+
+The signed-out state preserves an `openPlans` protected intent before routing to phone Auth. The Auth modal cannot be dismissed by a swipe that bypasses cleanup; the explicit close action clears the pending intent. The signed-in hook refreshes whenever the tab gains focus. During refresh or recoverable failure it can retain previously loaded rows rather than blanking the whole screen, but cached rows are keyed/gated by user ID so one account's private point cannot flash for another account. The current card displays type, membership/host status, time, accepted count/capacity, host, and either the exact coordinate or explicit locked/no-longer-available copy. Cancelled and ended cards suppress the exact point and use `Cancelled`/`Ended` status labels.
+
+Verified in Simulator: the signed-in hosted test user saw the real hosted activity `NearHere development walk` as `Hosting`, with `1/8 going`, `Hosted by Anshuman`, and the unlocked exact meeting point `12.9279, 77.6717`. The signed-out interaction and pending/waitlisted cards are implemented but have not yet been exercised end to end.
+
+## 7. Required interface states
 
 | Surface | States |
 | --- | --- |
@@ -98,12 +133,13 @@ The release policy remains a product/safety decision. The implementation must en
 | Authentication | restoring, signed-out, sending-code, awaiting-code, verifying, signed-in, recoverable-error |
 | Discovery | initial-loading, results, empty, refreshing, stale-with-error, unavailable |
 | Activity | published, active, completed, cancelled; open, pending, accepted, waitlisted, full, rejected |
+| Plans | signed-out, initial-loading, empty, refreshing-with-rows, error-with/without-rows, populated; exact-location locked/unlocked |
 | Write action | idle, submitting, succeeded, retryable-failure, non-retryable-failure |
 | Chat | loading-history, ready, sending, send-failed, reconnecting, unauthorized |
 
 Every asynchronous control must prevent accidental duplicate submission while still permitting an intentional retry.
 
-## 7. Accessibility and recovery rules
+## 8. Accessibility and recovery rules
 
 - Do not communicate status only through color or motion.
 - Use explicit control labels and minimum touch targets.

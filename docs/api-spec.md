@@ -89,12 +89,32 @@ The server trims/validates values, updates only the authenticated actor's row, a
 
 ### Current MVP transport
 
-The mobile app currently calls two PostgreSQL functions through Supabase RPC:
+The mobile app currently calls four PostgreSQL functions through Supabase RPC:
 
 - `nearby_activities` is executable by anonymous and authenticated roles and returns only public-safe columns.
 - `create_activity` is executable only by authenticated users with a completed profile. It writes the public activity, exact private meeting point, and accepted host membership in one transaction.
+- `join_activity` is executable only by an authenticated user with a completed profile. It locks the activity row, returns an existing durable membership on retry, or creates an `accepted`, `pending`, or `waitlisted` participant membership.
+- `my_plans` is executable only by authenticated users. It derives the caller from the session and returns only that caller's hosted/joined/requested/waitlisted activities. Exact meeting coordinates are returned only when that caller's durable membership is `accepted` **and** the activity is still published and not ended; otherwise they are `null`.
 
 The tables have no client-facing grants. These RPCs are the first modular-monolith implementation boundary; the HTTP routes below remain the stable future API contract when an application server takes over orchestration.
+
+### Current MVP `my_plans(limit)` read model
+
+`my_plans` is a **caller-scoped read model**: one query shapes several tables into exactly what the signed-in Plans screen needs. The client does not send a user ID because a modified client could impersonate another user; PostgreSQL obtains `auth.uid()` from the verified access token. The current function rejects a `null` or out-of-range limit and accepts integers from 1 through 100 (the mobile repository requests 50), includes only `pending`, `accepted`, and `waitlisted` memberships, and sorts upcoming plans before ended plans.
+
+```mermaid
+flowchart LR
+    TOKEN["Verified session"] --> ACTOR["auth.uid()"]
+    ACTOR --> OWN["Caller's membership rows"]
+    OWN --> PUBLIC["Public activity and host projection"]
+    OWN --> DECIDE{"Membership accepted?"}
+    DECIDE -->|"Yes"| ACTIVE{"Published and not ended?"}
+    ACTIVE -->|"Yes"| EXACT["Include exact meeting point"]
+    ACTIVE -->|"No"| LOCKED["Return null exact coordinates"]
+    DECIDE -->|"No"| LOCKED
+```
+
+This is response-level authorization, not merely UI hiding. `anon` has no execute privilege, client roles have no direct table access, and the private location join is conditional inside the trusted function. The TypeScript client runtime-validates the returned JSON again, but that parser is defense in depth rather than the primary authorization boundary.
 
 ### `GET /activities/nearby`
 
@@ -129,6 +149,25 @@ Protected, host/moderator authorized, idempotent. Cancellation is a command with
 
 ## 6. Participation commands
 
+### Current MVP Join RPC
+
+`join_activity(activity_id)` is deployed. It derives the actor from the session rather than accepting a user ID. For one activity, `SELECT ... FOR UPDATE` serializes the capacity decision; requests for unrelated activities do not share that row lock.
+
+Outcome rules:
+
+| Situation | Returned membership | Capacity effect |
+| --- | --- | --- |
+| Existing `accepted`, `pending`, or `waitlisted` membership | Existing status | No duplicate row; accepted count unchanged |
+| Approval-mode activity | `pending` | Does not consume accepted capacity yet |
+| Open activity with capacity | `accepted` | Accepted count increases by one |
+| Open activity at capacity | `waitlisted` | Accepted count does not increase |
+
+This operation is **semantically idempotent by natural key**: the primary key `(activity_id, user_id)` represents one membership, and an early return preserves an existing active outcome. It does not yet implement the general future `Idempotency-Key` record/replay system described below. Anonymous execution is denied, incomplete profiles are rejected, and unavailable/non-published/ended activities cannot be joined.
+
+The mobile repository runtime-validates the returned `{ membership_status, participant_count }` row. The map disables duplicate submission while one request is active, refreshes discovery after success, and shows status-specific copy. These client controls improve UX; the database key, lock, and transaction provide correctness.
+
+### Future HTTP commands
+
 - `POST /activities/:activityId/join` — open join or approval request
 - `POST /activities/:activityId/leave` — withdraw/leave according to current state
 - `POST /activities/:activityId/membership-requests/:userId/approve` — host approval
@@ -136,7 +175,7 @@ Protected, host/moderator authorized, idempotent. Cancellation is a command with
 - `POST /activities/:activityId/members/:userId/remove` — host/moderator removal
 - `GET /activities/:activityId/participants` — privacy-safe participant summaries for authorized/public scope
 
-All writes require an idempotency key and execute state/capacity rules atomically. A success response returns the canonical membership outcome: `pending`, `accepted`, `waitlisted`, etc.
+Future HTTP writes require an idempotency key and execute state/capacity rules atomically. A success response returns the canonical membership outcome: `pending`, `accepted`, `waitlisted`, etc.
 
 ## 7. Chat
 
@@ -154,6 +193,32 @@ Realtime subscriptions deliver freshness hints/events; they do not replace pagin
 Operator resolution endpoints require a separate administrative authorization boundary and audit logging.
 
 ## 9. Request lifecycle
+
+### Current Supabase RPC lifecycle
+
+```mermaid
+sequenceDiagram
+    participant App as Mobile repository
+    participant Auth as Supabase Auth
+    participant Gateway as Supabase Data API
+    participant Fn as PostgreSQL function
+    participant DB as Tables and indexes
+    Note over App,Auth: Protected calls use a session issued earlier through OTP
+    Auth-->>App: Signed access token
+    App->>Gateway: RPC name, parameters, optional bearer token
+    Gateway->>Gateway: Verify JWT when present; establish role and claims
+    Gateway->>Fn: Execute granted function
+    Fn->>Fn: Validate input and authorize actor
+    Fn->>DB: Query or atomic transaction
+    DB-->>Fn: Canonical rows
+    Fn-->>Gateway: Explicit public-safe columns
+    Gateway-->>App: JSON
+    App->>App: Runtime-validate and map to domain types
+```
+
+The publishable key identifies the project and selects the public client boundary; it is not proof of a user's identity and is not a secret. A verified session JWT allows Supabase to establish the `authenticated` role and derive `auth.uid()`. Function `EXECUTE` privileges decide whether that role may call the operation, while the function and database constraints enforce its rules.
+
+### Future modular HTTP lifecycle
 
 ```mermaid
 sequenceDiagram

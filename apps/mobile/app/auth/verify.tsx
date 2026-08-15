@@ -74,7 +74,13 @@ export default function VerifyScreen() {
         {pendingIntent && (
           <Text style={styles.intentText}>
             After verification, NearHere will restore your{' '}
-            {pendingIntent.kind === 'joinActivity' ? 'join request' : pendingIntent.kind === 'hostActivity' ? 'host flow' : 'account'}.
+            {pendingIntent.kind === 'joinActivity'
+              ? 'join request'
+              : pendingIntent.kind === 'hostActivity'
+                ? 'host flow'
+                : pendingIntent.kind === 'openPlans'
+                  ? 'plans'
+                  : 'account'}.
           </Text>
         )}
         {errorMessage && <Text style={styles.error}>{errorMessage}</Text>}

@@ -6,9 +6,9 @@ NearHere is a map-first mobile product for discovering nearby activities and joi
 
 ## Current status
 
-NearHere is an installable Expo/React Native application for iOS and Android. The current working vertical slices include live database-backed map discovery, foreground location permission, persistent manual map-pin selection, submit-only place search, native tab navigation, real hosted phone OTP, session restoration, minimal display-name onboarding, and a first Host form. The native iOS development build is running in Simulator.
+NearHere is an installable Expo/React Native application for iOS and Android. The current working vertical slices include live database-backed map discovery, foreground location permission, persistent manual map-pin selection, submit-only place search, native tab navigation, real hosted phone OTP, session restoration, minimal display-name onboarding, activity hosting, capacity-safe Join, and a caller-scoped My Plans screen. The native iOS development build is running in Simulator.
 
-The Supabase development project is connected. Profile identity and the first PostGIS activity/discovery migration are deployed. Anonymous nearby discovery is verified against the hosted database, direct table access is denied, and the app honestly renders the current empty live result. Authenticated activity creation is implemented but awaits a completed test profile for its first end-to-end acceptance. Joins, chat, real SMS delivery, and the custom avatar builder remain later slices.
+The Supabase development project is connected. Profile identity, PostGIS activity/discovery, transactional Join, and caller-scoped Plans migrations are deployed. Anonymous nearby discovery is verified; direct table access, anonymous Join, and anonymous Plans access are denied. Simulator acceptance created and rediscovered a real activity, proved idempotent host Join, and loaded the host's active private meeting point through the accepted-only Plans boundary. A second-user capacity/waitlist/approval/privacy run, Leave, chat, real SMS delivery, and the custom avatar builder remain later work.
 
 ## Repository layout
 

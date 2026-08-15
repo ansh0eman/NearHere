@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNearbyActivities } from '@/hooks/use-nearby-activities';
 import { DEFAULT_MAP_REGION, useNearbyLocation } from '@/hooks/use-nearby-location';
+import { joinActivity } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
 import type { ActivityFilter, ActivityKind, NearbyActivitySummary } from '@/types/activity';
@@ -61,6 +62,8 @@ export default function NearbyScreen() {
     useNearbyLocation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const joiningIdRef = useRef<string | null>(null);
   const { refresh: refreshActivities, state: activityState } = useNearbyActivities(
     region.latitude,
     region.longitude,
@@ -74,7 +77,36 @@ export default function NearbyScreen() {
   useFocusEffect(
     useCallback(() => {
       void refreshManualLocation();
-    }, [refreshManualLocation]),
+      void refreshActivities();
+    }, [refreshActivities, refreshManualLocation]),
+  );
+
+  const performJoin = useCallback(
+    async (activityId: string) => {
+      if (joiningIdRef.current) return false;
+      joiningIdRef.current = activityId;
+      setJoiningId(activityId);
+      try {
+        const result = await joinActivity(activityId);
+        if (!result.ok) {
+          Alert.alert('Could not join', result.message);
+          return false;
+        }
+
+        await refreshActivities();
+        const messages = {
+          accepted: 'You are going. The exact meeting point will be available to accepted participants.',
+          pending: 'Your request was sent to the host.',
+          waitlisted: 'The activity is full, so you joined the waitlist.',
+        } as const;
+        Alert.alert('Membership updated', messages[result.result.membershipStatus]);
+        return true;
+      } finally {
+        joiningIdRef.current = null;
+        setJoiningId(null);
+      }
+    },
+    [refreshActivities],
   );
 
   useEffect(() => {
@@ -84,6 +116,11 @@ export default function NearbyScreen() {
       router.replace('/me');
       return;
     }
+    if (pendingIntent.kind === 'openPlans') {
+      setPendingIntent(null);
+      router.replace('/plans');
+      return;
+    }
 
     if (profileState.status === 'needsProfile') {
       router.push('/onboarding/profile');
@@ -91,21 +128,20 @@ export default function NearbyScreen() {
     }
     if (profileState.status !== 'ready') return;
 
-    setPendingIntent(null);
-
     if (pendingIntent.kind === 'joinActivity') {
-      Alert.alert(
-        'Identity verified',
-        'NearHere restored your join intent. The capacity-safe activity endpoint is the next backend slice.',
-      );
+      void performJoin(pendingIntent.activityId).then((joined) => {
+        if (joined) setPendingIntent(null);
+      });
       return;
     }
+
+    setPendingIntent(null);
 
     router.push({
       pathname: '/host/create',
       params: { latitude: String(region.latitude), longitude: String(region.longitude) },
     });
-  }, [pendingIntent, profileState.status, region.latitude, region.longitude, router, session, setPendingIntent]);
+  }, [pendingIntent, performJoin, profileState.status, region.latitude, region.longitude, router, session, setPendingIntent]);
 
   const visibleActivities = activityState.activities;
 
@@ -165,10 +201,7 @@ export default function NearbyScreen() {
         Alert.alert('Profile is loading', 'Wait a moment and try joining again.');
         return;
       }
-      Alert.alert(
-        'Join endpoint is next',
-        'Your identity is verified. The activity backend will perform the real capacity-safe join.',
-      );
+      void performJoin(selected.id);
       return;
     }
 
@@ -337,10 +370,17 @@ export default function NearbyScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
+                disabled={joiningId === selected.id}
                 onPress={requireAuthenticationForJoin}
                 style={styles.joinButton}>
-                <Text style={styles.joinButtonText}>Join activity</Text>
-                <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                {joiningId === selected.id ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text style={styles.joinButtonText}>Join activity</Text>
+                    <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                  </>
+                )}
               </Pressable>
             </View>
           </View>

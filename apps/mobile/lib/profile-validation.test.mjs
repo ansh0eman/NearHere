@@ -22,6 +22,15 @@ test('display-name validation rejects names outside the database boundary', () =
   assert.equal(validateDisplayName('A'.repeat(41)).ok, false);
 });
 
+test('display-name validation uses inclusive boundaries after trimming', () => {
+  assert.deepEqual(validateDisplayName('  AB  '), { ok: true, value: 'AB' });
+  assert.deepEqual(validateDisplayName(` ${'A'.repeat(40)} `), {
+    ok: true,
+    value: 'A'.repeat(40),
+  });
+  assert.equal(validateDisplayName('       ').ok, false);
+});
+
 test('profile parser maps database snake_case to app camelCase', () => {
   assert.deepEqual(parseProfileRow(validRow), {
     id: validRow.id,
@@ -38,6 +47,18 @@ test('profile parser rejects an unknown onboarding status', () => {
   assert.throws(
     () => parseProfileRow({ ...validRow, onboarding_status: 'unknown' }),
     /invalid onboarding_status/,
+  );
+});
+
+test('profile parser rejects malformed container fields', () => {
+  assert.throws(() => parseProfileRow([]), /not an object/);
+  assert.throws(
+    () => parseProfileRow({ ...validRow, avatar_config: [] }),
+    /invalid avatar_config/,
+  );
+  assert.throws(
+    () => parseProfileRow({ ...validRow, interests: ['walking', 7] }),
+    /invalid interests/,
   );
 });
 
