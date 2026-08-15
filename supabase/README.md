@@ -32,6 +32,53 @@ Creating projects and configuring SMS can create external state and cost, so the
 
 Follow current official guidance: [local CLI workflow](https://supabase.com/docs/guides/local-development/cli/getting-started), [user/profile management](https://supabase.com/docs/guides/auth/managing-user-data), [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security), and [phone login](https://supabase.com/docs/guides/auth/phone-login).
 
+## Framework-specific environment-variable names
+
+An environment variable is a named value supplied outside source code. Build tools choose which names they read and which values they make visible to client code.
+
+The Supabase Connect dialog can show a Next.js example:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
+
+NearHere is not a Next.js application. Its Expo code reads:
+
+```ts
+process.env.EXPO_PUBLIC_SUPABASE_URL
+process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
+
+Therefore the same public values must be stored in `apps/mobile/.env` under the exact `EXPO_PUBLIC_` names. Expo replaces statically referenced public variables while constructing the client bundle. A name with the wrong prefix behaves like missing configuration even when its value is otherwise correct.
+
+```mermaid
+flowchart LR
+    ENV["apps/mobile/.env"] --> METRO["Expo CLI / Metro"]
+    METRO --> BUNDLE["Client JavaScript bundle"]
+    BUNDLE --> SUPA["Supabase client"]
+```
+
+The local `.env` is Git-ignored. `.env.example` records names and placeholders only. Since `EXPO_PUBLIC_` values are embedded in the client, they must never contain a database password, service-role key, private API key, OTP, or user token.
+
+### Connectivity verification recorded on 2026-08-15
+
+NearHere's configured URL and publishable key successfully reached the project's `/auth/v1/health` endpoint and received HTTP 200. The values were not printed during the check.
+
+This verifies:
+
+- the project URL resolves over DNS and TLS;
+- the publishable key is accepted for the health request;
+- the hosted Auth service is reachable from the development environment.
+
+It does **not** verify:
+
+- phone authentication or SMS-provider configuration;
+- OTP delivery or verification;
+- the profile migration, trigger, grants, or RLS policies;
+- database connectivity for product data;
+- session persistence inside the running mobile application.
+
 ## Development project wizard settings
 
 | Setting | Selection | Reason |

@@ -57,6 +57,16 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 `EXPO_PUBLIC_` means the value is embedded in the client bundle and must be considered public. The publishable key is designed for this use when Row Level Security and server authorization are correct. A service-role key bypasses normal database protections and must never appear here.
 
+Supabase's Connect dialog may display framework-specific examples. A Next.js example uses `NEXT_PUBLIC_`; NearHere must use `EXPO_PUBLIC_` because Expo CLI only substitutes that prefix into the mobile JavaScript bundle:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL          -> Next.js convention; NearHere will not read it
+EXPO_PUBLIC_SUPABASE_URL          -> Expo convention used by NearHere
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY -> Expo client configuration
+```
+
+The prefixes do not make values secure. Both `NEXT_PUBLIC_` and `EXPO_PUBLIC_` explicitly mean client-visible. Only the framework/build tool consuming the variable is different.
+
 Changing an environment variable normally requires restarting Metro so the JavaScript bundle is rebuilt. It does not by itself require native recompilation.
 
 ## Project structure
