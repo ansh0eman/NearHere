@@ -36,11 +36,11 @@ flowchart LR
 
 Exit condition: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. The remaining proof is the two-actor hosted RLS matrix and onboarding interaction acceptance.
 
-## Phase 2 — First real activity vertical slice
+## Phase 2 — First real activity vertical slice: in progress
 
-- Core PostGIS activity schema and privacy-safe geometry
-- Create activity endpoint/transaction
-- Nearby discovery endpoint replacing fixtures
+- Core PostGIS activity schema and privacy-safe geometry — deployed
+- Create activity RPC/transaction and native Host form — implemented; authenticated acceptance pending
+- Nearby discovery RPC replacing fixtures — deployed and anonymous empty-state verified
 - Activity detail screen with public/private field boundaries
 - Host ownership and cancellation rules
 

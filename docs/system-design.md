@@ -307,8 +307,8 @@ Scaling is a response to evidence. Adding Redis, queues, replicas, or microservi
 
 ## 13. What exists today
 
-**Implemented:** Expo/React Native native app, TypeScript domain boundaries, native map and fixture activities, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, owner-profile repository/runtime adapter, a discriminated profile state machine, and atomic display-name onboarding.
+**Implemented:** Expo/React Native native app, TypeScript/runtime boundaries, native live-discovery map states, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, profile onboarding, and a first native Host form.
 
-**Deployed to development:** versioned identity/profile SQL migration, owner-only Row Level Security policies, automatic profile creation trigger, and shared profile contracts. Remote migration history matches local history; anonymous denial and one authenticated owner/trigger read are proven. The two-actor cross-user and restricted-operation matrix remains pending.
+**Deployed to development:** versioned identity/profile plus PostGIS activity migrations; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; and anonymous-safe nearby discovery. Remote migration history matches local history. Anonymous discovery, input rejection, and direct-table denial are proven; authenticated creation and two-actor profile tests remain pending.
 
-**Not yet production functionality:** real SMS delivery, the NearHere activity API, live activities, transactional joins, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration.
+**Not yet production functionality:** seeded live activity data, authenticated creation acceptance, activity detail/cancellation, transactional participant joins, real SMS delivery, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration.

@@ -340,9 +340,56 @@ For `public.profiles`, the migration deliberately grants authenticated `SELECT` 
 
 Current evidence: anonymous denial and the first authenticated owner's single-profile read are complete. Cross-user and restricted-column cases require a second test identity and dedicated policy tests.
 
-## Why no local database verification yet
+## Activity/PostGIS migration
+
+`migrations/202608150002_create_activities.sql` is deployed to the development project. It adds:
+
+- PostGIS geography support and a GiST public-point index;
+- `public.activities` containing only public-safe activity facts;
+- `private.activity_locations` containing exact meeting geometry in a non-exposed schema;
+- the initial membership state machine and exactly one accepted host row per created activity;
+- an authenticated `create_activity` function that writes all three records atomically;
+- an anonymous-safe `nearby_activities` function that returns only approximate geometry and bounded public fields.
+
+```mermaid
+flowchart LR
+    HOST["Authenticated host"] --> CREATE["create_activity RPC"]
+    CREATE --> PUBLIC["public.activities\napproximate point"]
+    CREATE --> PRIVATE["private.activity_locations\nexact point"]
+    CREATE --> MEMBER["activity_memberships\naccepted host"]
+    VISITOR["Anonymous visitor"] --> NEARBY["nearby_activities RPC"]
+    NEARBY --> PUBLIC
+    PRIVATE -. "never selected" .-> NEARBY
+```
+
+The creation function runs as `security definer` because client roles intentionally have no direct table privileges. It fixes `search_path = ''`, schema-qualifies referenced objects, derives the actor from `auth.uid()`, requires completed onboarding, validates coordinates/start time, and returns no exact coordinate. Execute privileges are revoked broadly and then granted only to the required role.
+
+The discovery function also uses a tightly reviewed definer boundary so anonymous callers can receive a deliberately shaped projection without receiving table access. PostGIS `ST_DWithin` performs the radius predicate and can use the GiST index. Longitude is passed as X and latitude as Y when creating WGS84 points.
+
+Deployment and black-box evidence recorded on 2026-08-15:
+
+| Check | Result | Meaning |
+| --- | --- | --- |
+| Dry run | Only `202608150002_create_activities.sql` pending | No unrelated migration was included. |
+| Hosted migration push | Completed | PostgreSQL accepted the schema, functions, triggers, grants, and PostGIS expressions. |
+| Migration history | Local and remote `202608150001`, `202608150002` | Source and hosted history agree. |
+| Anonymous nearby RPC | HTTP 200, empty array | The safe discovery surface exists; there are honestly no live rows yet. |
+| Invalid discovery latitude | HTTP 400 / `22023` | Server-side input validation executes. |
+| Anonymous create RPC | HTTP 401 / `42501` | Anonymous users cannot host. |
+| Anonymous direct activity select | HTTP 401 / `42501` | The RPC projection does not imply table access. |
+| Hosted lint, schemas `public,private` | No schema errors | NearHere-owned functions pass Supabase's PL/pgSQL checks. |
+
+Still pending: authenticated creation, atomic host-membership proof, exact/public displacement measurement, private-schema denial through a privileged integration harness, and `EXPLAIN (ANALYZE, BUFFERS)` with representative data.
+
+A broad lint including `extensions` reported static-analysis errors inside vendor-owned PostGIS functions that use dynamic SQL and extension-specific name resolution. Restricting the same hosted lint to NearHere-owned `public,private` schemas returned `No schema errors found`. This distinction prevents third-party analyzer noise from being mislabeled as an application defect.
+
+Official references used for this slice: [Supabase PostGIS geo queries](https://supabase.com/docs/guides/database/extensions/postgis), [Supabase database functions](https://supabase.com/docs/guides/database/functions), [Supabase data security](https://supabase.com/docs/guides/database/secure-data), and [PostGIS spatial indexes](https://postgis.net/documentation/faq/spatial-indexes/).
+
+## Historical local-tooling limitation
 
 At the time this migration was authored, neither `supabase` CLI nor `psql` was installed in the workspace environment. Static review can verify intent and syntax shape, but only running the migration against Supabase-compatible PostgreSQL can verify triggers, grants, and RLS behavior. The backlog keeps that work open until the development project and toolchain exist.
+
+That limitation has partially changed: the CLI is now available through `npx`, both migrations are deployed, and hosted black-box checks cover the evidence listed above. A disposable local reset/test environment still requires Docker.
 
 ## Rollback thinking
 

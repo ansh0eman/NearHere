@@ -6,9 +6,9 @@ NearHere is a map-first mobile product for discovering nearby activities and joi
 
 ## Current status
 
-NearHere is an installable Expo/React Native application for iOS and Android. The current working vertical slices include native map discovery with explicitly labeled fixture activities, foreground location permission, persistent manual map-pin selection, submit-only place search, native tab navigation, real hosted phone OTP, session restoration, and minimal display-name onboarding. The first native iOS development build is running in Simulator.
+NearHere is an installable Expo/React Native application for iOS and Android. The current working vertical slices include live database-backed map discovery, foreground location permission, persistent manual map-pin selection, submit-only place search, native tab navigation, real hosted phone OTP, session restoration, minimal display-name onboarding, and a first Host form. The native iOS development build is running in Simulator.
 
-The Supabase development project is connected, the first profile/RLS migration is deployed, and a hosted fixed test OTP has produced a real session and exactly one triggered profile. The mobile app now restores that session, loads the owner profile through RLS, validates the network response at runtime, and completes onboarding atomically. The full two-user profile-policy matrix, real SMS delivery, live activities, joins, chat, and the custom avatar builder are not implemented yet.
+The Supabase development project is connected. Profile identity and the first PostGIS activity/discovery migration are deployed. Anonymous nearby discovery is verified against the hosted database, direct table access is denied, and the app honestly renders the current empty live result. Authenticated activity creation is implemented but awaits a completed test profile for its first end-to-end acceptance. Joins, chat, real SMS delivery, and the custom avatar builder remain later slices.
 
 ## Repository layout
 

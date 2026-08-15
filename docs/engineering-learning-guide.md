@@ -680,7 +680,7 @@ The new boundaries are:
 ```text
 types/activity.ts                  Activity domain vocabulary
 types/location.ts                  Location domain vocabulary
-data/prototype-activities.ts       Explicitly non-live activity data
+data/prototype-activities.ts       Explicitly non-live activity data (removed in Lesson 6)
 lib/location-storage.ts            Persistence and runtime validation
 hooks/use-nearby-location.ts       Permission and location state machine
 app/location-picker.tsx            Manual selection interaction
@@ -700,7 +700,7 @@ Examples:
 `ActivityKind` is a union:
 
 ```ts
-type ActivityKind = 'walk' | 'coffee' | 'sport';
+type ActivityKind = 'walk' | 'coffee' | 'sports';
 ```
 
 This represents a closed set. TypeScript rejects arbitrary values such as `'concert'` until the domain explicitly supports them.
@@ -1635,6 +1635,148 @@ Join/Host intent and the pending phone number survive the continuous OTP flow bu
 # Next lesson
 
 Run the two-actor hosted RLS matrix and accept the display-name flow in Simulator. Then begin the first real activity slice: PostGIS schema, privacy-separated geometry, transactional host creation, and nearby discovery replacing fixtures.
+
+# Lesson 6: The first real PostGIS activity slice
+
+## 1. From fixtures to system-of-record data
+
+Fixtures are hard-coded examples used to build presentation before a backend exists. They are useful when clearly labeled, but must not silently become product truth. Lesson 6 removes `prototype-activities.ts`; the map now renders the hosted database result and honestly shows an empty state when no activity exists.
+
+```mermaid
+flowchart LR
+    BEFORE["Hard-coded fixtures"] --> OLDUI["Prototype markers"]
+    CENTER["Discovery center"] --> REPO["Activity repository"]
+    REPO --> RPC["nearby_activities RPC"]
+    RPC --> DB[("PostgreSQL + PostGIS")]
+    DB --> PARSER["Runtime parser"]
+    PARSER --> STATE["loading / ready / error"]
+    STATE --> NEWUI["Live markers or honest empty state"]
+```
+
+The database is the **system of record**: the authoritative durable source. React state is a temporary view that may be loading, stale, or unavailable.
+
+## 2. Why PostGIS exists
+
+Numeric latitude/longitude columns can store coordinates, but radius queries become awkward and inefficient at scale. PostGIS extends PostgreSQL with geographic types, distance functions, and spatial indexes.
+
+NearHere uses `geography(Point, 4326)`: `Point` represents one coordinate; SRID 4326 means WGS84; geography distance is measured in metres. Longitude is X and latitude is Y—reversing them produces a valid-looking but wrong location. A GiST index lets compatible spatial predicates narrow candidate rows efficiently.
+
+`ST_DWithin(public_point, query_point, radius_m)` performs the bounded radius predicate. Remaining candidates are ordered by calculated distance.
+
+## 3. Privacy by data architecture
+
+Hiding an exact point in the UI is not privacy. If the response contains it, an attacker can inspect network traffic or modify the app.
+
+```mermaid
+flowchart TB
+    INPUT["Host selects exact point"] --> COMMAND["create_activity transaction"]
+    COMMAND --> PRIVATE["private.activity_locations\nexact meeting point"]
+    COMMAND --> TRANSFORM["bounded displacement"]
+    TRANSFORM --> PUBLIC["public.activities\napproximate point"]
+    PUBLIC --> DISCOVERY["anonymous nearby response"]
+    PRIVATE --> LATER["future participant-only release"]
+```
+
+The `private` schema is not exposed through the Data API and client roles receive no grant. The public table never contains exact geometry, reducing the chance that a future `SELECT *`, generated client, or permissive policy leaks it.
+
+Version one moves the public marker into the outer 40% of a configured 150–1,000 metre radius. This is an approximation mechanism, not formal anonymity: repeated events, sparse geography, landmarks, or descriptive text may still reveal a venue. Privacy must be evaluated with realistic local data before beta.
+
+## 4. Transactional creation
+
+One Host action creates a public activity, private meeting point, and accepted host membership. The function performs all three in one transaction. If any constraint or insert fails, PostgreSQL rolls back everything.
+
+```mermaid
+sequenceDiagram
+    participant App as Authenticated app
+    participant Fn as create_activity
+    participant Profile as profiles
+    participant Activity as activities
+    participant Private as private.activity_locations
+    participant Member as activity_memberships
+    App->>Fn: command + JWT
+    Fn->>Profile: require auth.uid() and complete profile
+    Fn->>Fn: validate and derive public point
+    Fn->>Activity: insert public row
+    Fn->>Private: insert exact point
+    Fn->>Member: insert accepted host
+    Fn-->>App: canonical public-safe activity
+```
+
+The actor comes from `auth.uid()` rather than a client-supplied host ID. A client can request creation but cannot claim another identity.
+
+## 5. Security-definer boundary
+
+Supabase recommends `security invoker` by default. Here, client roles intentionally have no direct table access, so narrowly scoped functions need controlled elevated access for the transaction and safe public projection.
+
+Each definer function sets `search_path = ''`, schema-qualifies objects, validates actor/input rules, returns explicit columns, revokes default execute access, and regrants only intended roles. `create_activity` is authenticated-only. `nearby_activities` allows anonymous execution but returns no host UUID, exact point, phone, membership row, or private field.
+
+## 6. Mobile repository and state
+
+RPC data arrives as unknown `snake_case` JSON. `activity-validation.ts` checks enums, timestamps, coordinates, distances, capacity, and strings before mapping to camelCase contracts.
+
+```mermaid
+stateDiagram-v2
+    [*] --> loading
+    loading --> ready: valid response
+    loading --> error: network or parser failure
+    error --> loading: retry
+    ready --> loading: center or filter changes
+```
+
+A request ID prevents a slow old center/filter result from overwriting a newer request. An empty array is `ready`, not an error.
+
+## 7. Host form decisions
+
+The first form supports type, bounded title/description, three start presets, one-hour duration, capacity, open/approval mode, and the selected map point. Full date/time and place editing come after end-to-end transaction acceptance.
+
+The form explains that the selected coordinate is private and discovery receives a separately generated approximate marker within 350 metres. Client checks improve feedback; database constraints remain authoritative.
+
+## 8. Verification evidence
+
+```text
+additive migration
+  -> dry run: one pending file
+  -> apply to development
+  -> confirm migration history
+  -> call safe anonymous RPC
+  -> test invalid input
+  -> attempt anonymous create and direct select
+```
+
+Observed:
+
+- migration `202608150002` was recorded remotely;
+- anonymous nearby discovery returned HTTP 200 and an empty list;
+- invalid latitude returned HTTP 400 / `22023`;
+- anonymous creation and direct table selection returned HTTP 401 / `42501`;
+- hosted lint of NearHere-owned `public,private` schemas found no errors;
+- mobile lint and strict TypeScript checks passed;
+- all 11 runtime unit tests passed;
+- Simulator displayed the live empty state and Host form.
+
+The empty response does not prove successful creation, filters against rows, public-point displacement, or query-plan quality. Those require a completed test profile and deliberate development activity.
+
+## 9. Challenges and lessons
+
+### Empty success has limited meaning
+
+HTTP 200 with `[]` proves routing, permission, validation, SQL execution, and serialization. It does not prove behavior against real rows. State precisely which claims each test supports.
+
+### Safe projection without table access
+
+Granting anonymous `SELECT` and trusting callers to request safe columns was rejected. A modified request could request every granted column. The solution is no direct table privilege plus an explicit trusted function response.
+
+### Ambiguous distance semantics
+
+Discovery distance means distance from the search center; creation has no search center. Public/private displacement is another number with the same unit but different meaning. `ActivitySummary` therefore has no distance; `NearbyActivitySummary` adds discovery distance only.
+
+## 10. Interview explanation
+
+> I implemented a privacy-aware activity slice using PostgreSQL, PostGIS, Supabase RPC, and React Native. Exact meeting geography is isolated in a non-exposed schema, while a transaction derives approximate public geography and atomically creates the activity plus host membership. Anonymous discovery uses indexed `ST_DWithin` through a least-privilege function. The mobile repository runtime-validates JSON, prevents stale-request races, and renders loading, empty, error, and success states.
+
+## 11. Honest resume addition
+
+- Built and deployed a PostGIS-backed mobile activity discovery/creation slice with privacy-separated geometry, transactional host membership, indexed radius queries, least-privilege RPC boundaries, runtime-validated TypeScript adapters, and native loading/error/empty states.
 
 # Engineering challenge log
 

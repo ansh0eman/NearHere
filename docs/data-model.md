@@ -50,7 +50,7 @@ Deployment evidence on 2026-08-15: migration `202608150001` appears in both loca
 
 The original sketch included `phone_or_email_hash` in a public users table. That is removed: NearHere uses phone only, Supabase already owns the phone identity, and duplicating even a hash creates unnecessary linkage and lifecycle burden.
 
-## 4. Planned activity model
+## 4. Lesson 6 deployed activity model
 
 ### `activities`
 
@@ -65,11 +65,15 @@ The original sketch included `phone_or_email_hash` in a public users table. That
 
 `private_point` and `public_point` should use PostGIS `geography(Point, 4326)` or a deliberately selected equivalent. `public_point` is derived by trusted code and indexed with GiST for discovery. Whether to retain the exact point and when to disclose it requires a documented retention/release policy.
 
+The deployed migration stores public-safe activity facts in `public.activities` and the exact meeting point in `private.activity_locations`. The `private` schema is not exposed through the Data API and grants no access to client roles. `create_activity` writes both records atomically and derives `public_point` by displacing the exact point into the outer 40% of a 150–1,000 metre privacy radius.
+
+Anonymous discovery calls `nearby_activities`; it cannot select the table directly. The function validates coordinates/radius/limit, uses `ST_DWithin` against a GiST index, filters published non-ended activities, and returns latitude/longitude only from `public_point`.
+
 ### `activity_memberships`
 
 Composite identity: `(activity_id, user_id)`.
 
-Representative fields: `role`, `status`, `requested_at`, `accepted_at`, `left_at`, and status metadata. A partial index or transactional query helps count accepted members efficiently. Status values model pending, accepted, waitlisted, rejected, left, removed, and cancelled; the API exposes commands rather than arbitrary status mutation.
+The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The first creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. Later participation commands will use the existing pending, accepted, waitlisted, rejected, left, and removed states rather than exposing arbitrary table mutation.
 
 ### `idempotency_records`
 

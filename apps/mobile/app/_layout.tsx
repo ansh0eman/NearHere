@@ -55,6 +55,10 @@ function AppNavigator() {
           name="onboarding"
           options={{ animation: 'slide_from_bottom', headerShown: false, presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="host"
+          options={{ animation: 'slide_from_bottom', headerShown: false, presentation: 'modal' }}
+        />
       </Stack>
       <StatusBar style="dark" />
     </ProfileProvider>

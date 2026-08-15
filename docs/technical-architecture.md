@@ -53,7 +53,7 @@ flowchart LR
 
 ## 4. Backend responsibility split
 
-The mobile app calls Supabase Auth directly for OTP/session operations and currently reads/updates only its own simple profile row through the Data API. That exception is safe because column grants, owner-only RLS, and constraints express the whole rule. Authoritative multi-table product writes should go through a trusted application operation—initially a modular API or carefully designed database function—so transactions, idempotency, privacy shaping, and auditing are centralized.
+The mobile app calls Supabase Auth directly, reads/updates only its own simple profile row, and calls narrowly shaped database functions for activity creation/discovery. Direct profile access is safe because grants, owner-only RLS, and constraints express the whole rule. Multi-table creation already uses a trusted transaction; future Join/Leave commands must do the same so capacity, idempotency, privacy shaping, and auditing remain centralized.
 
 ```mermaid
 flowchart LR

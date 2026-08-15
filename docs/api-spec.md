@@ -87,6 +87,15 @@ The server trims/validates values, updates only the authenticated actor's row, a
 
 ## 5. Discovery and activities
 
+### Current MVP transport
+
+The mobile app currently calls two PostgreSQL functions through Supabase RPC:
+
+- `nearby_activities` is executable by anonymous and authenticated roles and returns only public-safe columns.
+- `create_activity` is executable only by authenticated users with a completed profile. It writes the public activity, exact private meeting point, and accepted host membership in one transaction.
+
+The tables have no client-facing grants. These RPCs are the first modular-monolith implementation boundary; the HTTP routes below remain the stable future API contract when an application server takes over orchestration.
+
 ### `GET /activities/nearby`
 
 Anonymous allowed.

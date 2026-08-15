@@ -78,7 +78,6 @@ hooks/        reusable React state/lifecycle behavior
 lib/          external-service and device-storage adapters
 providers/    app-wide authentication and profile state machines
 types/        mobile domain and state types
-data/         explicitly labeled development fixtures
 assets/       images and fonts compiled or bundled with the app
 ```
 
@@ -95,10 +94,10 @@ These checks answer different questions: lint checks configured code-quality rul
 
 ## Current versus planned behavior
 
-**Implemented:** map, fixture markers, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration with an explicit retry gate, owner-profile loading, runtime profile validation, and display-name onboarding.
+**Implemented:** live nearby-activity loading/empty/error states, map markers for public approximate geometry, a first Host form, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration, owner-profile loading, runtime boundary validation, and display-name onboarding.
 
 **Hosted configuration verified:** a fixed development OTP requests and verifies successfully, issues a real hosted session, creates the triggered profile, and restores the session after an app restart. Real SMS-provider delivery remains deferred.
 
-**Planned:** the second-actor RLS matrix, database-backed activities, transactional Join/Leave, host creation, chat, safety flows, MapLibre styling, and avatar builder.
+**Planned:** authenticated Host happy-path acceptance, the second-actor profile RLS matrix, transactional Join/Leave, activity detail, chat, safety flows, MapLibre styling, and avatar builder.
 
 For the complete runbook, see [`../../docs/ios-simulator-workflow.md`](../../docs/ios-simulator-workflow.md). For architecture, see [`../../docs/system-design.md`](../../docs/system-design.md).

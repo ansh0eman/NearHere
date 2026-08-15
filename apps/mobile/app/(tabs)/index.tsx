@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,25 +13,59 @@ import {
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PROTOTYPE_ACTIVITIES } from '@/data/prototype-activities';
+import { useNearbyActivities } from '@/hooks/use-nearby-activities';
 import { DEFAULT_MAP_REGION, useNearbyLocation } from '@/hooks/use-nearby-location';
 import { useAuth } from '@/providers/auth-provider';
-import { Activity, ActivityFilter, ActivityKind } from '@/types/activity';
+import { useProfile } from '@/providers/profile-provider';
+import type { ActivityFilter, ActivityKind, NearbyActivitySummary } from '@/types/activity';
 
 const KIND_COLORS: Record<ActivityKind, string> = {
   walk: '#FF6B4A',
   coffee: '#C2764B',
-  sport: '#3E8E68',
+  sports: '#3E8E68',
+  study: '#5867A8',
+  coworking: '#7A5A9E',
+  creative: '#C75B8B',
+  other: '#66717D',
 };
+
+const KIND_EMOJIS: Record<ActivityKind, string> = {
+  walk: '🚶',
+  coffee: '☕',
+  sports: '🏸',
+  study: '📚',
+  coworking: '💻',
+  creative: '🎨',
+  other: '✨',
+};
+
+function formatStartsAt(value: string) {
+  const startsAt = new Date(value);
+  const minutes = Math.round((startsAt.getTime() - Date.now()) / 60_000);
+  if (minutes <= 0) return 'Starting now';
+  if (minutes < 60) return `Starts in ${minutes} min`;
+  if (minutes < 24 * 60) return `Starts in ${Math.round(minutes / 60)} hr`;
+  return startsAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+function formatDistance(distanceM: number) {
+  return distanceM < 1000 ? `${Math.round(distanceM)} m away` : `${(distanceM / 1000).toFixed(1)} km away`;
+}
 
 export default function NearbyScreen() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const { pendingIntent, session, setPendingIntent } = useAuth();
-  const { label, refreshManualLocation, region, requestDeviceLocation, source, status } =
+  const { state: profileState } = useProfile();
+  const { label, refreshManualLocation, region, requestDeviceLocation, source, status: locationStatus } =
     useNearbyLocation();
-  const [selectedId, setSelectedId] = useState(PROTOTYPE_ACTIVITIES[0].id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
+  const { refresh: refreshActivities, state: activityState } = useNearbyActivities(
+    region.latitude,
+    region.longitude,
+    filter,
+  );
 
   useEffect(() => {
     mapRef.current?.animateToRegion(region, 500);
@@ -45,12 +79,19 @@ export default function NearbyScreen() {
 
   useEffect(() => {
     if (!session || !pendingIntent) return;
-
-    setPendingIntent(null);
     if (pendingIntent.kind === 'openAccount') {
+      setPendingIntent(null);
       router.replace('/me');
       return;
     }
+
+    if (profileState.status === 'needsProfile') {
+      router.push('/onboarding/profile');
+      return;
+    }
+    if (profileState.status !== 'ready') return;
+
+    setPendingIntent(null);
 
     if (pendingIntent.kind === 'joinActivity') {
       Alert.alert(
@@ -60,36 +101,37 @@ export default function NearbyScreen() {
       return;
     }
 
-    Alert.alert(
-      'Identity verified',
-      'NearHere restored your host intent. Activity creation is the next product slice.',
-    );
-  }, [pendingIntent, router, session, setPendingIntent]);
+    router.push({
+      pathname: '/host/create',
+      params: { latitude: String(region.latitude), longitude: String(region.longitude) },
+    });
+  }, [pendingIntent, profileState.status, region.latitude, region.longitude, router, session, setPendingIntent]);
 
-  const visibleActivities = useMemo(
-    () => PROTOTYPE_ACTIVITIES.filter((activity) => filter === 'all' || activity.kind === filter),
-    [filter],
-  );
+  const visibleActivities = activityState.activities;
 
   const selected =
     visibleActivities.find((activity) => activity.id === selectedId) ?? visibleActivities[0];
 
+  useEffect(() => {
+    if (visibleActivities.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!visibleActivities.some((activity) => activity.id === selectedId)) {
+      setSelectedId(visibleActivities[0].id);
+    }
+  }, [selectedId, visibleActivities]);
+
   function selectFilter(nextFilter: ActivityFilter) {
     setFilter(nextFilter);
-    const nextActivity = PROTOTYPE_ACTIVITIES.find(
-      (activity) => nextFilter === 'all' || activity.kind === nextFilter,
-    );
-    if (nextActivity) setSelectedId(nextActivity.id);
+    setSelectedId(null);
   }
 
-  function activityCoordinate(activity: Activity) {
-    return {
-      latitude: region.latitude + activity.latitudeOffset,
-      longitude: region.longitude + activity.longitudeOffset,
-    };
+  function activityCoordinate(activity: NearbyActivitySummary) {
+    return activity.publicLocation;
   }
 
-  function centerActivity(activity: Activity) {
+  function centerActivity(activity: NearbyActivitySummary) {
     setSelectedId(activity.id);
     mapRef.current?.animateToRegion(
       {
@@ -114,6 +156,15 @@ export default function NearbyScreen() {
   function requireAuthenticationForJoin() {
     if (!selected) return;
     if (session) {
+      if (profileState.status === 'needsProfile') {
+        setPendingIntent({ kind: 'joinActivity', activityId: selected.id });
+        router.push('/onboarding/profile');
+        return;
+      }
+      if (profileState.status !== 'ready') {
+        Alert.alert('Profile is loading', 'Wait a moment and try joining again.');
+        return;
+      }
       Alert.alert(
         'Join endpoint is next',
         'Your identity is verified. The activity backend will perform the real capacity-safe join.',
@@ -127,7 +178,18 @@ export default function NearbyScreen() {
 
   function requireAuthenticationForHosting() {
     if (session) {
-      Alert.alert('Host flow is next', 'Your identity is verified. Activity creation is the next product slice.');
+      if (profileState.status === 'needsProfile') {
+        router.push('/onboarding/profile');
+        return;
+      }
+      if (profileState.status !== 'ready') {
+        Alert.alert('Profile is loading', 'Wait a moment and try hosting again.');
+        return;
+      }
+      router.push({
+        pathname: '/host/create',
+        params: { latitude: String(region.latitude), longitude: String(region.longitude) },
+      });
       return;
     }
 
@@ -154,8 +216,8 @@ export default function NearbyScreen() {
               coordinate={activityCoordinate(activity)}
               onPress={() => centerActivity(activity)}>
               <View style={[styles.marker, isSelected && styles.markerSelected]}>
-                <Text style={styles.markerEmoji}>{activity.emoji}</Text>
-                <Text style={styles.markerCount}>{activity.going}</Text>
+                <Text style={styles.markerEmoji}>{KIND_EMOJIS[activity.kind]}</Text>
+                <Text style={styles.markerCount}>{activity.participantCount}</Text>
               </View>
             </Marker>
           );
@@ -175,7 +237,7 @@ export default function NearbyScreen() {
             accessibilityLabel="Center map on my location"
             onPress={() => void requestDeviceLocation()}
             style={styles.iconButton}>
-            {status === 'loading' || status === 'requesting' ? (
+            {locationStatus === 'loading' || locationStatus === 'requesting' ? (
               <ActivityIndicator size="small" color="#16202A" />
             ) : (
               <Ionicons name="locate" size={21} color="#16202A" />
@@ -202,11 +264,11 @@ export default function NearbyScreen() {
           <FilterPill label="All nearby" active={filter === 'all'} onPress={() => selectFilter('all')} />
           <FilterPill label="Walks" active={filter === 'walk'} onPress={() => selectFilter('walk')} />
           <FilterPill label="Coffee" active={filter === 'coffee'} onPress={() => selectFilter('coffee')} />
-          <FilterPill label="Sports" active={filter === 'sport'} onPress={() => selectFilter('sport')} />
+          <FilterPill label="Sports" active={filter === 'sports'} onPress={() => selectFilter('sports')} />
         </ScrollView>
       </SafeAreaView>
 
-      {(status === 'denied' || status === 'error') && (
+      {(locationStatus === 'denied' || locationStatus === 'error') && (
         <View style={styles.locationFallback}>
           <Ionicons name="location-outline" size={21} color="#16202A" />
           <View style={styles.locationFallbackCopy}>
@@ -225,32 +287,46 @@ export default function NearbyScreen() {
 
       <View style={styles.bottomArea}>
         <View style={styles.prototypeLabel}>
-          <View style={styles.prototypeDot} />
-          <Text style={styles.prototypeText}>PROTOTYPE ACTIVITIES</Text>
+          <View style={styles.liveDot} />
+          <Text style={styles.prototypeText}>LIVE ACTIVITIES</Text>
         </View>
 
-        {selected ? (
+        {activityState.status === 'loading' ? (
+          <View style={styles.emptyCard}>
+            <ActivityIndicator color="#FF6B4A" />
+            <Text style={styles.emptyTitle}>Looking nearby…</Text>
+          </View>
+        ) : activityState.status === 'error' ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.activityTitle}>Activities did not load</Text>
+            <Text style={styles.activityDescription}>{activityState.message}</Text>
+            <Pressable accessibilityRole="button" onPress={() => void refreshActivities()} style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
+        ) : selected ? (
           <View style={styles.activityCard}>
             <View style={styles.activityMetaRow}>
               <Text style={[styles.activityKind, { color: KIND_COLORS[selected.kind] }]}>
                 {selected.kind.toUpperCase()}
               </Text>
-              <Text style={styles.startsIn}>Starts in {selected.startsIn}</Text>
+              <Text style={styles.startsIn}>{formatStartsAt(selected.startsAt)}</Text>
             </View>
             <Text style={styles.activityTitle}>{selected.title}</Text>
             <Text style={styles.activityDescription}>{selected.description}</Text>
             <View style={styles.detailRow}>
               <View style={styles.detailItem}>
                 <Ionicons name="walk-outline" size={17} color="#66717D" />
-                <Text style={styles.detailText}>{selected.distance}</Text>
+                <Text style={styles.detailText}>{formatDistance(selected.distanceM)}</Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="people-outline" size={17} color="#66717D" />
                 <Text style={styles.detailText}>
-                  {selected.going}/{selected.capacity} going
+                  {selected.participantCount}/{selected.capacity} going
                 </Text>
               </View>
             </View>
+            <Text style={styles.hostText}>Hosted by {selected.hostDisplayName}</Text>
             <View style={styles.cardActions}>
               <View style={styles.avatarStack}>
                 {['🦊', '🐸', '🌈'].map((avatar, index) => (
@@ -270,8 +346,8 @@ export default function NearbyScreen() {
           </View>
         ) : (
           <View style={styles.emptyCard}>
-            <Text style={styles.activityTitle}>Nothing in this filter yet</Text>
-            <Text style={styles.activityDescription}>Try another activity type.</Text>
+            <Text style={styles.activityTitle}>Nothing live nearby yet</Text>
+            <Text style={styles.activityDescription}>Be the first to host something in this area.</Text>
           </View>
         )}
 
@@ -439,7 +515,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  prototypeDot: { backgroundColor: '#FF6B4A', borderRadius: 4, height: 7, width: 7 },
+  liveDot: { backgroundColor: '#3E8E68', borderRadius: 4, height: 7, width: 7 },
   prototypeText: { color: '#66717D', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   activityCard: {
     backgroundColor: '#F7F4EE',
@@ -458,9 +534,11 @@ const styles = StyleSheet.create({
   startsIn: { color: '#3E8E68', fontSize: 12, fontWeight: '800' },
   activityTitle: { color: '#16202A', fontSize: 22, fontWeight: '900', letterSpacing: -0.7, marginTop: 15 },
   activityDescription: { color: '#66717D', fontSize: 13, lineHeight: 19, marginTop: 5 },
+  emptyTitle: { color: '#16202A', fontSize: 15, fontWeight: '900', marginTop: 12, textAlign: 'center' },
   detailRow: { flexDirection: 'row', gap: 16, marginTop: 14 },
   detailItem: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   detailText: { color: '#66717D', fontSize: 12, fontWeight: '700' },
+  hostText: { color: '#89919A', fontSize: 11, fontWeight: '700', marginTop: 10 },
   cardActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
   avatarStack: { alignItems: 'center', flexDirection: 'row' },
   avatar: {
@@ -502,4 +580,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   emptyCard: { backgroundColor: '#F7F4EE', borderRadius: 26, padding: 20 },
+  retryButton: { alignSelf: 'flex-start', backgroundColor: '#16202A', borderRadius: 999, marginTop: 14, paddingHorizontal: 16, paddingVertical: 10 },
+  retryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
 });

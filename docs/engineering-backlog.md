@@ -21,20 +21,23 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add runtime profile-boundary unit tests and a dependency-free hosted RLS harness
 - [ ] Test profile trigger and policies as owner, other user, and protected service operation
 
-## Next slice — real activity creation and discovery
+## Current slice — real activity creation and discovery
 
-- [ ] Define shared activity request/response contracts and runtime schemas
-- [ ] Add PostGIS activity/status tables with private and public location separation
-- [ ] Define server-owned privacy transform for public geometry
-- [ ] Implement activity creation transaction and authorization
-- [ ] Implement `GET /v1/activities/nearby`
-- [ ] Replace map fixtures with explicit loading/empty/success/error server state
+- [x] Define shared activity request/response contracts and runtime schemas
+- [x] Add and deploy PostGIS activity/status/membership tables with private and public location separation
+- [x] Define server-owned privacy transform for public geometry
+- [x] Implement authenticated activity creation transaction and authorization
+- [x] Implement and verify anonymous-safe `nearby_activities` discovery RPC
+- [x] Replace map fixtures with explicit loading/empty/success/error server state
+- [x] Build the first native Host form and profile gate
+- [ ] Complete one authenticated Host write and confirm only approximate geometry is returned publicly
 - [ ] Build full activity detail boundary
 - [ ] Add contract, integration, privacy, and query-plan tests
 
 ## Participation correctness
 
-- [ ] Add membership and idempotency schema
+- [x] Add the initial membership schema and atomic host membership creation
+- [ ] Add idempotency schema
 - [ ] Implement open join, approval request, approve/reject, leave, removal, and waitlist transitions
 - [ ] Enforce capacity inside database transactions
 - [ ] Prove last-place behavior with concurrent integration tests

@@ -60,9 +60,9 @@ Practical outcome: explain what happens between `npm start` and seeing NearHere 
 
 ### Module 2: TypeScript for product engineering
 
-Progress: **in progress** — activity and location domain types are extracted; runtime validation is implemented for persisted manual locations.
+Progress: **in progress** — activity/location contracts are provider-independent; persisted location, hosted profiles, and live activity RPC responses have runtime validators.
 
-NearHere work: extract the activity domain model and fixture data into typed modules.
+NearHere work: evolve the activity domain model from removed fixtures into validated live request/response contracts.
 
 Must-know concepts:
 
@@ -145,7 +145,7 @@ Practical outcome: request an OTP, verify it, persist a session, restore it afte
 
 ### Module 7: Relational databases and geospatial data
 
-Progress: **in progress** — the first versioned PostgreSQL migration is deployed and the anonymous-denial plus one-owner trigger/read path are verified. A two-actor RLS harness exists; its hosted run and the activity/PostGIS schema are next.
+Progress: **in progress** — profile and PostGIS activity migrations are deployed. Public/private geometry, GiST radius discovery, atomic activity/host-membership creation, and anonymous-safe RPC projection are implemented. Authenticated creation and realistic query-plan verification are next.
 
 NearHere work: create the PostgreSQL/PostGIS schema and nearby-activity query.
 
