@@ -46,7 +46,7 @@ erDiagram
 
 A database trigger creates one profile after every new Auth user. A failed trigger can block signup, so it must remain small and be integration-tested.
 
-Deployment evidence on 2026-08-15: migration `202608150001` appears in both local and hosted migration history. An anonymous Data API request to `profiles` returns HTTP 401 / PostgreSQL `42501`, confirming that the table exists and has no anonymous table grant. Trigger behavior and authenticated owner/cross-user policies still require authenticated integration tests.
+Deployment evidence on 2026-08-15: migration `202608150001` appears in both local and hosted migration history. An anonymous Data API request to `profiles` returns HTTP 401 / PostgreSQL `42501`. A fixed hosted OTP produced one Auth user and exactly one owner-readable `needs_profile` row, proving the signup trigger and owner-read path for that actor. Cross-user and restricted-operation policies still require the two-actor harness.
 
 The original sketch included `phone_or_email_hash` in a public users table. That is removed: NearHere uses phone only, Supabase already owns the phone identity, and duplicating even a hash creates unnecessary linkage and lifecycle burden.
 

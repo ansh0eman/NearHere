@@ -26,3 +26,8 @@ export interface UpdateMyProfileRequest {
   displayName?: string;
   interests?: string[];
 }
+
+/** The one command allowed during the minimal onboarding slice. */
+export interface CompleteProfileOnboardingRequest {
+  displayName: string;
+}

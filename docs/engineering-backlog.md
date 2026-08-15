@@ -13,9 +13,12 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Configure ignored Expo public environment values and verify the Supabase Auth health endpoint
 - [x] Initialize/link the Supabase CLI and deploy the first profile migration
 - [x] Verify remote migration history and anonymous profile-table denial
-- [ ] Enable/configure phone authentication and SMS provider/test numbers
-- [ ] Verify real/test OTP delivery, verification, and session restoration
-- [ ] Build minimal display-name onboarding and profile read/update adapter
+- [x] Select fixed development OTP and document hosted-vs-local configuration blast radius
+- [x] Enable hosted phone authentication and configure an expiring fictional test number
+- [x] Verify hosted test OTP request, verification, session issuance, and triggered profile creation
+- [x] Verify mobile session restoration after app restart
+- [x] Build minimal display-name onboarding and profile read/update adapter
+- [x] Add runtime profile-boundary unit tests and a dependency-free hosted RLS harness
 - [ ] Test profile trigger and policies as owner, other user, and protected service operation
 
 ## Next slice — real activity creation and discovery

@@ -256,7 +256,7 @@ otp_expiry = 3600
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
@@ -264,9 +264,10 @@ template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# Use pre-defined map of phone number to OTP for testing.
+# Use a predefined phone-to-code map only for an isolated local stack. Do not
+# commit a hosted-project test identity or push this generated file blindly.
 # [auth.sms.test_otp]
-# 4152127777 = "123456"
+# 16505551234 = "replace-with-a-local-only-code"
 
 # Configure logged in session timeouts.
 # [auth.sessions]

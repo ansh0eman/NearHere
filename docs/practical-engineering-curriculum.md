@@ -128,7 +128,7 @@ Practical outcome: design and call `GET /v1/activities/nearby` with explicit loa
 
 ### Module 6: Authentication and sessions
 
-Progress: **in progress** — phone and OTP screens, a Supabase client boundary, session restoration, lifecycle refresh, and resumable protected intents are implemented; real project/SMS configuration remains external work.
+Progress: **implemented with development OTP** — hosted phone OTP, Supabase client boundary, session restoration/retry, lifecycle refresh, minimal profile onboarding, and resumable protected-intent state are implemented. Real SMS delivery and final intent execution remain later work.
 
 NearHere work: implement phone OTP and protected Join/Host actions.
 
@@ -145,7 +145,7 @@ Practical outcome: request an OTP, verify it, persist a session, restore it afte
 
 ### Module 7: Relational databases and geospatial data
 
-Progress: **started** — the first versioned PostgreSQL migration defines public profiles, constraints, triggers, grants, and RLS; it has not yet been executed against a development database. Activity/PostGIS modeling is designed next.
+Progress: **in progress** — the first versioned PostgreSQL migration is deployed and the anonymous-denial plus one-owner trigger/read path are verified. A two-actor RLS harness exists; its hosted run and the activity/PostGIS schema are next.
 
 NearHere work: create the PostgreSQL/PostGIS schema and nearby-activity query.
 

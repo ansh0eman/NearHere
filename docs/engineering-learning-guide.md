@@ -1333,24 +1333,308 @@ Matching migration history proves Supabase recorded the version. The Data API re
 
 **Lesson:** warnings must be interpreted in execution order and verified against the affected subsystem. A successful command line is useful evidence, but independent state checks make the conclusion defensible.
 
-## 11. Files introduced or changed
+## 10.4 Test OTP, hosted configuration, and Docker from first principles
+
+A test OTP is a server-side exception for a deliberately fictional development phone number. Supabase Auth skips external SMS delivery for that mapping and accepts only the configured fixed code. The rest of the authentication pipeline remains real: user creation, OTP verification, session issuance, token refresh, the profile trigger, and RLS checks all execute against Supabase.
+
+That distinction matters:
+
+| Approach | What it tests | What it misses |
+| --- | --- | --- |
+| Client-side “pretend signed in” flag | Screen navigation only | Auth, tokens, trigger, RLS, restoration |
+| Supabase fixed test OTP | Real Auth/session/database path | SMS-provider delivery |
+| Real phone OTP | Full path including delivery | Nothing in the basic login path |
+
+Docker solves a different problem. A production-shaped backend consists of multiple long-running programs. Installing and coordinating every program directly on a laptop is slow and version-sensitive. A container packages one service and its runtime; Docker starts those containers on a private network and gives stateful services named volumes.
+
+```mermaid
+flowchart LR
+    CONFIG["config.toml + migrations"] --> CLI["supabase start"]
+    CLI --> DOCKER["Docker Engine"]
+    DOCKER --> PG["PostgreSQL container"]
+    DOCKER --> AUTH["Auth container"]
+    DOCKER --> REST["REST container"]
+    DOCKER --> RT["Realtime container"]
+    DOCKER --> STORAGE["Storage container"]
+    DOCKER --> STUDIO["Studio container"]
+```
+
+The container is not a lightweight virtual machine in the everyday sense. On Linux it is an isolated process sharing the host kernel; Docker Desktop supplies the Linux environment needed to run those containers on macOS. An image is the immutable packaged template, a container is a running instance, a volume preserves database files, and a network lets the services address each other predictably.
+
+For NearHere, Docker enables:
+
+- `supabase start`: run the private local stack;
+- `supabase db reset`: destroy and recreate only the local database from migrations and seed data;
+- repeatable migration/RLS/integration tests without touching hosted data;
+- local fixed OTP and captured email without paying an external provider;
+- schema-diff/catalog tooling that expects the matching Postgres image.
+
+Docker is not required for the Expo app, iOS Simulator, TypeScript compilation, calls to hosted Supabase, or the remote migration already deployed.
+
+### Challenge: a narrow OTP request exposed a broad configuration command
+
+**Intent:** enable one fixed development OTP on the hosted project.
+
+**Risk discovered:** `supabase config push` has no dry-run or field-selection flag. It pushes the generated `config.toml`, which contains many Auth, URL, email, provider, and runtime defaults. Using it for one OTP could silently change unrelated hosted settings.
+
+**Resolution:** do not perform the broad push and do not commit the fixed hosted code. Use either a narrow hosted dashboard/Management API update or a local Docker stack. Keep `auth.sms.enable_signup = true` as the intended version-controlled development setting, while treating the actual hosted test identity as restricted operational configuration.
+
+**Lesson:** configuration changes have a blast radius just like database migrations. Before applying one, identify whether the tool patches a field, merges a section, or replaces a whole configuration document.
+
+### Challenge: three test-OTP representations looked plausible
+
+**Symptom:** the first two narrow Management API requests returned HTTP 400. The initial `phone:code` value came from self-hosted environment documentation. Encoding a JSON phone-to-code object as a string also looked reasonable because the Auth server's internal configuration is a map.
+
+**Evidence:** the hosted Management API returned its own validation contract: `sms_test_otp` must be a comma-separated list of `phone-number=code`, and each phone number must be E.164 digits without the leading `+`.
+
+**Resolution:** send the hosted field as `phone=code`, set an explicit expiration, and keep the real development mapping out of Git. The third request returned HTTP 200.
+
+**Lesson:** equivalent domain data can have different serialized representations at different boundaries. An internal map, a self-hosted environment variable, a TOML table, and a hosted Management API string are not interchangeable merely because they represent the same phone-to-code relationship. Preserve and test the contract at the boundary being called.
+
+### Hosted authentication evidence
+
+The configured fictional identity was tested directly through the public Auth endpoints. OTP request and verification both returned HTTP 200, the verification response contained a real session, and the authenticated Data API request returned exactly one profile with `needs_profile` onboarding state. Temporary files containing session tokens were deleted without printing their contents.
+
+This proves the hosted Auth-to-database path:
+
+```mermaid
+sequenceDiagram
+    participant Test as Verification client
+    participant Auth as Hosted Supabase Auth
+    participant DB as PostgreSQL
+    participant API as Data API
+    Test->>Auth: Request OTP for mapped fictional phone
+    Auth-->>Test: 200 without external SMS
+    Test->>Auth: Verify fixed code
+    Auth->>DB: Insert auth.users row
+    DB->>DB: Trigger inserts public.profiles row
+    Auth-->>Test: Real session
+    Test->>API: Select own profile with access token
+    API->>DB: Apply authenticated role and RLS
+    DB-->>Test: Exactly one needs_profile row
+```
+
+It does not prove that one user cannot read another user's profile. Session restoration was subsequently confirmed in the mobile application; cross-user authorization is a separate independent check.
+
+## 11. Lesson 4 files introduced or changed
 
 - `packages/contracts/user.ts` defines public profile vocabulary without auth secrets.
 - `supabase/migrations/202608150001_create_profiles.sql` defines the executable schema/policies.
 - `supabase/README.md` defines deployment and verification.
 - `docs/system-design.md`, `data-model.md`, and `api-spec.md` explain responsibilities at different abstraction levels.
 
-## 12. Interview explanation
+## 12. Lesson 4 interview explanation
 
 > I designed the initial identity data boundary for a mobile application using Supabase Auth and PostgreSQL. Authentication-sensitive phone data remains in the protected Auth schema, while a one-to-one public profile is created by a minimal database trigger. I added constraints, column-level grants, and Row Level Security so authenticated users can update only permitted fields on their own profile. I captured the change in a versioned migration and explicitly separated static validation from pending database integration tests.
 
-## 13. Honest resume addition
+## 13. Lesson 4 honest resume addition
 
 - Designed a Supabase/PostgreSQL identity foundation with versioned migrations, one-to-one Auth profiles, automatic profile provisioning, constraints, least-privilege column grants, and Row Level Security policies.
 
+# Lesson 5: Runtime-safe profile onboarding
+
+## 1. The user journey and why it is a vertical slice
+
+After OTP verification, NearHere must do more than show a success message. It must connect the authenticated identity to the database profile, collect the minimum public information, enforce the rule at every boundary, survive network errors, and show the result in the account UI.
+
+```mermaid
+flowchart LR
+    OTP["Verify phone OTP"] --> SESSION["Receive and persist session"]
+    SESSION --> LOAD["Load own profile"]
+    LOAD --> DECIDE{"Onboarding complete?"}
+    DECIDE -->|"No"| FORM["Collect display name"]
+    FORM --> VALIDATE["Client validation"]
+    VALIDATE --> UPDATE["Atomic database update"]
+    UPDATE --> READY["Canonical ready profile"]
+    DECIDE -->|"Yes"| READY
+    READY --> ME["Render account identity"]
+```
+
+This is vertical because it crosses navigation, React state, a network adapter, runtime validation, TypeScript contracts, PostgreSQL constraints, RLS, error handling, tests, and user-visible UI.
+
+## 2. Compile-time types versus runtime data
+
+TypeScript checks source code before the app runs. The annotation `data: UserProfile` can help the compiler, but it cannot force an HTTP server to return that shape. Types are erased from the JavaScript bundle.
+
+NearHere therefore uses three representations:
+
+```mermaid
+flowchart LR
+    DB["Database JSON\nsnake_case + unknown at runtime"] --> PARSER["Runtime parser\nvalidate every required field"]
+    PARSER --> DOMAIN["UserProfile\ncamelCase domain contract"]
+    DOMAIN --> STATE["Profile state machine"]
+    STATE --> UI["React Native screens"]
+```
+
+- `packages/contracts/user.ts` is provider-independent domain vocabulary.
+- `lib/profile-validation.ts` treats network input as `unknown`, validates it, and maps `display_name` to `displayName`.
+- `lib/profile-repository.ts` knows Supabase query syntax but returns only domain results.
+- Screens and providers do not depend on PostgREST response internals.
+
+This adapter boundary makes a future API migration smaller: the UI can keep consuming `UserProfile` even if the transport changes.
+
+## 3. Why a profile repository exists
+
+A repository is a small module that hides storage/transport details behind product-shaped functions. NearHere exposes `getMyProfile(userId)` and `completeMyProfile(userId, displayName)` instead of scattering `.from('profiles')` queries through screens.
+
+The query selects explicit columns rather than `*`. Explicit selection reduces accidental exposure when a later migration adds a column. The client never inserts or upserts a profile because the database signup trigger owns creation. If a row is unexpectedly missing, the app shows a retry/support failure instead of creating data through an unauthorized fallback.
+
+Display name and onboarding status are updated in one database statement:
+
+```text
+UPDATE profiles
+SET display_name = normalized_name,
+    onboarding_status = 'complete'
+WHERE id = authenticated_user_id
+RETURNING allowed_profile_columns
+```
+
+This is **atomic**: PostgreSQL commits both changes or neither. Setting the status first would violate the database rule that a completed profile must contain a valid display name. Returning the canonical row avoids assuming that local input equals stored truth.
+
+## 4. The profile state machine
+
+Several independent booleans such as `loading`, `saving`, `hasProfile`, and `hasError` can represent impossible combinations. A discriminated union gives exactly one meaningful state at a time:
+
+```mermaid
+stateDiagram-v2
+    [*] --> signedOut
+    signedOut --> loading: session appears
+    loading --> needsProfile: row needs onboarding
+    loading --> ready: row already complete
+    loading --> error: request or parse fails
+    needsProfile --> saving: submit valid name
+    saving --> ready: atomic update succeeds
+    saving --> error: update fails
+    error --> loading: retry
+    ready --> signedOut: sign out
+```
+
+The `profile` object is unavailable in states where it is not safe to use and required in states where the UI needs it. TypeScript narrows the union after checking `state.status`, so accessing `state.profile.displayName` is legal only in the `ready` branch.
+
+The provider also uses a monotonically increasing request ID. If user A signs out while a slow request is running, that old response cannot populate user B's state. This is a practical defense against asynchronous race conditions.
+
+## 5. Session restoration is an application gate
+
+AsyncStorage restoration is asynchronous. During startup, `session === null` can mean either “confirmed signed out” or “not checked yet.” Rendering protected actions immediately would briefly show the wrong account state and could open an unnecessary sign-in screen.
+
+The root navigator therefore waits in `restoring`. A read failure becomes a visible `restoreError` with Retry rather than silently treating the user as signed out.
+
+```mermaid
+sequenceDiagram
+    participant App as Root navigator
+    participant Auth as Auth provider
+    participant Store as AsyncStorage/Supabase
+    participant Profile as Profile provider
+    App->>Auth: mount
+    Auth->>Store: getSession()
+    App-->>App: show restoration gate
+    alt session restored
+        Store-->>Auth: valid session
+        Auth-->>App: signedIn
+        App->>Profile: mount with user ID
+    else no session
+        Store-->>Auth: null
+        Auth-->>App: signedOut
+    else storage/provider error
+        Store-->>Auth: error
+        Auth-->>App: retryable restoreError
+    end
+```
+
+The user verified restoration by restarting the app and observing the authenticated state return. This is interaction evidence, while lint/type/bundle checks cover different failure classes.
+
+## 6. Validation and defense in depth
+
+The form trims the display name and checks 2–40 characters for immediate feedback. The runtime parser rechecks server data. PostgreSQL constraints remain authoritative because an attacker can bypass the UI and call the Data API directly.
+
+```mermaid
+flowchart LR
+    FORM["Form check\nfast feedback"] --> PARSER["Response parser\nnetwork distrust"]
+    PARSER --> GRANT["Column grant\noperation boundary"]
+    GRANT --> RLS["RLS\nowner row only"]
+    RLS --> CONSTRAINT["Constraint\nvalid stored state"]
+```
+
+These layers are complementary, not duplicates. Each protects against a different class of failure.
+
+## 7. Testing strategy
+
+The local unit suite uses Node's test runner and has no new testing dependency. It verifies name boundaries, database-to-domain mapping, onboarding-state rules, and rejection of malformed data. Lint checks code-quality rules; `tsc --noEmit` checks compile-time contracts; Expo export proves Metro can create an iOS production bundle.
+
+The hosted RLS harness under `supabase/tests/hosted` is deliberately separate. With two fictional test identities it will prove:
+
+- anonymous requests cannot read profiles;
+- each actor can read and update their own allowed fields;
+- actor A cannot read or change actor B;
+- protected columns, insert, and delete remain denied;
+- database constraints reject invalid values;
+- test mutations are restored in `finally`.
+
+It never prints phone numbers, OTPs, access tokens, refresh tokens, or raw Auth responses. It is a manual/pre-release check rather than a per-commit CI job because hosted OTP endpoints have operational rate limits. Deleting an Auth user to prove cascade behavior is deferred to an isolated local stack or protected admin harness; the service-role credential never belongs in mobile configuration.
+
+## 8. Challenges and resolutions
+
+### Challenge: restoration errors looked like signed-out users
+
+**Cause:** the original provider ignored the `getSession()` error and account UI branched only on a nullable session.
+
+**Resolution:** introduce explicit `restoring` and `restoreError` states, gate the root navigator, and expose a retry operation.
+
+**Lesson:** absence of data and failure to load data are different states.
+
+### Challenge: late asynchronous results can cross account boundaries
+
+**Cause:** promises cannot always be cancelled after a request has reached the network.
+
+**Resolution:** increment a request identifier whenever the active user changes and ignore a response whose identifier is stale.
+
+**Lesson:** authentication changes invalidate all user-scoped in-flight work and cached state.
+
+### Challenge: generated TypeScript types are not runtime validation
+
+**Cause:** compile-time types disappear and remote JSON can be malformed, stale, or unexpectedly shaped.
+
+**Resolution:** accept `unknown` at the repository boundary and explicitly validate/map the row before it reaches React state.
+
+**Lesson:** every external boundary needs both a compile-time representation and runtime validation.
+
+### Current limitation: protected intent is memory-only
+
+Join/Host intent and the pending phone number survive the continuous OTP flow but not process death in the middle of verification. Persisting them now would introduce expiry, cleanup, replay, and privacy rules before the real Join/Host operations exist. This resilience work remains deferred and must be designed before production.
+
+## 9. Lesson 5 files introduced or changed
+
+- `apps/mobile/lib/profile-validation.ts` validates and maps external profile JSON.
+- `apps/mobile/lib/profile-repository.ts` contains explicit owner-profile queries.
+- `apps/mobile/providers/profile-provider.tsx` owns the profile state machine and stale-request guard.
+- `apps/mobile/app/onboarding/profile.tsx` implements minimum display-name onboarding.
+- `apps/mobile/app/_layout.tsx` gates navigation during session restoration.
+- `apps/mobile/app/(tabs)/me.tsx` renders profile-aware account states.
+- `apps/mobile/lib/profile-validation.test.mjs` covers the runtime boundary.
+- `supabase/tests/hosted/profiles-rls.mjs` contains the manual two-actor security matrix.
+
+## 10. Verification evidence
+
+- ESLint: passed.
+- Strict TypeScript compile (`tsc --noEmit`): passed.
+- Profile runtime unit tests: 6 passed, 0 failed.
+- iOS production bundle export: passed with 1,469 modules.
+- Hosted fixed OTP/session/profile trigger: passed earlier.
+- Mobile session restoration after restart: user-confirmed.
+- Display-name onboarding interaction: pending Simulator acceptance.
+- Two-actor hosted RLS matrix: harness ready; second fictional identity/configuration pending.
+
+## 11. Interview explanation
+
+> I implemented a runtime-safe mobile profile onboarding slice on top of Supabase Auth and PostgreSQL. I separated provider-specific database rows from camelCase domain contracts using a repository and runtime parser, modeled loading/onboarding/saving/error behavior as a discriminated state machine, prevented stale cross-account responses with request IDs, gated navigation during asynchronous session restoration, and completed onboarding with one atomic RLS-protected update. I added unit tests, a production bundle check, and a credential-safe two-actor RLS harness.
+
+## 12. Honest resume addition
+
+- Built a React Native/Supabase identity and profile vertical slice with persisted phone sessions, retryable restoration, runtime-validated data adapters, atomic onboarding, owner-only RLS, stale-request protection, and layered automated verification.
+
 # Next lesson
 
-Configure a safe phone-auth test path, verify OTP and session restoration, test the profile trigger and owner/cross-user RLS matrix, then build minimal display-name onboarding. The first real activity creation/discovery slice follows once identity is verified end to end.
+Run the two-actor hosted RLS matrix and accept the display-name flow in Simulator. Then begin the first real activity slice: PostGIS schema, privacy-separated geometry, transactional host creation, and nearby discovery replacing fixtures.
 
 # Engineering challenge log
 

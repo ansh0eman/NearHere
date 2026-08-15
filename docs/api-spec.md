@@ -60,6 +60,12 @@ Representative status mapping:
 
 ## 4. Profiles
 
+### Current MVP transport
+
+The mobile client currently performs an explicit-column `SELECT` and an atomic `UPDATE` directly against `public.profiles` through Supabase's Data API. This is intentionally narrow: grants and RLS fully express the rule “the authenticated actor may read and update selected fields only on their own row.” A repository validates the returned JSON and maps database `snake_case` into app `camelCase`.
+
+The `/me` routes below remain the future modular-API contract. They become useful when profile behavior needs server-side orchestration, privacy projections, auditing, or business rules that RLS alone cannot express clearly.
+
 ### `GET /me`
 
 Protected. Returns the caller's public-safe profile and onboarding state.

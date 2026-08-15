@@ -26,14 +26,15 @@ flowchart LR
 ## Phase 1 — Identity foundation: current
 
 - Create a user-owned Supabase development project — completed
-- Configure phone authentication and a real SMS provider/test path
+- Configure phone authentication and a fixed server-side development OTP — completed through a narrow hosted Management API update
+- Keep the hosted mapping out of public Git; real SMS-provider delivery remains deferred
 - Apply versioned `profiles` migration with Row Level Security — completed in development
 - Verify anonymous profile access is denied — completed
-- Connect real OTP flow and verify session restoration
-- Add minimal display-name onboarding and generated placeholder avatar
-- Add auth/profile integration tests and abuse-control checklist
+- Connect real OTP flow and verify session restoration — completed
+- Add minimal display-name onboarding and generated placeholder avatar — implemented; Simulator acceptance pending
+- Add auth/profile integration tests and abuse-control checklist — unit tests and hosted harness added; two-user run pending
 
-Exit condition: an OTP-authenticated user receives exactly one secure public profile and can restart the app with the session restored.
+Exit condition: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. The remaining proof is the two-actor hosted RLS matrix and onboarding interaction acceptance.
 
 ## Phase 2 — First real activity vertical slice
 

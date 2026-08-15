@@ -60,7 +60,41 @@ Supabase browser authorization
 | `migration list` | Local and remote both `202608150001` | Migration-history records agree. |
 | Anonymous `GET /rest/v1/profiles` | HTTP 401, PostgreSQL `42501` | Table exists but the anonymous role lacks access, as designed. |
 
-These checks do not yet prove that a newly verified Auth user receives exactly one profile or that owner/other-user RLS works. Those tests need authenticated sessions and are deliberately still open.
+These original deployment checks did not prove authenticated behavior. The later hosted fixed-OTP check proved that one newly verified Auth user receives exactly one owner-readable profile; the other-user and restricted-operation matrix remains open.
+
+### Test OTP decision
+
+NearHere will use a fixed **development-only** phone OTP before connecting a paid SMS provider. A test mapping tells Supabase Auth that one fictional phone number always accepts one predefined code. For that mapped number, Auth skips the SMS network but still executes the real server-side flow: it creates or finds an Auth user, verifies the code, issues a session, and fires the database trigger that creates the user's profile.
+
+```mermaid
+sequenceDiagram
+    participant App as NearHere app
+    participant Auth as Supabase Auth
+    participant SMS as SMS provider
+    participant DB as PostgreSQL
+    App->>Auth: Request OTP for mapped test number
+    Auth-->>SMS: No request: delivery is bypassed
+    App->>Auth: Verify fixed development code
+    Auth->>DB: Create auth user if needed
+    DB->>DB: Trigger creates public profile
+    Auth-->>App: Real access and refresh session
+```
+
+This is not a client-side fake login. The mobile app still calls `signInWithOtp` and `verifyOtp`, and Supabase still issues the session. It tests substantially more of the real system than a hard-coded “signed in” UI flag.
+
+The fixed hosted identity/code must not be committed to a public repository or enabled in production. The generated `config.toml` contains many Auth defaults, so `supabase config push` is a broad operation rather than a narrow OTP update. On 2026-08-15, that broad push was deliberately not performed. A narrow Management API `PATCH` changed only phone enablement, the test mapping, and its expiration. The hosted API requires a comma-separated `phone=code` string with E.164 digits and no leading `+`; that wire format is different from both a JSON object and the `phone:code` syntax shown for some self-hosted environment configuration.
+
+### Hosted test-OTP verification recorded on 2026-08-15
+
+| Check | Result | What it proves |
+| --- | --- | --- |
+| Management API Auth patch | HTTP 200 | Hosted phone Auth and the expiring test mapping were accepted. |
+| `POST /auth/v1/otp` | HTTP 200 | The fictional test number can start the real hosted Auth flow without an SMS provider. |
+| `POST /auth/v1/verify` | HTTP 200 and session present | Supabase validated the fixed code and issued a real authenticated session. |
+| Authenticated profile select | HTTP 200, exactly one row | The signup trigger created one profile and owner-scoped RLS allowed it to be read. |
+| Initial onboarding state | `needs_profile` | The database default matches the onboarding contract. |
+
+The verification script parsed only non-secret evidence. Access and refresh tokens were never printed and were deleted with the temporary response files. Mobile restart/session restoration was subsequently confirmed; cross-user RLS remains a separate test.
 
 ### Docker warning after deployment
 
@@ -73,6 +107,25 @@ The warning was classified as non-fatal because:
 3. The Data API recognized `profiles` and rejected it for the expected permission reason rather than reporting a missing relation.
 
 Docker Desktop remains needed before local `supabase start`, database reset, and full isolated migration tests. We do not treat a successful remote push as a substitute for that local test environment.
+
+Docker is a program that runs isolated service processes called **containers** from repeatable package descriptions called **images**. Supabase is not one process: local development starts PostgreSQL plus Auth, the REST gateway, Realtime, Storage, Studio, and supporting services. Docker gives those processes predictable versions, networking, and disposable data volumes without manually installing each server on macOS.
+
+```mermaid
+flowchart TB
+    APP["iOS Simulator / NearHere"] --> API["Local Supabase API gateway"]
+    subgraph DOCKER["Docker on the developer Mac"]
+        API --> AUTH["Auth"]
+        API --> REST["PostgREST / Data API"]
+        API --> REALTIME["Realtime"]
+        AUTH --> DB["PostgreSQL"]
+        REST --> DB
+        REALTIME --> DB
+        STUDIO["Supabase Studio"] --> DB
+        MAIL["Mail capture"] --> AUTH
+    end
+```
+
+Docker is useful when we want to reset data, replay every migration, test fixed OTP locally, inspect email without sending it, or deliberately break the database without risking the hosted development project. It is **not** required to run the React Native app, call hosted Supabase, or apply an already-reviewed migration to the hosted database. It is a developer-environment tool; NearHere users never install it.
 
 ## Framework-specific environment-variable names
 
@@ -115,8 +168,8 @@ This verifies:
 
 It does **not** verify:
 
-- phone authentication or SMS-provider configuration;
-- OTP delivery or verification;
+- real SMS-provider delivery;
+- mobile session restoration;
 - the profile migration, trigger, grants, or RLS policies;
 - database connectivity for product data;
 - session persistence inside the running mobile application.
@@ -285,7 +338,7 @@ For `public.profiles`, the migration deliberately grants authenticated `SELECT` 
 | Auth user deletion | Corresponding profile deletion | Cascades |
 | Invalid avatar/interests/name | Insert/update | Constraint failure |
 
-Current evidence: the anonymous select test is complete. The remaining rows require authenticated test users or protected administrative test execution after phone/test OTP is configured.
+Current evidence: anonymous denial and the first authenticated owner's single-profile read are complete. Cross-user and restricted-column cases require a second test identity and dedicated policy tests.
 
 ## Why no local database verification yet
 

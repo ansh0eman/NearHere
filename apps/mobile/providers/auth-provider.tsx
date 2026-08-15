@@ -14,6 +14,8 @@ type AuthContextValue = {
   pendingIntent: ProtectedIntent | null;
   pendingPhone: string | null;
   requestOtp: (phone: string) => Promise<AuthOperationResult>;
+  retrySessionRestore: () => void;
+  restoreErrorMessage: string | null;
   session: Session | null;
   setPendingIntent: (intent: ProtectedIntent | null) => void;
   signOut: () => Promise<AuthOperationResult>;
@@ -36,6 +38,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>('restoring');
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [pendingIntent, setPendingIntent] = useState<ProtectedIntent | null>(null);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [restoreErrorMessage, setRestoreErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const client = supabase;
@@ -45,14 +49,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     let isActive = true;
-    void client.auth.getSession().then(({ data }) => {
+    setStatus('restoring');
+    setRestoreErrorMessage(null);
+    void client.auth.getSession().then(({ data, error }) => {
       if (!isActive) return;
+      if (error) {
+        setSession(null);
+        setRestoreErrorMessage('NearHere could not restore your saved session. Try again.');
+        setStatus('restoreError');
+        return;
+      }
       setSession(data.session);
       setStatus(data.session ? 'signedIn' : 'signedOut');
     });
 
-    const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = client.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'INITIAL_SESSION') return;
       setSession(nextSession);
+      setRestoreErrorMessage(null);
       setStatus(nextSession ? 'signedIn' : 'signedOut');
     });
 
@@ -69,7 +83,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       data.subscription.unsubscribe();
       appStateSubscription.remove();
     };
-  }, []);
+  }, [restoreAttempt]);
+
+  function retrySessionRestore() {
+    setRestoreAttempt((attempt) => attempt + 1);
+  }
 
   async function requestOtp(phone: string): Promise<AuthOperationResult> {
     if (!supabase) return unavailableResult();
@@ -131,6 +149,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       pendingIntent,
       pendingPhone,
       requestOtp,
+      retrySessionRestore,
+      restoreErrorMessage,
       session,
       setPendingIntent,
       signOut,
@@ -138,7 +158,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       verifyOtp,
     }),
     // Functions intentionally close over current auth state and are refreshed with the context value.
-    [pendingIntent, pendingPhone, session, status],
+    [pendingIntent, pendingPhone, restoreErrorMessage, session, status],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

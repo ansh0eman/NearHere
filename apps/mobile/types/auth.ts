@@ -1,5 +1,6 @@
 export type AuthStatus =
   | 'restoring'
+  | 'restoreError'
   | 'signedOut'
   | 'sendingCode'
   | 'awaitingCode'

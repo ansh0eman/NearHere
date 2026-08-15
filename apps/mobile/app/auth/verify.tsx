@@ -35,7 +35,7 @@ export default function VerifyScreen() {
     }
 
     router.dismissAll();
-    router.replace('/');
+    router.replace('/onboarding/profile');
   }
 
   return (

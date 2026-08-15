@@ -18,7 +18,7 @@ The installed development build contains native code. Metro supplies frequently 
 - Node.js and npm
 - Xcode and an installed iOS Simulator runtime for iOS development
 - CocoaPods for compiling iOS native dependencies
-- A hosted Supabase project only when testing real phone authentication
+- A hosted Supabase project when testing the configured fixed development OTP or later real phone delivery
 
 ## First setup
 
@@ -76,7 +76,7 @@ app/          screens and file-based navigation routes
 components/   reusable presentation components
 hooks/        reusable React state/lifecycle behavior
 lib/          external-service and device-storage adapters
-providers/    app-wide context, currently authentication
+providers/    app-wide authentication and profile state machines
 types/        mobile domain and state types
 data/         explicitly labeled development fixtures
 assets/       images and fonts compiled or bundled with the app
@@ -86,6 +86,7 @@ assets/       images and fonts compiled or bundled with the app
 
 ```bash
 npm run lint
+npm run test:unit
 npx tsc --noEmit
 npx expo install --check
 ```
@@ -94,10 +95,10 @@ These checks answer different questions: lint checks configured code-quality rul
 
 ## Current versus planned behavior
 
-**Implemented:** map, fixture markers, permission states, manual location persistence, place search, tabs, phone/OTP screens, auth state provider, and Supabase client configuration boundary.
+**Implemented:** map, fixture markers, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration with an explicit retry gate, owner-profile loading, runtime profile validation, and display-name onboarding.
 
-**Needs external configuration:** real SMS OTP and hosted sessions.
+**Hosted configuration verified:** a fixed development OTP requests and verifies successfully, issues a real hosted session, creates the triggered profile, and restores the session after an app restart. Real SMS-provider delivery remains deferred.
 
-**Planned:** database-backed profiles and activities, transactional Join/Leave, host creation, chat, safety flows, MapLibre styling, and avatar builder.
+**Planned:** the second-actor RLS matrix, database-backed activities, transactional Join/Leave, host creation, chat, safety flows, MapLibre styling, and avatar builder.
 
 For the complete runbook, see [`../../docs/ios-simulator-workflow.md`](../../docs/ios-simulator-workflow.md). For architecture, see [`../../docs/system-design.md`](../../docs/system-design.md).

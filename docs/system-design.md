@@ -307,8 +307,8 @@ Scaling is a response to evidence. Adding Redis, queues, replicas, or microservi
 
 ## 13. What exists today
 
-**Implemented:** Expo/React Native native app, TypeScript domain boundaries, native map and fixture activities, foreground permission flow, persisted manual location, searchable development geocoder, native development build, phone/OTP screens, Supabase client boundary, typed auth states, session restoration behavior, and protected-intent modeling.
+**Implemented:** Expo/React Native native app, TypeScript domain boundaries, native map and fixture activities, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, owner-profile repository/runtime adapter, a discriminated profile state machine, and atomic display-name onboarding.
 
-**Deployed to development in Lesson 4:** versioned identity/profile SQL migration, owner-only Row Level Security policies, automatic profile creation trigger, and shared profile contracts. Remote migration history matches local history, and anonymous profile-table access is denied; authenticated trigger/owner/cross-user tests remain pending.
+**Deployed to development:** versioned identity/profile SQL migration, owner-only Row Level Security policies, automatic profile creation trigger, and shared profile contracts. Remote migration history matches local history; anonymous denial and one authenticated owner/trigger read are proven. The two-actor cross-user and restricted-operation matrix remains pending.
 
-**Not yet production functionality:** hosted Supabase configuration, real SMS delivery, deployed database/API, live activities, transactional joins, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration.
+**Not yet production functionality:** real SMS delivery, the NearHere activity API, live activities, transactional joins, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration.
