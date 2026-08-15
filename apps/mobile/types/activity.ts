@@ -6,10 +6,14 @@ export type {
   ActivitySummary,
   CreateActivityRequest,
   CreateActivityResponse,
+  DecideMembershipRequestResponse,
   ExactActivityLocation,
   JoinActivityResponse,
   JoinActivityOutcome,
   JoinMode,
+  LeaveActivityResponse,
+  MembershipRequestDecision,
+  MembershipRequestSummary,
   MyPlanSummary,
   NearbyActivitiesQuery,
   NearbyActivitySummary,
@@ -19,7 +23,11 @@ export type {
 import type {
   ActivityKind,
   ActivitySummary,
+  DecideMembershipRequestResponse,
   JoinActivityResponse,
+  LeaveActivityResponse,
+  MembershipRequestDecision,
+  MembershipRequestSummary,
   MyPlanSummary,
   NearbyActivitySummary,
 } from '../../../packages/contracts/activity';
@@ -42,6 +50,38 @@ export type CreateActivityOperationResult =
 export type JoinActivityOperationResult =
   | { ok: true; result: JoinActivityResponse }
   | { ok: false; message: string };
+
+export type LeaveActivityOperationResult =
+  | { ok: true; result: LeaveActivityResponse }
+  | { ok: false; message: string };
+
+export type DecideMembershipRequestOperationResult =
+  | { ok: true; result: DecideMembershipRequestResponse }
+  | { ok: false; message: string };
+
+export interface DecideMembershipRequestInput {
+  activityId: string;
+  requesterUserId: string;
+  decision: MembershipRequestDecision;
+}
+
+export interface HostedMembershipRequest extends MembershipRequestSummary {
+  activityId: string;
+  activityTitle: string;
+  activityStartsAt: string;
+  participantCount: number;
+  capacity: number;
+}
+
+export type MembershipRequestsResult =
+  | { ok: true; requests: MembershipRequestSummary[] }
+  | { ok: false; message: string };
+
+export type MembershipRequestsState =
+  | { status: 'signedOut'; requests: [] }
+  | { status: 'loading'; requests: HostedMembershipRequest[] }
+  | { status: 'ready'; requests: HostedMembershipRequest[] }
+  | { status: 'error'; requests: HostedMembershipRequest[]; message: string };
 
 export type MyPlansResult =
   | { ok: true; plans: MyPlanSummary[] }

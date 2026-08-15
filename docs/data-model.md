@@ -86,7 +86,7 @@ If exact and approximate coordinates shared a client-readable row, every query, 
 
 Composite identity: `(activity_id, user_id)`.
 
-The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. The deployed `join_activity` command now creates or returns participant membership through the existing `pending`, `accepted`, and `waitlisted` states. `rejected`, `left`, and `removed` exist in the enum but their commands are not implemented yet.
+The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. The deployed `join_activity` command creates or returns participant membership through `pending`, `accepted`, and `waitlisted`. Deployed migration `007` implements `left`, host-produced `rejected`, and deterministic waitlist promotion. Its schema lint/parity evidence is complete, while hosted multi-actor behavior remains unverified. `removed` still has no command.
 
 The composite primary key is also the natural idempotency key for this one operation: the same actor/activity pair cannot produce a second membership row. If an active membership already exists, the function returns that durable status before attempting an insert. This is narrower than a general request-idempotency system because it cannot distinguish two different payloads under the same client-generated key or replay an arbitrary stored HTTP response.
 
@@ -105,6 +105,10 @@ sequenceDiagram
     Row-->>B: Acquire after A
     B->>M: Recount including A, then choose outcome
 ```
+
+Migration `007` also adds a partial queue index on `(activity_id, status, created_at, user_id)` for pending/waitlisted participant rows. It supports two bounded operations without granting table reads: a host-only FIFO pending-request projection and the oldest-waiter lookup during Leave. The activity row remains the serialization lock because the capacity invariant spans the parent row and many membership rows.
+
+An accepted participant Leave sets `status = left` and `joined_at = null`. If the activity is published and has not ended, the same transaction promotes at most one waitlisted participant to accepted and sets that participant's `joined_at`. Pending/waitlisted Leave simply becomes `left`; rejected/removed memberships cannot disguise themselves as voluntary Leave; hosts require a separate cancellation/ownership flow.
 
 ### Lesson 8 caller-scoped Plans projection
 
@@ -127,7 +131,7 @@ flowchart TB
 
 The function is `stable` because it reads but does not intentionally modify data. It is `security definer` because normal client roles deliberately lack direct access to these tables; its empty `search_path`, schema-qualified names, explicit return columns, actor check, non-null bounded limit, status filter, and authenticated-only execute grant constrain that elevated privilege. The host already has an `accepted` host membership by database constraint, so the same accepted/active release rule unlocks the host's exact point without a special client-side exception.
 
-The ordering places non-ended plans first by nearest start time, followed by ended plans from newest start time backward. This is useful presentation ordering, not an archival or retention policy. Cancelled/completed activities can still be projected if the caller retains an active membership; the screen does not yet provide cancellation, leave, approval, or removal commands.
+The ordering places non-ended plans first by nearest start time, followed by ended plans from newest start time backward. This is useful presentation ordering, not an archival or retention policy. Cancelled/completed activities can still be projected if the caller retains an active membership. Leave and approval/rejection now exist in the deployed development database and local mobile source, pending hosted/Simulator acceptance; cancellation and removal commands remain unimplemented.
 
 ### `idempotency_records`
 

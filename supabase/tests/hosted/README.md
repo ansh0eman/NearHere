@@ -55,3 +55,132 @@ error codes. A successful run ends with:
 ```text
 PASS hosted profile RLS verification complete
 ```
+
+## Hosted participation verification
+
+`participation.mjs` exercises the deployed participation boundary through the
+same publishable-key Data API that the mobile app uses. It authenticates two
+fixed-OTP fictional users, temporarily completes their profiles, and creates
+clearly `TEST`-labelled development activities. It never receives a database
+password, Management API token, or service-role key.
+
+The two-user matrix checks:
+
+- anonymous denial for Join, Leave, host decisions, host request reads, and
+  Plans;
+- caller-scoped Plans using one host-only activity per actor;
+- open-mode acceptance and an idempotent Join retry;
+- exact location release for an accepted member;
+- idempotent Leave, capacity release, and removal from active Plans;
+- approval-mode `pending`, a `null` exact point, and the host-only pending queue;
+- idempotent host approval, its capacity effect, and exact-point release; and
+- idempotent host rejection and removal from active Plans.
+
+With optional C, the harness sends B and C to `join_activity` concurrently for
+one final place and requires exactly one `accepted` plus one `waitlisted`
+outcome, both observing the capacity-safe count. Leaving the accepted actor must
+promote the waiter atomically. Optional D adds a second waiter so the harness
+can prove chronological FIFO selection.
+
+### Important limitation of two actors
+
+Capacity is at least two and the accepted host consumes one place. With only a
+host and one other identity, the other actor can fill the final place but there
+is no third identity that can become waitlisted. Therefore a two-user black-box
+test cannot honestly create both an accepted participant and a waitlisted
+participant on the same activity. With only A and B, the runner reports honest
+`SKIP` lines. Optional Actor C enables a real concurrent race for the final
+place plus the waitlist/promotion case. Optional Actors C and D together enable
+FIFO choice among two waiters: one host, one
+accepted participant, and two waitlisted participants. A disposable local
+database fixture is another option. Do not use a service-role key in this
+client-boundary harness.
+
+This is a mathematical test-fixture constraint, not missing production logic.
+`leave_activity` reports `waitlist_promoted`, and the database orders promotion
+by `(created_at, user_id)`. The two-user run still asserts that leaving without
+a waiter returns `waitlist_promoted = false`.
+
+### Hosted data lifecycle
+
+The harness restores every configured actor's client-writable profile fields in
+`finally`, including after a failed assertion. It cannot delete or cancel the
+host-owned test activities because no such client command exists yet. The A/B run adds
+four future activities; C adds one promotion fixture; D adds one FIFO fixture.
+Every title is clearly test-labelled. Run this only against the development
+project, not production. Activity cleanup remains a deliberate future
+admin/cancellation task.
+
+### Run manually from the repository root
+
+Use the same two fictional identities configured in the hosted fixed-OTP map.
+Read values silently so phones and codes do not appear in shell history or
+terminal output:
+
+```zsh
+read -s "PARTICIPATION_PHONE_A?Test phone A (E.164): "; printf '\n'
+read -s "PARTICIPATION_OTP_A?Test OTP A: "; printf '\n'
+read -s "PARTICIPATION_PHONE_B?Test phone B (E.164): "; printf '\n'
+read -s "PARTICIPATION_OTP_B?Test OTP B: "; printf '\n'
+export PARTICIPATION_PHONE_A PARTICIPATION_OTP_A PARTICIPATION_PHONE_B PARTICIPATION_OTP_B
+
+node --env-file=apps/mobile/.env supabase/tests/hosted/participation.mjs
+
+unset PARTICIPATION_PHONE_A PARTICIPATION_OTP_A PARTICIPATION_PHONE_B PARTICIPATION_OTP_B
+```
+
+The A/B variables are required. To exercise waitlisting and one-waiter
+promotion, also configure fictional Actor C. To prove selection order between
+two waiters, configure both C and D. Repeat the required A/B reads and exports
+above, then add the optional actors before invoking Node:
+
+```zsh
+read -s "PARTICIPATION_PHONE_C?Test phone C (E.164): "; printf '\n'
+read -s "PARTICIPATION_OTP_C?Test OTP C: "; printf '\n'
+read -s "PARTICIPATION_PHONE_D?Test phone D (E.164, optional): "; printf '\n'
+read -s "PARTICIPATION_OTP_D?Test OTP D (optional): "; printf '\n'
+export PARTICIPATION_PHONE_C PARTICIPATION_OTP_C
+
+# Export D only when both D values were supplied.
+if [[ -n "$PARTICIPATION_PHONE_D" && -n "$PARTICIPATION_OTP_D" ]]; then
+  export PARTICIPATION_PHONE_D PARTICIPATION_OTP_D
+fi
+
+node --env-file=apps/mobile/.env supabase/tests/hosted/participation.mjs
+
+unset PARTICIPATION_PHONE_A PARTICIPATION_OTP_A PARTICIPATION_PHONE_B PARTICIPATION_OTP_B
+unset PARTICIPATION_PHONE_C PARTICIPATION_OTP_C PARTICIPATION_PHONE_D PARTICIPATION_OTP_D
+```
+
+Add C and D to the hosted fixed-OTP mapping before running those branches.
+Supplying only one variable of an actor pair fails closed before authentication,
+and D is rejected unless C is also configured.
+
+The runner prints only actor labels plus named `PASS`, `FAIL`, or `SKIP`
+checks. It never prints phones, OTPs, access/refresh tokens, Auth response
+bodies, user IDs, activity IDs, or exact coordinates. A successful two-actor
+run ends with these expected lines:
+
+```text
+SKIP capacity waitlist and promotion require optional Actor C
+SKIP FIFO ordering proof requires optional Actors C and D
+PASS hosted participation verification complete
+```
+
+When C is configured, the first `SKIP` is replaced by `PASS` checks for
+waitlisting and promotion. When both C and D are configured, neither branch is
+skipped and the FIFO assertion proves that C (created at least 50 milliseconds
+before D) is promoted first. It does not force equal database timestamps, so
+the `user_id` tie-breaker still needs a controlled local fixture if that exact
+tie branch must be observed dynamically.
+
+Do not interpret an expected `SKIP` as runtime proof of promotion. Before
+release, run with the additional configured identities and assert that:
+
+1. one participant is accepted while another is waitlisted at capacity;
+2. the waitlisted plan contains `null` exact coordinates;
+3. the accepted participant leaves;
+4. with two waiters, exactly the oldest `created_at` waiter is promoted;
+5. `waitlist_promoted` is true and accepted count remains within capacity; and
+6. the promoted caller's Plans row changes to accepted and only then contains
+   the exact active meeting point.

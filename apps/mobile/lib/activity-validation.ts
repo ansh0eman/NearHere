@@ -3,9 +3,12 @@ import type {
   ActivityMembershipRole,
   ActivitySummary,
   ActivityStatus,
+  DecideMembershipRequestResponse,
   JoinMode,
   JoinActivityResponse,
   JoinActivityOutcome,
+  LeaveActivityResponse,
+  MembershipRequestSummary,
   MyPlanSummary,
   NearbyActivitySummary,
 } from '@/types/activity';
@@ -169,4 +172,52 @@ export function parseJoinActivityResponseRow(value: unknown): JoinActivityRespon
   const participantCount = requireInteger(value, 'participant_count');
   if (participantCount < 1) throw new Error('Join response has an invalid participant_count.');
   return { membershipStatus: membershipStatus as JoinActivityOutcome, participantCount };
+}
+
+function parseParticipantMutationRow(
+  value: unknown,
+  allowedStatuses: readonly string[],
+  responseName: string,
+) {
+  if (!isRecord(value)) throw new Error(`${responseName} response is not an object.`);
+  const membershipStatus = value.membership_status;
+  if (typeof membershipStatus !== 'string' || !allowedStatuses.includes(membershipStatus)) {
+    throw new Error(`${responseName} response has an invalid membership_status.`);
+  }
+  const participantCount = requireInteger(value, 'participant_count');
+  if (participantCount < 1) throw new Error(`${responseName} response has an invalid participant_count.`);
+  return { membershipStatus, participantCount };
+}
+
+export function parseLeaveActivityResponseRow(value: unknown): LeaveActivityResponse {
+  const parsed = parseParticipantMutationRow(value, ['left'], 'Leave');
+  if (!isRecord(value) || typeof value.waitlist_promoted !== 'boolean') {
+    throw new Error('Leave response has an invalid waitlist_promoted.');
+  }
+  return { ...parsed, waitlistPromoted: value.waitlist_promoted } as LeaveActivityResponse;
+}
+
+export function parseDecideMembershipRequestResponseRow(
+  value: unknown,
+): DecideMembershipRequestResponse {
+  return parseParticipantMutationRow(
+    value,
+    ['accepted', 'waitlisted', 'rejected'],
+    'Membership decision',
+  ) as DecideMembershipRequestResponse;
+}
+
+export function parseMembershipRequestRow(value: unknown): MembershipRequestSummary {
+  if (!isRecord(value)) throw new Error('Membership request response is not an object.');
+
+  return {
+    requesterUserId: requireString(value, 'requester_user_id'),
+    requesterDisplayName: requireString(value, 'requester_display_name'),
+    requestedAt: requireTimestamp(value, 'requested_at'),
+  };
+}
+
+export function parseMembershipRequestRows(value: unknown): MembershipRequestSummary[] {
+  if (!Array.isArray(value)) throw new Error('Membership requests response is not a list.');
+  return value.map(parseMembershipRequestRow);
 }

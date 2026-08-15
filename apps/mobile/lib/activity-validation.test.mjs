@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import {
   parseActivitySummaryRow,
+  parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
+  parseLeaveActivityResponseRow,
+  parseMembershipRequestRows,
   parseMyPlanRow,
   parseMyPlanRows,
   parseNearbyActivityRow,
@@ -236,6 +239,61 @@ test('join parser rejects unknown states and invalid counts', () => {
     () => parseJoinActivityResponseRow({ membership_status: 'accepted', participant_count: 0 }),
     /invalid participant_count/,
   );
+});
+
+test('leave parser requires the durable left state and promotion flag', () => {
+  assert.deepEqual(
+    parseLeaveActivityResponseRow({
+      membership_status: 'left',
+      participant_count: 3,
+      waitlist_promoted: true,
+    }),
+    { membershipStatus: 'left', participantCount: 3, waitlistPromoted: true },
+  );
+  assert.throws(
+    () => parseLeaveActivityResponseRow({
+      membership_status: 'left',
+      participant_count: 3,
+      waitlist_promoted: null,
+    }),
+    /invalid waitlist_promoted/,
+  );
+});
+
+test('host decision parser accepts approval, waitlist, and rejection outcomes', () => {
+  for (const membershipStatus of ['accepted', 'waitlisted', 'rejected']) {
+    assert.equal(
+      parseDecideMembershipRequestResponseRow({
+        membership_status: membershipStatus,
+        participant_count: 2,
+      }).membershipStatus,
+      membershipStatus,
+    );
+  }
+  assert.throws(
+    () => parseDecideMembershipRequestResponseRow({
+      membership_status: 'pending',
+      participant_count: 2,
+    }),
+    /invalid membership_status/,
+  );
+});
+
+test('pending request parser maps only host-safe request identity fields', () => {
+  assert.deepEqual(
+    parseMembershipRequestRows([{
+      requester_user_id: 'user-2',
+      requester_display_name: 'Maya',
+      requested_at: '2026-08-16T10:00:00.000Z',
+      exact_latitude: 12.9,
+    }]),
+    [{
+      requesterUserId: 'user-2',
+      requesterDisplayName: 'Maya',
+      requestedAt: '2026-08-16T10:00:00.000Z',
+    }],
+  );
+  assert.throws(() => parseMembershipRequestRows({}), /not a list/);
 });
 
 test('plans parser releases exact coordinates only for accepted membership', () => {

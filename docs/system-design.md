@@ -210,10 +210,11 @@ stateDiagram-v2
     [*] --> Accepted: open join with capacity
     [*] --> Waitlisted: no capacity
     Pending --> Accepted: host approves and capacity exists
+    Pending --> Waitlisted: host approves but activity is full
     Pending --> Rejected: host rejects
-    Pending --> Cancelled: requester withdraws
+    Pending --> Left: requester withdraws
     Waitlisted --> Accepted: capacity opens
-    Waitlisted --> Cancelled: requester withdraws
+    Waitlisted --> Left: requester withdraws
     Accepted --> Left: participant leaves
     Accepted --> Removed: host or moderator removes
 ```
@@ -248,7 +249,35 @@ sequenceDiagram
 
 Open activities accept while capacity remains and otherwise waitlist. Approval-mode activities return `pending` without consuming accepted capacity. If the actor already has an `accepted`, `pending`, or `waitlisted` membership, the operation returns it unchanged. The composite membership primary key prevents duplicates, so current Join is retry-safe without a separate client-generated idempotency key.
 
-This is a narrower guarantee than the planned general idempotency system. It does not yet store request fingerprints/responses for arbitrary commands, and the row-lock design has not yet been proven with two simultaneous hosted clients.
+This is a narrower guarantee than the planned general idempotency system. It does not store request fingerprints/responses for arbitrary commands. Migration `007` extends the same activity-row serialization point to Leave and host decisions so capacity is not protected by Join alone.
+
+### Shared lock for every capacity-changing command
+
+Capacity is a **cross-row invariant**: the activity stores the limit, while many membership rows store who consumes it. A transaction that changes either side of the count must lock the same parent activity row before it reads the count or changes membership. Otherwise Join and approval could each observe the final place and both accept, or Leave could promote a waiter while another request consumes the opening.
+
+```mermaid
+flowchart TD
+    J["Join"] --> L["Lock activity row FOR UPDATE"]
+    A["Host approve/reject"] --> L
+    V["Participant Leave"] --> L
+    L --> S["Read durable membership state"]
+    S --> C["Recount accepted memberships"]
+    C --> W["Write one canonical transition"]
+    W --> K["Commit and release lock"]
+```
+
+The source implementation serializes only commands for the same activity; unrelated activities remain concurrent. An accepted Leave from a published, non-ended activity selects the oldest waiter by `(created_at, user_id)`, marks that waiter accepted in the same transaction, and returns whether promotion occurred. This is deterministic FIFO: creation time defines queue order and user ID provides a stable tie-breaker.
+
+Every command is retry-safe for the same logical state:
+
+- Join returns an existing `accepted`, `pending`, or `waitlisted` membership.
+- Leave returns durable `left` without promoting twice.
+- Repeating `approve` returns `accepted` or `waitlisted`; repeating `reject` returns `rejected`.
+- An opposite decision or an invalid terminal transition is rejected rather than silently rewritten.
+
+These properties are deployed in development migration `007`. Local/remote
+migration history is in parity and scoped schema lint passes; the multi-actor
+runtime harness remains the evidence gate for their behavior under real calls.
 
 Required invariants:
 
@@ -301,7 +330,7 @@ Every network input is runtime data, even when the client and server share TypeS
 | Session expired | Refresh once; if invalid, return to phone auth while preserving safe protected intent. |
 | Nearby API timeout | Keep the last labeled result if appropriate, show retry, do not invent live activities. |
 | Duplicate Join retry | Idempotency returns the existing result. |
-| Concurrent last-place joins | Row lock is designed to accept at most one and waitlist the other; two-client proof remains pending. |
+| Concurrent last-place joins | All capacity writers use one activity-row lock; optional hosted Actor C will race two real sessions and require exactly one accepted plus one waitlisted result. |
 | Realtime disconnected | Persisted API remains authoritative; reconnect and refetch from a cursor. |
 | Redis unavailable in the future | Lose ephemeral presence/rate-limit optimization gracefully; never lose memberships. |
 
@@ -357,8 +386,10 @@ Scaling is a response to evidence. Adding Redis, queues, replicas, or microservi
 
 ## 13. What exists today
 
-**Implemented:** Expo/React Native native app, TypeScript/runtime boundaries, native live-discovery map states, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, profile onboarding, first native Host form, Join feedback, and My Plans signed-out/loading/empty/error/populated states.
+**Implemented in source:** Expo/React Native native app, TypeScript/runtime boundaries, native live-discovery map states, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, profile onboarding, native Host form, Join feedback, My Plans states, participant Leave, and host request approval/rejection. Leave optimistically removes the plan so an exact point disappears immediately, invalidates older reads, restores the row on failure, and then refreshes server truth. Host decisions invalidate in-flight request reads, remove the decided request locally after success, and refetch both requests and Plans.
 
-**Deployed to development:** versioned identity/profile, PostGIS activity, capacity-safe Join, Join hardening, caller-scoped My Plans, and forward-only Plans privacy-hardening migrations; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; anonymous-safe nearby discovery; authenticated `join_activity` with per-activity row locking/natural-key idempotency; and authenticated `my_plans` with accepted-plus-active exact-location release. Anonymous discovery/direct-table/Join/Plans denial and authenticated Host/host-idempotency/accepted-host Plans Simulator paths are proven.
+**Deployed to development:** versioned identity/profile, PostGIS activity, capacity-safe Join, Join hardening, caller-scoped My Plans, forward-only Plans privacy hardening, and migration `007` participation transitions; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; anonymous-safe nearby discovery; authenticated `join_activity` with per-activity row locking/natural-key idempotency; authenticated `my_plans` with accepted-plus-active exact-location release; and authenticated Leave/host-decision/request-queue RPCs. Anonymous discovery/direct-table/Join/Plans denial and authenticated Host/host-idempotency/accepted-host Plans Simulator paths are proven. Migration `007` has local/remote history parity and clean scoped schema lint, but its runtime behavior is not yet hosted-verified.
 
-**Not yet verified or implemented:** second-user acceptance/capacity/waitlist/approval behavior, concurrent last-place proof, signed-out and locked-location Plans interaction acceptance, cross-user Plans isolation proof, approve/reject/Leave/removal, useful plan-detail/directions UI, activity cancellation, real SMS delivery, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration. The two-actor profile RLS matrix also remains pending.
+**Implemented but not yet hosted-verified:** migration `007` Leave, host decision, FIFO promotion, and host-scoped request projection; the corresponding mobile repositories, runtime parsers, hooks, and UI; and the A/B plus optional C/D hosted harness.
+
+**Not yet verified or implemented:** run the multi-actor hosted matrix; Simulator acceptance for Leave/approval/locked-location transitions; equal-timestamp FIFO tie-break runtime proof; participant removal; useful plan detail/directions; activity cancellation; real SMS delivery; realtime chat; moderation; MapLibre styling; custom avatar builder; payments; recommendations; direct messages; or recurring-event administration.

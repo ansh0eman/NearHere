@@ -96,6 +96,12 @@ The mobile app currently calls four PostgreSQL functions through Supabase RPC:
 - `join_activity` is executable only by an authenticated user with a completed profile. It locks the activity row, returns an existing durable membership on retry, or creates an `accepted`, `pending`, or `waitlisted` participant membership.
 - `my_plans` is executable only by authenticated users. It derives the caller from the session and returns only that caller's hosted/joined/requested/waitlisted activities. Exact meeting coordinates are returned only when that caller's durable membership is `accepted` **and** the activity is still published and not ended; otherwise they are `null`.
 
+Deployed migration `007` and the matching mobile source add three authenticated RPCs:
+
+- `leave_activity(p_activity_id)` derives the participant, returns `{ membership_status: left, participant_count, waitlist_promoted }`, and promotes at most one FIFO waiter atomically.
+- `decide_activity_request(p_activity_id, p_requester_user_id, p_decision)` accepts `approve` or `reject`; only the activity host may decide a pending participant request. Approval returns `accepted` when capacity exists or `waitlisted` when full; rejection returns `rejected`.
+- `host_pending_activity_requests(p_activity_id, p_limit)` returns only requester ID, display name, and request timestamp to the host, ordered FIFO and bounded to 1–100 rows.
+
 The tables have no client-facing grants. These RPCs are the first modular-monolith implementation boundary; the HTTP routes below remain the stable future API contract when an application server takes over orchestration.
 
 ### Current MVP `my_plans(limit)` read model
@@ -165,6 +171,12 @@ Outcome rules:
 This operation is **semantically idempotent by natural key**: the primary key `(activity_id, user_id)` represents one membership, and an early return preserves an existing active outcome. It does not yet implement the general future `Idempotency-Key` record/replay system described below. Anonymous execution is denied, incomplete profiles are rejected, and unavailable/non-published/ended activities cannot be joined.
 
 The mobile repository runtime-validates the returned `{ membership_status, participant_count }` row. The map disables duplicate submission while one request is active, refreshes discovery after success, and shows status-specific copy. These client controls improve UX; the database key, lock, and transaction provide correctness.
+
+### Deployed to development, pending runtime acceptance: Leave and host decisions
+
+`leave_activity` and `decide_activity_request` lock the same activity row used by Join before changing any capacity-consuming state. This creates one serial order for Join, approval, Leave, and promotion on a given activity. Retrying the same command returns its durable outcome; opposite terminal transitions fail.
+
+The host request projection is deliberately smaller than `my_plans`: it exposes only what a host needs to decide a pending request and never joins private locations. All three functions derive the caller from `auth.uid()`, use `SECURITY DEFINER` with an empty search path and schema-qualified objects, revoke execution from `public`/`anon`, and grant only `authenticated` execution. Migration history parity and scoped schema lint prove deployment shape; behavior remains unproven until the black-box actor matrix passes.
 
 ### Future HTTP commands
 

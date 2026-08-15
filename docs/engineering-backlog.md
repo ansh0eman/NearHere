@@ -44,9 +44,12 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Wire authentication/profile gates, protected-intent resumption, runtime parsing, and status-specific mobile feedback
 - [x] Verify anonymous Join denial and existing-host idempotent acceptance in Simulator
 - [ ] Add general idempotency-key records for commands whose identity is not sufficient
-- [ ] Implement approve/reject, leave, and removal transitions
-- [ ] Prove last-place behavior with concurrent integration tests
-- [ ] Verify second-user accepted, pending, and waitlisted outcomes against hosted data
+- [x] Implement approve/reject and Leave transitions with FIFO waitlist promotion in migration/mobile source
+- [x] Deploy migration `007` and verify local/remote parity plus scoped schema lint
+- [ ] Accept Leave/host decisions in Simulator
+- [ ] Implement participant removal separately from voluntary Leave
+- [x] Build an optional C/D hosted harness for concurrent last-place and FIFO-promotion proof
+- [ ] Run the hosted A/B/C/D matrix and record second-user/concurrency evidence
 - [x] Add an authenticated caller-scoped Plans read model and native Plans states
 - [x] Release exact coordinates only for accepted membership while the activity is published and not ended
 - [x] Verify the accepted host Plans card and exact coordinate in Simulator

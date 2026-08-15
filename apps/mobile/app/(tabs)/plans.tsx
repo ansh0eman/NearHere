@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,8 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMyPlans } from '@/hooks/use-my-plans';
+import { useMembershipRequests } from '@/hooks/use-membership-requests';
 import { useAuth } from '@/providers/auth-provider';
-import type { MyPlanSummary } from '@/types/activity';
+import type { HostedMembershipRequest, MyPlanSummary } from '@/types/activity';
 
 const STATUS_LABELS: Record<MyPlanSummary['membershipStatus'], string> = {
   accepted: 'Going',
@@ -33,17 +35,59 @@ function formatPlanTime(value: string) {
 export default function PlansScreen() {
   const router = useRouter();
   const { session, setPendingIntent } = useAuth();
-  const { refresh, state } = useMyPlans(session?.user.id ?? null);
+  const userId = session?.user.id ?? null;
+  const { actionError, actionNotice, leave, leavingActivityId, refresh, state } = useMyPlans(userId);
+  const {
+    actionError: requestActionError,
+    actionNotice: requestActionNotice,
+    decide,
+    decidingKey,
+    refresh: refreshRequests,
+    state: requestState,
+  } = useMembershipRequests(userId, state.plans);
 
   useFocusEffect(
     useCallback(() => {
       if (session) void refresh();
-    }, [refresh, session]),
+      if (session) void refreshRequests();
+    }, [refresh, refreshRequests, session]),
   );
+
+  function confirmLeave(plan: MyPlanSummary) {
+    const membershipName = plan.membershipStatus === 'pending'
+      ? 'join request'
+      : plan.membershipStatus === 'waitlisted' ? 'waitlist place' : 'activity';
+    Alert.alert(
+      `Leave ${membershipName}?`,
+      plan.membershipStatus === 'accepted'
+        ? 'You will immediately lose access to the private meeting point. You can try to join again later if the activity is still available.'
+        : plan.membershipStatus === 'pending'
+          ? 'This withdraws your request. You can request to join again later.'
+          : 'This gives up your waitlist place. You can try to join again later.',
+      [
+        { text: 'Keep plan', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => { void leave(plan.id); },
+        },
+      ],
+    );
+  }
 
   function beginSignIn() {
     setPendingIntent({ kind: 'openPlans' });
     router.push('/auth/phone');
+  }
+
+  async function handleDecision(
+    activityId: string,
+    requesterUserId: string,
+    decision: 'approve' | 'reject',
+  ) {
+    const changed = await decide(activityId, requesterUserId, decision);
+    if (changed) void refresh();
+    return changed;
   }
 
   return (
@@ -86,6 +130,27 @@ export default function PlansScreen() {
           />
         ) : (
           <View style={styles.list}>
+            {(leavingActivityId || actionError || actionNotice) && (
+              <View style={[
+                styles.errorBanner,
+                (leavingActivityId || actionNotice) && styles.progressBanner,
+              ]}>
+                {leavingActivityId && <ActivityIndicator color="#3E8E68" size="small" />}
+                <Text style={leavingActivityId || actionNotice ? styles.progressBannerText : styles.errorBannerText}>
+                  {leavingActivityId
+                    ? 'Leaving activity and removing private access…'
+                    : actionError ?? actionNotice}
+                </Text>
+              </View>
+            )}
+            <RequestsSection
+              actionError={requestActionError}
+              actionNotice={requestActionNotice}
+              decidingKey={decidingKey}
+              onDecide={handleDecision}
+              onRetry={() => void refreshRequests()}
+              state={requestState}
+            />
             {state.status === 'loading' && (
               <View style={styles.refreshRow}>
                 <ActivityIndicator color="#FF6B4A" size="small" />
@@ -98,7 +163,7 @@ export default function PlansScreen() {
               </Pressable>
             )}
             {state.plans.map((plan) => (
-              <PlanCard key={plan.id} plan={plan} />
+              <PlanCard key={plan.id} onLeave={() => confirmLeave(plan)} plan={plan} />
             ))}
           </View>
         )}
@@ -107,7 +172,7 @@ export default function PlansScreen() {
   );
 }
 
-function PlanCard({ plan }: { plan: MyPlanSummary }) {
+function PlanCard({ onLeave, plan }: { onLeave: () => void; plan: MyPlanSummary }) {
   const isHost = plan.membershipRole === 'host';
   const meetingPoint = plan.exactMeetingLocation;
   const hasEnded = new Date(plan.endsAt).getTime() <= Date.now();
@@ -162,6 +227,138 @@ function PlanCard({ plan }: { plan: MyPlanSummary }) {
                 ? 'It appears after the host accepts your request.'
                 : 'It appears if a place opens and you are accepted.'}
           </Text>
+        </View>
+      </View>
+      {!isHost && !isInactive && (
+        <Pressable
+          accessibilityLabel={`Leave ${plan.title}`}
+          accessibilityRole="button"
+          onPress={onLeave}
+          style={({ pressed }) => [styles.leaveButton, pressed && styles.buttonPressed]}>
+          <Ionicons color="#9D3E2B" name="exit-outline" size={17} />
+          <Text style={styles.leaveButtonText}>
+            {plan.membershipStatus === 'pending'
+              ? 'Withdraw request'
+              : plan.membershipStatus === 'waitlisted' ? 'Leave waitlist' : 'Leave activity'}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function RequestsSection({
+  actionError,
+  actionNotice,
+  decidingKey,
+  onDecide,
+  onRetry,
+  state,
+}: {
+  actionError: string | null;
+  actionNotice: string | null;
+  decidingKey: string | null;
+  onDecide: (
+    activityId: string,
+    requesterUserId: string,
+    decision: 'approve' | 'reject',
+  ) => Promise<boolean>;
+  onRetry: () => void;
+  state: ReturnType<typeof useMembershipRequests>['state'];
+}) {
+  if (state.status === 'signedOut' || (state.status === 'ready' && state.requests.length === 0)) {
+    return null;
+  }
+  if (state.status === 'loading' && state.requests.length === 0) {
+    return (
+      <View style={styles.requestsLoading}>
+        <ActivityIndicator color="#FF6B4A" size="small" />
+        <Text style={styles.refreshText}>Checking join requests…</Text>
+      </View>
+    );
+  }
+  if (state.status === 'error' && state.requests.length === 0) {
+    return (
+      <Pressable accessibilityRole="button" onPress={onRetry} style={styles.errorBanner}>
+        <Text style={styles.errorBannerText}>{state.message} Tap to retry.</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={styles.requestsSection}>
+      <View style={styles.sectionHeadingRow}>
+        <View>
+          <Text style={styles.sectionEyebrow}>HOST TOOLS</Text>
+          <Text style={styles.sectionTitle}>Join requests</Text>
+        </View>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{state.requests.length}</Text>
+        </View>
+      </View>
+      {actionError && <Text style={styles.inlineError}>{actionError}</Text>}
+      {actionNotice && <Text style={styles.inlineNotice}>{actionNotice}</Text>}
+      {state.requests.map((request) => {
+        const key = `${request.activityId}:${request.requesterUserId}`;
+        return (
+          <RequestCard
+            disabled={decidingKey !== null}
+            isDeciding={decidingKey === key}
+            key={key}
+            onDecide={(decision) => onDecide(
+              request.activityId,
+              request.requesterUserId,
+              decision,
+            )}
+            request={request}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+function RequestCard({
+  disabled,
+  isDeciding,
+  onDecide,
+  request,
+}: {
+  disabled: boolean;
+  isDeciding: boolean;
+  onDecide: (decision: 'approve' | 'reject') => Promise<boolean>;
+  request: HostedMembershipRequest;
+}) {
+  return (
+    <View style={styles.requestCard}>
+      <View style={styles.requestAvatar}>
+        <Text style={styles.requestAvatarText}>{request.requesterDisplayName.slice(0, 1).toUpperCase()}</Text>
+      </View>
+      <View style={styles.requestContent}>
+        <Text style={styles.requestName}>{request.requesterDisplayName}</Text>
+        <Text style={styles.requestActivity} numberOfLines={1}>{request.activityTitle}</Text>
+        <Text style={styles.requestMeta}>
+          {request.participantCount}/{request.capacity} going · {formatPlanTime(request.activityStartsAt)}
+        </Text>
+        <View style={styles.requestActions}>
+          <Pressable
+            accessibilityLabel={`Reject ${request.requesterDisplayName}`}
+            accessibilityRole="button"
+            disabled={disabled}
+            onPress={() => void onDecide('reject')}
+            style={({ pressed }) => [styles.rejectButton, pressed && styles.buttonPressed]}>
+            <Text style={styles.rejectButtonText}>Decline</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`Accept ${request.requesterDisplayName}`}
+            accessibilityRole="button"
+            disabled={disabled}
+            onPress={() => void onDecide('approve')}
+            style={({ pressed }) => [styles.acceptButton, pressed && styles.buttonPressed]}>
+            {isDeciding ? <ActivityIndicator color="#FFFFFF" size="small" /> : (
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            )}
+          </Pressable>
         </View>
       </View>
     </View>
@@ -227,4 +424,30 @@ const styles = StyleSheet.create({
   locationCopy: { flex: 1 },
   locationTitle: { color: '#33414E', fontSize: 12, fontWeight: '900' },
   locationText: { color: '#66717D', fontSize: 11, lineHeight: 16, marginTop: 3 },
+  progressBanner: { alignItems: 'center', backgroundColor: '#ECF7F0', flexDirection: 'row', gap: 9 },
+  progressBannerText: { color: '#316E53', flex: 1, fontSize: 12, fontWeight: '800' },
+  requestsLoading: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center', paddingVertical: 12 },
+  requestsSection: { backgroundColor: '#FFF4E5', borderColor: 'rgba(206,126,36,0.15)', borderRadius: 24, borderWidth: 1, gap: 10, padding: 16 },
+  sectionHeadingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  sectionEyebrow: { color: '#A96422', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  sectionTitle: { color: '#16202A', fontSize: 20, fontWeight: '900', letterSpacing: -0.4, marginTop: 3 },
+  countBadge: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 14, height: 28, justifyContent: 'center', minWidth: 28, paddingHorizontal: 8 },
+  countBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+  inlineError: { color: '#9D3E2B', fontSize: 11, fontWeight: '700', lineHeight: 16 },
+  inlineNotice: { color: '#316E53', fontSize: 11, fontWeight: '800', lineHeight: 16 },
+  requestCard: { alignItems: 'flex-start', backgroundColor: '#FFFFFF', borderRadius: 18, flexDirection: 'row', gap: 11, padding: 13 },
+  requestAvatar: { alignItems: 'center', backgroundColor: '#FFE7DE', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  requestAvatarText: { color: '#9D3E2B', fontSize: 15, fontWeight: '900' },
+  requestContent: { flex: 1 },
+  requestName: { color: '#16202A', fontSize: 14, fontWeight: '900' },
+  requestActivity: { color: '#4D5A66', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  requestMeta: { color: '#7A838C', fontSize: 10, marginTop: 4 },
+  requestActions: { flexDirection: 'row', gap: 8, marginTop: 11 },
+  rejectButton: { alignItems: 'center', borderColor: '#D7D1C8', borderRadius: 999, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 38 },
+  rejectButtonText: { color: '#4D5A66', fontSize: 11, fontWeight: '900' },
+  acceptButton: { alignItems: 'center', backgroundColor: '#3E8E68', borderRadius: 999, flex: 1, justifyContent: 'center', minHeight: 38 },
+  acceptButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+  leaveButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 14, paddingHorizontal: 2, paddingVertical: 5 },
+  leaveButtonText: { color: '#9D3E2B', fontSize: 12, fontWeight: '900' },
+  buttonPressed: { opacity: 0.65 },
 });

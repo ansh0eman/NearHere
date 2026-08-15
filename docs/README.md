@@ -64,9 +64,10 @@ This table prevents an architectural design from being confused with deployed ev
 | Profile | Migration, trigger, owner repository, runtime parser, and onboarding implemented | Simulator onboarding acceptance and two-actor RLS run |
 | Activity discovery | PostGIS migration/RPC deployed; anonymous empty result and denial paths verified | Representative rows, query-plan measurement, pagination |
 | Activity hosting | Transaction and native form accepted in Simulator; real activity rediscovered | Protected exact/public displacement measurement |
-| Join participation | Deployed row-locking RPC, mobile flow, anonymous denial, and same-host idempotent acceptance | Second-user capacity, waitlist, approval, and concurrency proof |
+| Join participation | Deployed row-locking RPC and mobile flow; deployed migration `007` adds Leave, host decisions, request queue, and multi-actor harness | Run A/B plus optional C/D hosted matrix and Simulator acceptance |
 | My Plans | Migrations/RPC deployed and privacy-hardened; accepted active-host card/exact point accepted in Simulator; anonymous execute denied | Signed-out interaction and second-user pending/waitlisted isolation; inactive-card acceptance, pagination, and plan detail actions |
-| Leave/approval/chat/safety | Designed only | Leave and host decision commands are the next product operations |
+| Leave/approval | Migration deployed with local/remote parity and clean scoped schema lint; mobile UI/repositories/hooks, parsers, unit tests, and hosted harness implemented | Not hosted-verified yet; run with C for the final-place race/promotion and C+D for chronological FIFO |
+| Chat/safety | Designed only | Implement only after participation acceptance |
 
 “Implemented” means source exists and local checks pass. “Deployed” means the hosted development environment accepted it. “Verified” names a specific observed behavior. These words are intentionally not interchangeable.
 

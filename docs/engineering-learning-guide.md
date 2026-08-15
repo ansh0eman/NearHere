@@ -2091,3 +2091,243 @@ Verification:
 Remaining limitations:
 Prevention or general lesson:
 ```
+
+# Lesson 9: Completing the participation state machine
+
+## 1. From buttons to durable state transitions
+
+A “Leave” button is not merely a row deletion, and “Accept request” is not an
+arbitrary status edit. Each action changes a durable membership state and may
+also change capacity, private-location access, another user's waitlist state,
+and what several screens are allowed to show.
+
+A **state machine** lists valid states and the transitions allowed between
+them. It makes illegal shortcuts explicit:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: approval-mode Join
+    [*] --> Accepted: open Join with capacity
+    [*] --> Waitlisted: open Join when full
+    Pending --> Accepted: host approves with capacity
+    Pending --> Waitlisted: host approves when full
+    Pending --> Rejected: host rejects
+    Pending --> Left: requester withdraws
+    Accepted --> Left: participant leaves
+    Waitlisted --> Accepted: capacity opens
+    Waitlisted --> Left: participant leaves queue
+```
+
+Migration `202608150007_manage_activity_participation.sql` implements Leave,
+host approval/rejection, and the host's pending-request read model. It exists in
+source at this point; it has not yet been deployed or proven against the hosted
+development database.
+
+## 2. Why one shared lock protects capacity
+
+Capacity is not stored in a single row. The limit is on `activities`, but the
+used count is derived from every accepted `activity_memberships` row. This is a
+**cross-row invariant**: a rule whose truth depends on multiple records.
+
+Without serialization, these operations can race:
+
+```text
+accepted count = 1, capacity = 2
+Join reads 1 and plans to accept
+Host approval reads 1 and plans to accept
+Both write -> accepted count becomes 3
+```
+
+Join, Leave, and host decisions therefore lock the same activity row with
+`SELECT ... FOR UPDATE`. A row lock does not make the database single-threaded.
+It queues only transactions that need the same activity; operations for other
+activities continue.
+
+```mermaid
+sequenceDiagram
+    participant J as Join transaction
+    participant R as Activity row X
+    participant A as Approval transaction
+    J->>R: Acquire FOR UPDATE
+    A->>R: Wait
+    J->>J: Recount and write outcome
+    J-->>R: Commit
+    R-->>A: Acquire after Join
+    A->>A: Recount including Join
+    A->>A: Accept or waitlist safely
+```
+
+The important engineering principle is not “use a lock everywhere.” It is
+“identify the invariant, then make every writer of that invariant share one
+serialization point.” A lock in Join alone would still permit approval or
+promotion to violate capacity.
+
+## 3. Atomic Leave and FIFO promotion
+
+An accepted participant leaving creates a place. If Leave committed first and
+promotion ran in a second request, the app could crash between them and strand
+the queue. Migration `007` performs both changes in one transaction:
+
+1. lock the activity and caller's membership;
+2. change the participant to `left` and clear `joined_at`;
+3. only for a published, non-ended activity, select the first waiter ordered by
+   `(created_at, user_id)`;
+4. mark at most that waiter `accepted` and set `joined_at`;
+5. return the accepted count and `waitlist_promoted` flag; and
+6. commit both changes together, or neither if the transaction fails.
+
+FIFO means **first in, first out**. `created_at` expresses arrival order;
+`user_id` is a stable tie-breaker when timestamps are equal. A partial index on
+activity, status, creation time, and user ID helps PostgreSQL find the relevant
+pending/waitlisted participant queue without scanning unrelated memberships.
+
+Hosts cannot use participant Leave because hosting is ownership. Rejected or
+removed memberships cannot relabel themselves as voluntary `left`. Pending and
+waitlisted participants may withdraw without promotion because neither
+consumed capacity.
+
+## 4. Idempotency means safe retries
+
+Mobile networks often lose responses after the server commits. The phone must
+be able to retry without performing the business change twice.
+
+| Command retry | Durable behavior |
+| --- | --- |
+| Join after `accepted`/`pending`/`waitlisted` | Return the existing membership |
+| Leave after `left` | Return `left`, current count, and no second promotion |
+| Approve after `accepted` or `waitlisted` | Return that approved outcome |
+| Reject after `rejected` | Return `rejected` |
+| Opposite or invalid terminal decision | Reject the transition |
+
+This is **semantic idempotency** built from the natural membership identity and
+durable state. It is not a general `Idempotency-Key` system that fingerprints
+arbitrary payloads and replays stored HTTP responses. Using the smaller domain
+guarantee is appropriate here, while documenting its boundary avoids a false
+system-wide claim.
+
+## 5. Authentication, authorization, and `SECURITY DEFINER`
+
+The phone sends an access token, not a trusted user ID. Supabase verifies that
+token and PostgreSQL exposes its subject as `auth.uid()`.
+
+```text
+Authentication: who is this caller?
+Authorization: may this caller perform this action on this activity/request?
+```
+
+`leave_activity` derives the leaving member from `auth.uid()`. A modified app
+cannot submit somebody else's ID. A host decision does accept a requester ID
+because the target must be named, but independently proves that the caller from
+`auth.uid()` owns the activity.
+
+Normal client roles have no direct membership-table privileges. The functions
+use `SECURITY DEFINER` so trusted, narrowly shaped server code can access those
+tables on the caller's behalf. Elevated execution is constrained by:
+
+- `search_path = ''` and fully qualified database objects;
+- explicit authentication and ownership/state checks;
+- explicit return columns rather than `SELECT *`;
+- revoked execution for `public` and `anon`; and
+- an execute grant only to `authenticated`.
+
+The host pending-request projection returns only requester ID, display name,
+and request time. It does not join or return the private activity location.
+Least privilege applies to response fields as well as table grants.
+
+## 6. Privacy-aware optimistic UI
+
+An **optimistic update** changes the visible UI before the server responds,
+then either confirms it or rolls it back. Leave is unusually privacy-sensitive:
+the plan may contain the exact meeting point, so the app removes that card as
+soon as the user confirms Leave.
+
+The mobile source follows this sequence:
+
+```mermaid
+flowchart TD
+    T["User confirms Leave"] --> I["Invalidate older Plans request IDs"]
+    I --> O["Optimistically remove plan and exact point"]
+    O --> R["Call leave_activity"]
+    R -->|"Success"| F["Refetch authoritative Plans"]
+    R -->|"Failure"| B["Restore plan at prior position and show error"]
+```
+
+A stale read is a response produced from an older server snapshot. Without
+invalidation, a Plans request started before Leave could finish afterward and
+briefly repaint the exact point. `useMyPlans` increments a request generation,
+filters an in-flight leaving activity from read results, guards account changes,
+and refreshes after success.
+
+The host-request hook applies the same principle. It invalidates request reads
+that began before/during a decision, removes the decided request after success,
+and refreshes. Plans is also refreshed because approval changes accepted count
+and may unlock the requester's exact-location access. The database remains the
+source of truth; optimism is a latency/privacy technique, not authorization.
+
+## 7. Runtime contracts at the untrusted boundary
+
+TypeScript disappears at runtime. The repository therefore treats Supabase JSON
+as unknown and checks:
+
+- Leave returns exactly `left`, a valid participant count, and a Boolean
+  promotion flag;
+- a host decision returns only `accepted`, `waitlisted`, or `rejected`;
+- pending-request rows have valid ID/name/timestamp fields; and
+- private coordinates still obey the existing accepted-active Plans rule.
+
+Unit tests cover these parsers. Static/unit success proves local code behavior,
+not that the deployed migration behaves correctly under hosted concurrency.
+
+## 8. Multi-actor acceptance from first principles
+
+The production capacity minimum is two and the accepted host consumes one
+place. This constrains the test fixture:
+
+| Configured actors | What can be proven |
+| --- | --- |
+| A/B | Open acceptance, pending, approve/reject, Leave, caller isolation, retries |
+| A/B/C | Two real sessions race for the final place; exactly one must be accepted and one waitlisted; Leave promotes the waiter |
+| A/B/C/D | Two waiters exist, so the chronologically oldest waiter must be promoted first |
+
+Two users cannot manufacture a waitlisted participant without weakening the
+real capacity constraint or using a privileged backdoor. The dependency-light
+hosted harness therefore keeps A/B required, makes C/D optional, and prints
+honest `SKIP` lines for branches lacking enough actors. It never prints phones,
+OTPs, sessions, user/activity IDs, or exact coordinates.
+
+The C/D hosted test deliberately separates waiter creation by at least 50 ms,
+which proves chronological FIFO. It does not force equal database timestamps,
+so the UUID tie-break branch still needs a controlled local fixture. The runner
+also cannot delete host activities through the public client boundary; every
+fixture is clearly `TEST`-labelled and the runbook documents that A/B, C, and D
+runs create four, five, or six activities respectively. Honest test limitations
+are part of engineering evidence.
+
+## 9. Current evidence and next gate
+
+**Implemented locally:** shared TypeScript contracts, runtime parsers/tests,
+Supabase repository methods, Plans Leave/host-request UI, stale-read protection,
+and the hosted A/B/C/D harness/runbook.
+
+**Deployed but not yet hosted-verified:** migration `007` and all of its RPC
+behavior. Local/remote migration history is in parity and scoped `public,private`
+schema lint reports no errors. Anonymous/non-host denial for the new functions,
+real concurrent capacity serialization, waitlist promotion, host request
+decisions, and the corresponding Simulator interactions remain unverified.
+
+The local lint/TypeScript/unit/export checks, migration review, development
+deployment, migration-history parity, and scoped database lint are complete.
+The next honest gate is to execute the hosted actor matrix and then accept the
+mobile flows in Simulator. Only those observations justify saying the behavior
+is “verified.”
+
+## 10. Interview explanation
+
+> I completed an activity participation state machine across PostgreSQL and React Native. Join, approval, Leave, and waitlist promotion share an activity-row lock so the cross-row capacity invariant has one serialization point. Leave and FIFO promotion are atomic, command retries return durable outcomes, and security-definer RPCs derive the caller from the verified session rather than trusting client identity. In the mobile layer I remove exact meeting access optimistically on Leave, invalidate stale reads, roll back failures, runtime-validate every RPC response, and refetch server truth. I also designed a multi-actor hosted harness that races the final place and records which concurrency branches require three or four identities instead of overstating two-user coverage.
+
+## 11. Honest resume addition
+
+- Implemented a transactional participation state machine with PostgreSQL row
+  locks, idempotent Leave/approval/rejection, deterministic FIFO waitlist
+  promotion, least-privilege Supabase RPCs, privacy-aware optimistic React
+  Native state, stale-response invalidation, and multi-session acceptance tests.

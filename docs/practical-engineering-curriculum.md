@@ -162,9 +162,9 @@ Practical outcome: query activities within a radius without exposing the host's 
 
 ### Module 8: Correct joins under concurrency
 
-Progress: **first command deployed** — `join_activity` authenticates the actor, requires profile completion, serializes same-activity decisions with `FOR UPDATE`, and returns accepted/pending/waitlisted outcomes. Natural membership identity makes retries non-duplicating. Anonymous denial and the existing-host retry path are verified; second-user capacity and concurrent last-place tests remain pending.
+Progress: **participation database deployed; runtime acceptance pending** — `join_activity` authenticates the actor, requires profile completion, serializes same-activity decisions with `FOR UPDATE`, and returns accepted/pending/waitlisted outcomes. Deployed migration `007` makes Leave and host decisions share that lock, adds retry-safe terminal transitions, and promotes a FIFO waiter atomically. The mobile source adds privacy-aware optimistic Leave, stale-read invalidation, host decision UI, and runtime parsing. Migration parity and scoped schema lint pass; A/B/C/D hosted and Simulator acceptance remain pending.
 
-NearHere work: finish the two-user Join evidence, then implement Leave and host approval/rejection without weakening the state machine.
+NearHere work: deploy and verify the completed participation slice, including a real final-place race, waitlist privacy, promotion, and host authorization; then implement removal as a distinct moderation transition.
 
 Must-know concepts:
 

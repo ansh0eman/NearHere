@@ -57,8 +57,9 @@ Exit condition: two devices can create and discover a real activity without expo
 - Account-keyed plan cache, inactive location suppression, and explicit Auth cancellation — implemented
 - Accepted host plan and unlocked exact point — accepted in Simulator
 - Signed-out, pending, and waitlisted Plans interactions — pending Simulator/second-user acceptance
-- Second-user accepted/pending/waitlisted and concurrent last-place tests — pending
-- Approve/reject, Leave, and removal — pending
+- Optional C/D hosted harness for second-user, concurrent last-place, and FIFO promotion — implemented locally; run pending
+- Approve/reject, Leave, host request queue, and FIFO promotion — deployed to development with clean schema lint/parity; hosted and Simulator acceptance pending
+- Participant removal — pending
 - General idempotency-key records for later commands — pending
 - Plans pagination/detail actions and useful meeting-point navigation — pending
 

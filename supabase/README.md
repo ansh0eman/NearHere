@@ -458,6 +458,41 @@ At the time the first migration was authored, neither `supabase` CLI nor `psql` 
 
 That limitation has now narrowed: the CLI is available through `npx`, migrations through `202608150006` are deployed, and hosted black-box checks cover the evidence listed above. The remaining gap is a disposable local reset/test environment, which still requires Docker, plus the explicitly pending two-actor/concurrency acceptance checks.
 
+## Lesson 9 deployed to development: participation transitions
+
+Migration `202608150007_manage_activity_participation.sql` was reviewed and
+deployed to the linked development project on 2026-08-15. It adds:
+
+- `leave_activity(activity_id)`, which derives the participant from
+  `auth.uid()`, makes the durable state `left`, and atomically promotes at most
+  one FIFO waiter when an accepted place opens on an active activity;
+- `decide_activity_request(activity_id, requester_user_id, decision)`, which
+  authorizes the caller as host and idempotently approves or rejects a pending
+  request, returning `waitlisted` instead of exceeding capacity; and
+- `host_pending_activity_requests(activity_id, limit)`, a bounded host-only
+  projection containing only requester ID, display name, and request time.
+
+All capacity-changing operations use the parent activity row as their shared
+`FOR UPDATE` serialization point. The waitlist lookup is ordered by
+`(created_at, user_id)` and supported by a partial participant-queue index.
+Every new function uses `SECURITY DEFINER`, `search_path = ''`, schema-qualified
+objects, explicit authentication/authorization, and authenticated-only execute
+grants; base-table grants remain closed.
+
+The dependency-light hosted harness is
+`tests/hosted/participation.mjs`. A/B are required for open/pending/decision/
+Leave/caller-scope/idempotency checks. Optional C races B for the final place
+with `Promise.all`, requiring one accepted and one waitlisted result before
+testing promotion. Optional D creates a second waiter and proves chronological
+FIFO selection. The equal-timestamp UUID tie-break needs a controlled local
+fixture and remains explicitly unverified.
+
+Deployment evidence: migration history shows `001`–`007` in local/remote
+parity, and scoped `public,private` database lint reports no schema errors.
+That proves deployment and static database checks, not runtime behavior. The
+next gate is anonymous/non-host denial checks, the configured multi-actor run,
+and Simulator acceptance of Leave and host decisions.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.

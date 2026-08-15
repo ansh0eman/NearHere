@@ -94,6 +94,26 @@ export interface JoinActivityResponse {
   participantCount: number;
 }
 
+export interface LeaveActivityResponse {
+  membershipStatus: Extract<ActivityMembershipStatus, 'left'>;
+  participantCount: number;
+  waitlistPromoted: boolean;
+}
+
+export type MembershipRequestDecision = 'approve' | 'reject';
+
+export interface DecideMembershipRequestResponse {
+  membershipStatus: Extract<ActivityMembershipStatus, 'accepted' | 'waitlisted' | 'rejected'>;
+  participantCount: number;
+}
+
+/** A pending join request visible only to the activity host. */
+export interface MembershipRequestSummary {
+  requesterUserId: string;
+  requesterDisplayName: string;
+  requestedAt: string;
+}
+
 export interface ActivityEvent {
   id: string;
   type: 'activity.created' | 'activity.updated' | 'activity.participant_count_changed';

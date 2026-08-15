@@ -1,6 +1,9 @@
 import {
   parseActivitySummaryRow,
+  parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
+  parseLeaveActivityResponseRow,
+  parseMembershipRequestRows,
   parseMyPlanRows,
   parseNearbyActivityRows,
 } from '@/lib/activity-validation';
@@ -8,11 +11,82 @@ import { supabase } from '@/lib/supabase';
 import type {
   CreateActivityOperationResult,
   CreateActivityRequest,
+  DecideMembershipRequestInput,
+  DecideMembershipRequestOperationResult,
   JoinActivityOperationResult,
+  LeaveActivityOperationResult,
+  MembershipRequestsResult,
   MyPlansResult,
   NearbyActivitiesQuery,
   NearbyActivitiesResult,
 } from '@/types/activity';
+
+export async function getMembershipRequests(activityId: string): Promise<MembershipRequestsResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Join requests are unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('host_pending_activity_requests', {
+    p_activity_id: activityId,
+    p_limit: 50,
+  });
+  if (error) {
+    return { ok: false, message: 'NearHere could not load join requests. Check your connection and try again.' };
+  }
+
+  try {
+    return { ok: true, requests: parseMembershipRequestRows(data) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid join requests response. Please try again.' };
+  }
+}
+
+export async function leaveActivity(activityId: string): Promise<LeaveActivityOperationResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Leaving is unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('leave_activity', { p_activity_id: activityId });
+  if (error) {
+    if (error.code === 'P0002') return { ok: false, message: 'This activity is no longer available.' };
+    if (error.code === 'P0003') return { ok: false, message: 'You are not an active participant in this activity.' };
+    return { ok: false, message: 'NearHere could not leave the activity. Please try again.' };
+  }
+
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one leave result.');
+    return { ok: true, result: parseLeaveActivityResponseRow(data[0]) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid leave response. Please try again.' };
+  }
+}
+
+export async function decideMembershipRequest(
+  input: DecideMembershipRequestInput,
+): Promise<DecideMembershipRequestOperationResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Request decisions are unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('decide_activity_request', {
+    p_activity_id: input.activityId,
+    p_requester_user_id: input.requesterUserId,
+    p_decision: input.decision,
+  });
+  if (error) {
+    if (error.code === '42501') return { ok: false, message: 'Only the activity host can decide this request.' };
+    if (error.code === 'P0002') return { ok: false, message: 'This join request is no longer pending.' };
+    if (error.code === 'P0003') return { ok: false, message: 'This join request was already decided.' };
+    return { ok: false, message: 'NearHere could not update the join request. Please try again.' };
+  }
+
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one decision result.');
+    return { ok: true, result: parseDecideMembershipRequestResponseRow(data[0]) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid request decision response. Please try again.' };
+  }
+}
 
 export async function getMyPlans(): Promise<MyPlansResult> {
   if (!supabase) {
