@@ -11,11 +11,12 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add first versioned profile migration, trigger, grants, and Row Level Security policies
 - [x] Create a user-owned Supabase development project
 - [x] Configure ignored Expo public environment values and verify the Supabase Auth health endpoint
+- [x] Initialize/link the Supabase CLI and deploy the first profile migration
+- [x] Verify remote migration history and anonymous profile-table denial
 - [ ] Enable/configure phone authentication and SMS provider/test numbers
-- [ ] Apply and test migrations against the development database
 - [ ] Verify real/test OTP delivery, verification, and session restoration
 - [ ] Build minimal display-name onboarding and profile read/update adapter
-- [ ] Test profile policies as anonymous user, owner, other user, and service role
+- [ ] Test profile trigger and policies as owner, other user, and protected service operation
 
 ## Next slice — real activity creation and discovery
 

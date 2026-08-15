@@ -1301,6 +1301,38 @@ The full first-principles explanation, examples, request sequence, and misconcep
 
 **Lesson:** an environment variable is found by exact name. “Public” prefixes describe client visibility and build-tool behavior; they do not encrypt a value or make a secret safe for client code.
 
+## 10.3 Deploying and verifying the first migration
+
+The Supabase CLI was authorized through its browser verification flow, initialized in the repository, and linked to the healthy `NearHere Dev` project. `supabase init` created `config.toml`, which defines local ports, database major version, Auth settings, and other local stack behavior as version-controlled configuration.
+
+Before changing the database, `db push --dry-run` proved that exactly one migration was pending. The real push then applied `202608150001_create_profiles.sql`.
+
+Verification used two independent surfaces:
+
+```mermaid
+flowchart LR
+    SOURCE["Local migration file"] --> PUSH["Supabase db push"]
+    PUSH --> HISTORY["Remote migration history matches"]
+    PUSH --> API["Data API resolves profiles"]
+    API --> DENY["Anonymous request denied: 401 / 42501"]
+```
+
+Matching migration history proves Supabase recorded the version. The Data API response proves the table exists and the anonymous role cannot access it. Neither proves the new-user trigger or authenticated owner/cross-user policy; those require real authenticated actors.
+
+### Challenge: Docker catalog warning after a successful remote push
+
+**Symptom:** after applying the migration, the CLI warned that it could not inspect a Docker image or cache the `pg-delta` migrations catalog because the Docker daemon was unavailable.
+
+**Hypotheses:** the migration might have failed entirely, it might have applied but failed during optional post-processing, or the remote history might be inconsistent.
+
+**Investigation:** the CLI's ordered output showed the migration being applied before the warning and ended with `Finished supabase db push`. A fresh remote migration list showed matching version `202608150001`. An anonymous Data API request reached `profiles` and returned permission error `42501` rather than a missing-table error.
+
+**Root cause:** Docker was unavailable for local schema-catalog inspection/caching. The hosted database connection and migration execution used a different path and had completed.
+
+**Resolution:** retain the warning as a local-tooling prerequisite, verify remote state independently, and avoid claiming that local reset/schema-diff testing has passed.
+
+**Lesson:** warnings must be interpreted in execution order and verified against the affected subsystem. A successful command line is useful evidence, but independent state checks make the conclusion defensible.
+
 ## 11. Files introduced or changed
 
 - `packages/contracts/user.ts` defines public profile vocabulary without auth secrets.
@@ -1318,7 +1350,7 @@ The full first-principles explanation, examples, request sequence, and misconcep
 
 # Next lesson
 
-Complete the user-owned Supabase development setup, execute and test the profile migration, verify real/test phone OTP and session restoration, then build minimal display-name onboarding. The first real activity creation/discovery slice follows once identity is verified end to end.
+Configure a safe phone-auth test path, verify OTP and session restoration, test the profile trigger and owner/cross-user RLS matrix, then build minimal display-name onboarding. The first real activity creation/discovery slice follows once identity is verified end to end.
 
 # Engineering challenge log
 

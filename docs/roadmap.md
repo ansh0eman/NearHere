@@ -27,7 +27,8 @@ flowchart LR
 
 - Create a user-owned Supabase development project — completed
 - Configure phone authentication and a real SMS provider/test path
-- Apply versioned `profiles` migration with Row Level Security
+- Apply versioned `profiles` migration with Row Level Security — completed in development
+- Verify anonymous profile access is denied — completed
 - Connect real OTP flow and verify session restoration
 - Add minimal display-name onboarding and generated placeholder avatar
 - Add auth/profile integration tests and abuse-control checklist

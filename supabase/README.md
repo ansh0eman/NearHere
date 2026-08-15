@@ -32,6 +32,48 @@ Creating projects and configuring SMS can create external state and cost, so the
 
 Follow current official guidance: [local CLI workflow](https://supabase.com/docs/guides/local-development/cli/getting-started), [user/profile management](https://supabase.com/docs/guides/auth/managing-user-data), [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security), and [phone login](https://supabase.com/docs/guides/auth/phone-login).
 
+## CLI initialization and first deployment recorded on 2026-08-15
+
+The official CLI was run through `npx` rather than added to the mobile application's runtime dependencies:
+
+```text
+Supabase browser authorization
+  -> supabase init
+  -> generated version-controlled config.toml
+  -> linked project gmgtugbvnvhdmfuoifcc
+  -> migration list showed one local-only migration
+  -> db push --dry-run named exactly that migration
+  -> db push applied 202608150001_create_profiles.sql
+  -> migration list showed matching local/remote history
+  -> anonymous REST request confirmed profile-table denial
+```
+
+`supabase/config.toml` is configuration as code for the local Supabase stack and deployable project settings. `supabase/.gitignore` excludes `.temp`, where the CLI records the linked project reference. The linked reference is operational metadata, not a mobile credential, but keeping temporary CLI state out of Git avoids machine-specific churn.
+
+### Verification evidence
+
+| Check | Result | What it proves |
+| --- | --- | --- |
+| `projects list` | `NearHere Dev`, healthy, `ap-southeast-1`, PostgreSQL 17.6 | CLI account can see the intended project. |
+| `db push --dry-run` | Only `202608150001_create_profiles.sql` pending | No unexpected migration was scheduled. |
+| `db push` | Migration applied and command finished | Hosted database accepted the reviewed migration. |
+| `migration list` | Local and remote both `202608150001` | Migration-history records agree. |
+| Anonymous `GET /rest/v1/profiles` | HTTP 401, PostgreSQL `42501` | Table exists but the anonymous role lacks access, as designed. |
+
+These checks do not yet prove that a newly verified Auth user receives exactly one profile or that owner/other-user RLS works. Those tests need authenticated sessions and are deliberately still open.
+
+### Docker warning after deployment
+
+After applying the hosted migration, the CLI warned that it could not cache a `pg-delta` migrations catalog because the local Docker daemon was not running. Docker is required for the complete local Supabase stack and some schema-diff/caching operations. It was not required for the remote database to accept this migration.
+
+The warning was classified as non-fatal because:
+
+1. The CLI printed `Applying migration ...` and `Finished supabase db push`.
+2. A subsequent remote migration listing contained the migration version.
+3. The Data API recognized `profiles` and rejected it for the expected permission reason rather than reporting a missing relation.
+
+Docker Desktop remains needed before local `supabase start`, database reset, and full isolated migration tests. We do not treat a successful remote push as a substitute for that local test environment.
+
 ## Framework-specific environment-variable names
 
 An environment variable is a named value supplied outside source code. Build tools choose which names they read and which values they make visible to client code.
@@ -242,6 +284,8 @@ For `public.profiles`, the migration deliberately grants authenticated `SELECT` 
 | New Auth signup | Corresponding profile creation | Exactly one row |
 | Auth user deletion | Corresponding profile deletion | Cascades |
 | Invalid avatar/interests/name | Insert/update | Constraint failure |
+
+Current evidence: the anonymous select test is complete. The remaining rows require authenticated test users or protected administrative test execution after phone/test OTP is configured.
 
 ## Why no local database verification yet
 

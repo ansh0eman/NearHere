@@ -8,7 +8,7 @@ NearHere is a map-first mobile product for discovering nearby activities and joi
 
 NearHere is an installable Expo/React Native application for iOS and Android. The current working vertical slices include native map discovery with explicitly labeled fixture activities, foreground location permission, persistent manual map-pin selection, submit-only place search, native tab navigation, and provider-gated phone OTP screens. The first native iOS development build is running in Simulator.
 
-Real Supabase/SMS configuration, a deployed database, live activities, joins, chat, and the custom avatar builder are not implemented yet.
+The Supabase development project is connected and the first profile/RLS migration is deployed. Real SMS OTP, authenticated profile-policy tests, live activities, joins, chat, and the custom avatar builder are not implemented yet.
 
 ## Repository layout
 

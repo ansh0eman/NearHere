@@ -309,6 +309,6 @@ Scaling is a response to evidence. Adding Redis, queues, replicas, or microservi
 
 **Implemented:** Expo/React Native native app, TypeScript domain boundaries, native map and fixture activities, foreground permission flow, persisted manual location, searchable development geocoder, native development build, phone/OTP screens, Supabase client boundary, typed auth states, session restoration behavior, and protected-intent modeling.
 
-**Prepared in Lesson 4:** versioned identity/profile SQL migration, owner-only Row Level Security policies, automatic profile creation trigger, and shared profile contracts.
+**Deployed to development in Lesson 4:** versioned identity/profile SQL migration, owner-only Row Level Security policies, automatic profile creation trigger, and shared profile contracts. Remote migration history matches local history, and anonymous profile-table access is denied; authenticated trigger/owner/cross-user tests remain pending.
 
 **Not yet production functionality:** hosted Supabase configuration, real SMS delivery, deployed database/API, live activities, transactional joins, realtime chat, moderation operations, MapLibre styling, custom avatar builder, payments, recommendations, direct messages, or recurring-event administration.
