@@ -416,7 +416,7 @@ Deployment and acceptance evidence recorded on 2026-08-15:
 | Existing host taps Join | Returned `accepted`; participant count remained one | Existing active membership is returned without duplication, preserving the host path. |
 | Mobile runtime checks | Join response parser accepts only known status/count shapes | Untrusted RPC JSON does not enter UI state unchecked. |
 
-The evidence does **not** yet prove the most important multi-actor branches. A second fictional authenticated user must still demonstrate open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. Host approval/rejection, Leave, removal, and general idempotency records are not implemented. Accepted-only meeting-point release is now implemented separately through `my_plans`.
+At the end of Lesson 7, this evidence did **not** yet prove the multi-actor branches. Lesson 9 subsequently supplied that proof on 2026-08-15: the hosted A/B/C/D matrix verified open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. It also verified Leave and host approval/rejection. Participant removal and general idempotency records remain unimplemented. Accepted-only meeting-point release is implemented through `my_plans`.
 
 ## Lesson 8 deployed caller-scoped My Plans
 
@@ -456,7 +456,7 @@ Not yet proven: signed-out intent in Simulator; a second actor seeing only their
 
 At the time the first migration was authored, neither `supabase` CLI nor `psql` was installed in the workspace environment. Static review could verify intent and syntax shape, but could not honestly prove triggers, grants, or RLS behavior.
 
-That limitation has now narrowed: the CLI is available through `npx`, migrations through `202608150006` are deployed, and hosted black-box checks cover the evidence listed above. The remaining gap is a disposable local reset/test environment, which still requires Docker, plus the explicitly pending two-actor/concurrency acceptance checks.
+That limitation has now narrowed: the CLI is available through `npx`, migrations through `202608150007` are deployed, and hosted black-box checks cover the evidence listed above. The remaining gap is a disposable local reset/test environment, which still requires Docker; the multi-actor/concurrency acceptance checks now pass against hosted development.
 
 ## Lesson 9 deployed to development: participation transitions
 
@@ -487,11 +487,24 @@ testing promotion. Optional D creates a second waiter and proves chronological
 FIFO selection. The equal-timestamp UUID tie-break needs a controlled local
 fixture and remains explicitly unverified.
 
-Deployment evidence: migration history shows `001`–`007` in local/remote
-parity, and scoped `public,private` database lint reports no schema errors.
-That proves deployment and static database checks, not runtime behavior. The
-next gate is anonymous/non-host denial checks, the configured multi-actor run,
-and Simulator acceptance of Leave and host decisions.
+Deployment and runtime evidence recorded on 2026-08-15:
+
+| Check | Observed result | What it proves |
+| --- | --- | --- |
+| Migration/lint | Local and hosted histories match `001`–`007`; scoped `public,private` lint has no errors | Hosted schema contains the reviewed participation boundary. |
+| A/B/C/D authentication | Four distinct fixed-OTP actors established without printing identity/session values | The matrix used independent authenticated callers. |
+| Anonymous and non-host calls | Protected participation calls were denied | Execute grants and host authorization reject untrusted callers. |
+| Caller-scoped Plans | Each actor saw only their durable plans | A submitted client identity cannot widen the caller projection. |
+| Retry matrix | Join, Leave, approve, and reject retries returned their durable outcomes without double effects | Command-specific semantic idempotency works through the hosted API. |
+| Private-location matrix | Pending/waitlisted callers received `null`; accepted and promoted callers received the exact active point | Private geometry release follows membership state on the trusted boundary. |
+| Concurrent final place | B/C `Promise.all` produced exactly one accepted plus one waitlisted result at capacity | The shared activity-row lock serialized real concurrent hosted calls. |
+| Accepted Leave | Leave reported promotion and kept accepted count within capacity | Departure and one-waiter promotion committed atomically. |
+| Two-waiter FIFO | The earlier-created waiter was promoted; the newer waiter stayed waitlisted with `null` exact coordinates | Chronological FIFO selection works. |
+
+The hosted run does not prove the equal-`created_at` UUID tie-break, which still
+needs a controlled fixture. It also does not prove the React Native interaction;
+Participant Leave has since been accepted in the rebuilt iPhone 17 Pro
+Simulator; host approve/reject remains the next UI gate.
 
 ## Rollback thinking
 

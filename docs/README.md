@@ -61,12 +61,12 @@ This table prevents an architectural design from being confused with deployed ev
 | --- | --- | --- |
 | Native map and location | Implemented in the Expo development build | Physical-device and accessibility matrix |
 | Phone identity | Hosted fixed development OTP and session restoration verified | Real SMS provider, rate limits, production compliance |
-| Profile | Migration, trigger, owner repository, runtime parser, and onboarding implemented | Simulator onboarding acceptance and two-actor RLS run |
+| Profile | Migration, trigger, owner repository, runtime parser, and onboarding implemented; Actor C onboarding accepted in Simulator | Separate full profile-RLS matrix |
 | Activity discovery | PostGIS migration/RPC deployed; anonymous empty result and denial paths verified | Representative rows, query-plan measurement, pagination |
 | Activity hosting | Transaction and native form accepted in Simulator; real activity rediscovered | Protected exact/public displacement measurement |
-| Join participation | Deployed row-locking RPC and mobile flow; deployed migration `007` adds Leave, host decisions, request queue, and multi-actor harness | Run A/B plus optional C/D hosted matrix and Simulator acceptance |
-| My Plans | Migrations/RPC deployed and privacy-hardened; accepted active-host card/exact point accepted in Simulator; anonymous execute denied | Signed-out interaction and second-user pending/waitlisted isolation; inactive-card acceptance, pagination, and plan detail actions |
-| Leave/approval | Migration deployed with local/remote parity and clean scoped schema lint; mobile UI/repositories/hooks, parsers, unit tests, and hosted harness implemented | Not hosted-verified yet; run with C for the final-place race/promotion and C+D for chronological FIFO |
+| Join participation | A/B/C/D hosted matrix verified all server outcomes; Actor C Auth/onboarding/Leave and Host A approval UI accepted in Simulator | Pending/waitlisted participant cards and host Reject UI acceptance |
+| My Plans | Hosted caller isolation/exact gating verified; signed-out intent through Actor C OTP/onboarding, accepted exact-point card, and post-Leave empty state accepted in Simulator | Pending/waitlisted and inactive-card rendering, pagination, and plan detail actions |
+| Leave/approval | Database matrix fully verified; participant Leave and Host A pending-request approval/count refresh accepted in Simulator | Reject UI still needs Simulator acceptance |
 | Chat/safety | Designed only | Implement only after participation acceptance |
 
 “Implemented” means source exists and local checks pass. “Deployed” means the hosted development environment accepted it. “Verified” names a specific observed behavior. These words are intentionally not interchangeable.

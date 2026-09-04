@@ -162,9 +162,9 @@ Practical outcome: query activities within a radius without exposing the host's 
 
 ### Module 8: Correct joins under concurrency
 
-Progress: **participation database deployed; runtime acceptance pending** — `join_activity` authenticates the actor, requires profile completion, serializes same-activity decisions with `FOR UPDATE`, and returns accepted/pending/waitlisted outcomes. Deployed migration `007` makes Leave and host decisions share that lock, adds retry-safe terminal transitions, and promotes a FIFO waiter atomically. The mobile source adds privacy-aware optimistic Leave, stale-read invalidation, host decision UI, and runtime parsing. Migration parity and scoped schema lint pass; A/B/C/D hosted and Simulator acceptance remain pending.
+Progress: **participation database deployed and hosted-verified; participant Leave accepted in Simulator** — `join_activity` authenticates the actor, requires profile completion, serializes same-activity decisions with `FOR UPDATE`, and returns accepted/pending/waitlisted outcomes. Deployed migration `007` makes Leave and host decisions share that lock, adds retry-safe terminal transitions, and promotes a FIFO waiter atomically. On 2026-08-15, the A/B/C/D hosted matrix passed the server matrix. The rebuilt iPhone 17 Pro also verified signed-out Plans through OTP/onboarding/resume, accepted exact-point rendering, Leave confirmation, and immediate private-point removal. Host approve/reject plus pending/waitlisted cards remain pending Simulator acceptance.
 
-NearHere work: deploy and verify the completed participation slice, including a real final-place race, waitlist privacy, promotion, and host authorization; then implement removal as a distinct moderation transition.
+NearHere work: accept the Leave/approval flows in Simulator without confusing UI evidence with the completed database/RPC proof; then implement removal as a distinct moderation transition.
 
 Must-know concepts:
 
@@ -332,4 +332,4 @@ flowchart LR
     L8 --> L9["9. Chat, safety, and operations"]
 ```
 
-Lessons 1–8 have executable code. Hosted development now includes fixed-OTP Auth, profile migration/trigger, PostGIS activity/discovery, capacity-safe Join, and a caller-scoped Plans projection with active accepted-only exact-location release. Authenticated Host, existing-host idempotent Join, and the populated host Plans card were accepted in Simulator. Remaining evidence is explicit: run the two-actor profile/Plans authorization matrix; verify accepted, pending, and waitlisted outcomes; race the final place; measure public/private displacement through a protected check; and inspect a representative geospatial query plan. Leave and host approval/rejection are the next product commands.
+Lessons 1–9 have executable code. Hosted development now includes fixed-OTP Auth, profile migration/trigger, PostGIS activity/discovery, capacity-safe Join, a caller-scoped Plans projection with active accepted-only exact-location release, and migration `007` participation transitions. Authenticated Host, existing-host Join, signed-out Plans/OTP/onboarding resume, accepted participant exact-point rendering, and Leave/private-point removal were accepted in Simulator. The 2026-08-15 A/B/C/D hosted matrix verified the full server participation matrix. Remaining evidence includes the separate full profile-RLS matrix, Simulator acceptance for host decisions and pending/waitlisted cards, public/private displacement measurement, a representative geospatial query plan, and the equal-time UUID queue tie-break.

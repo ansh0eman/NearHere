@@ -1621,7 +1621,8 @@ Join/Host intent and the pending phone number survive the continuous OTP flow bu
 - iOS production bundle export: passed with 1,469 modules.
 - Hosted fixed OTP/session/profile trigger: passed earlier.
 - Mobile session restoration after restart: user-confirmed.
-- Display-name onboarding interaction: pending Simulator acceptance.
+- Display-name onboarding interaction: Actor C saved `Test Participant C` in
+  the rebuilt iPhone 17 Pro Simulator; onboarding remained visible until save.
 - Two-actor hosted RLS matrix: harness ready; second fictional identity/configuration pending.
 
 ## 11. Interview explanation
@@ -1887,7 +1888,7 @@ The same-host path is valuable idempotency evidence but not a substitute for a s
 
 ## 9. Interview explanation
 
-> I implemented a capacity-safe Join command in PostgreSQL and React Native. The database derives the actor from the session, requires profile completion, and locks one activity row before evaluating membership and capacity, which serializes competing decisions without blocking unrelated activities. A composite membership key and existing-state return make retries idempotent. The mobile client preserves protected intent through OTP/onboarding, runtime-validates the RPC response, refreshes server state, and renders accepted, pending, or waitlisted outcomes. I verified anonymous denial and the existing-host retry path while keeping the second-user concurrency matrix explicitly pending.
+> I implemented a capacity-safe Join command in PostgreSQL and React Native. The database derives the actor from the session, requires profile completion, and locks one activity row before evaluating membership and capacity, which serializes competing decisions without blocking unrelated activities. A composite membership key and existing-state return make retries idempotent. The mobile client preserves protected intent through OTP/onboarding, runtime-validates the RPC response, refreshes server state, and renders accepted, pending, or waitlisted outcomes. At the end of Lesson 7 I had verified anonymous denial and the existing-host retry path while keeping the second-user concurrency matrix explicitly pending; Lesson 9's 2026-08-15 A/B/C/D run subsequently closed that evidence gap.
 
 ## 10. Honest resume addition
 
@@ -1988,7 +1989,13 @@ Observed on 2026-08-15:
 - one real card appeared: `NearHere development walk`, `WALK`, `Hosting`, `15 Aug at 6:29 PM`, `1/8 going`, `Hosted by Anshuman`;
 - the card displayed `Private meeting point unlocked` and exact development coordinate `12.9279, 77.6717`.
 
-This proves the accepted-host branch across hosted database, RPC, mobile repository/parser/hook, and rendered UI. It does **not** prove the signed-out interaction, cross-user isolation, pending/waitlisted hosted privacy branches, or second-user presentation. Unit tests cover parser behavior for accepted and locked states, but an in-memory test is not hosted authorization proof.
+This originally proved only the accepted-host branch across hosted database,
+RPC, mobile repository/parser/hook, and rendered UI. Subsequent 2026-08-15
+evidence closes several gaps: the A/B/C/D hosted matrix proves cross-user
+isolation plus pending/waitlisted privacy, while the rebuilt Simulator proves
+signed-out Plans through Actor C OTP/onboarding/resume, accepted participant
+Leave, and Host A approval. Pending/waitlisted participant cards and Reject
+remain unaccepted in the UI.
 
 ## 9. Challenge: avoiding three meanings of “protected”
 
@@ -2002,12 +2009,13 @@ This proves the accepted-host branch across hosted database, RPC, mobile reposit
 
 ## 10. Known gaps and next work
 
-- Exercise the signed-out `openPlans` intent in Simulator.
-- Use a second fictional account to prove caller isolation and pending/waitlisted `null` geometry against hosted data.
+- Exercise pending/waitlisted participant cards and host Reject in Simulator.
 - Add SQL/integration tests for invalid limits, cross-user rows, state ordering, and accepted-only geometry.
 - Add cursor pagination rather than treating the first 50 plans as a permanent design.
 - Separate upcoming and past/cancelled presentation.
-- Add activity detail, copy/open-in-maps, Leave, approve/reject, removal, and cancellation actions.
+- Add activity detail, copy/open-in-maps, removal, and cancellation actions;
+  Leave and approve/reject exist; Approve is accepted, while Reject still needs
+  Simulator acceptance.
 - Decide retention rules for exact meeting geometry after cancellation/completion.
 - Replace raw coordinate presentation with a safe useful place experience while retaining the authorization boundary.
 
@@ -2019,9 +2027,13 @@ This proves the accepted-host branch across hosted database, RPC, mobile reposit
 
 - Built and deployed a caller-scoped mobile Plans read model with session-derived PostgreSQL authorization, accepted-member-only private-location release, runtime-validated TypeScript contracts, stale-request protection, and React Native lifecycle/error states.
 
-# Next lesson
+# Next lesson recorded at the end of Lesson 8
 
-Use a second fictional user to prove caller isolation plus accepted, pending, waitlisted, and concurrent last-place behavior. Then implement Leave and host approve/reject as explicit idempotent transitions, followed by safe copy/directions actions from the existing Plans surface.
+The planned second-user participation work was completed by Lesson 9. The
+2026-08-15 hosted A/B/C/D run now proves caller isolation, accepted, pending,
+waitlisted, concurrent final-place, Leave, approval/rejection, privacy gating,
+and FIFO promotion behavior. Mobile Simulator acceptance and safe
+copy/directions actions remain next work.
 
 # Engineering challenge log
 
@@ -2309,23 +2321,75 @@ are part of engineering evidence.
 Supabase repository methods, Plans Leave/host-request UI, stale-read protection,
 and the hosted A/B/C/D harness/runbook.
 
-**Deployed but not yet hosted-verified:** migration `007` and all of its RPC
-behavior. Local/remote migration history is in parity and scoped `public,private`
-schema lint reports no errors. Anonymous/non-host denial for the new functions,
-real concurrent capacity serialization, waitlist promotion, host request
-decisions, and the corresponding Simulator interactions remain unverified.
+**Deployed and hosted-verified on 2026-08-15:** migration `007` and its RPC
+behavior. The A/B/C/D run established distinct authenticated actors; denied
+anonymous and non-host operations; proved caller-scoped Plans; verified
+idempotent Join, Leave, approve, and reject; kept exact locations `null` for
+pending/waitlisted callers; released them for accepted/promoted callers; raced
+the final place to exactly one accepted plus one waitlisted result; promoted
+atomically after Leave; and selected the chronologically oldest of two waiters.
 
-The local lint/TypeScript/unit/export checks, migration review, development
-deployment, migration-history parity, and scoped database lint are complete.
-The next honest gate is to execute the hosted actor matrix and then accept the
-mobile flows in Simulator. Only those observations justify saying the behavior
-is “verified.”
+Local lint/TypeScript/unit/export checks, migration review/deployment, history
+parity, scoped database lint, and hosted RPC acceptance are complete. The
+rebuilt iPhone 17 Pro Simulator also verified signed-out Plans through Actor C
+OTP/profile onboarding, automatic protected-intent resume, accepted exact-point
+rendering, Leave confirmation, and immediate card/private-point removal to the
+empty state. Signed-in Host A then opened Plans, saw one request from
+`Test Participant C` for `TEST UI HOST REQUEST`, tapped Accept, and observed the
+request section disappear while participant count changed from `1/2` to `2/2`.
+The host's private meeting point remained displayed. This accepts host approval
+and coordinated request/Plans refresh, not Reject. Pending/waitlisted participant
+cards also remain unaccepted in Simulator. Equal-`created_at` UUID tie-breaking remains a
+controlled-fixture test rather than observed hosted evidence.
 
-## 10. Interview explanation
+## 10. Challenge: a protected intent raced profile onboarding
+
+**Observed symptom:** after OTP authentication, the saved `openPlans` intent
+could attempt navigation while the new account still required profile
+onboarding. Session readiness, profile loading, onboarding routing, and intent
+resumption are separate asynchronous events, so “signed in” alone was not a
+safe signal to navigate.
+
+**Root cause:** the intent effect checked identity/profile information but did
+not also prove that Expo Router had settled back into the tabs route tree. An
+effect can run between renders while onboarding still owns the screen. This is
+a navigation race: individually correct events occur in an unsafe order.
+
+**Rejected shortcuts:** an arbitrary timeout would only hide the race on one
+device; consuming the intent immediately could lose the user's destination;
+and skipping onboarding would violate the server's completed-profile gate.
+
+**Resolution:** the tab root now inspects Expo Router segments and executes a
+protected intent only when `segments[0] === '(tabs)'` **and** the profile is
+ready. Onboarding therefore remains authoritative until save completes. Once
+the app is back in the stable tabs tree, it consumes the pending Plans intent.
+
+```mermaid
+flowchart TD
+    I["openPlans intent saved"] --> O{"OTP session valid?"}
+    O -->|"No"| W["Wait"]
+    O -->|"Yes"| P{"Profile ready?"}
+    P -->|"No"| N["Keep onboarding visible"]
+    P -->|"Yes"| S{"segments[0] is tabs?"}
+    S -->|"No"| W
+    S -->|"Yes"| C["Consume intent and open Plans"]
+```
+
+**Verification on 2026-08-15:** after rebuilding the current native app on an
+iPhone 17 Pro Simulator, signed-out Plans opened Actor C phone OTP; onboarding
+stayed visible; saving `Test Participant C` automatically resumed Plans. The
+accepted plan showed its exact point. Leave displayed the confirmation copy,
+and confirming it immediately removed the card/exact point to the empty state.
+
+**Lesson:** route intent is a small distributed state machine. Resume only when
+identity, application profile, and navigation container are all ready; a delay
+is not a substitute for an explicit readiness predicate.
+
+## 11. Interview explanation
 
 > I completed an activity participation state machine across PostgreSQL and React Native. Join, approval, Leave, and waitlist promotion share an activity-row lock so the cross-row capacity invariant has one serialization point. Leave and FIFO promotion are atomic, command retries return durable outcomes, and security-definer RPCs derive the caller from the verified session rather than trusting client identity. In the mobile layer I remove exact meeting access optimistically on Leave, invalidate stale reads, roll back failures, runtime-validate every RPC response, and refetch server truth. I also designed a multi-actor hosted harness that races the final place and records which concurrency branches require three or four identities instead of overstating two-user coverage.
 
-## 11. Honest resume addition
+## 12. Honest resume addition
 
 - Implemented a transactional participation state machine with PostgreSQL row
   locks, idempotent Leave/approval/rejection, deterministic FIFO waitlist

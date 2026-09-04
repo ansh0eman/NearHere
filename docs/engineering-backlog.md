@@ -46,16 +46,19 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [ ] Add general idempotency-key records for commands whose identity is not sufficient
 - [x] Implement approve/reject and Leave transitions with FIFO waitlist promotion in migration/mobile source
 - [x] Deploy migration `007` and verify local/remote parity plus scoped schema lint
-- [ ] Accept Leave/host decisions in Simulator
+- [x] Accept participant Leave and immediate exact-location removal in Simulator
+- [x] Accept host pending-request approval and participant-count refresh in Simulator
+- [ ] Accept host rejection in Simulator
 - [ ] Implement participant removal separately from voluntary Leave
 - [x] Build an optional C/D hosted harness for concurrent last-place and FIFO-promotion proof
-- [ ] Run the hosted A/B/C/D matrix and record second-user/concurrency evidence
+- [x] Run the hosted A/B/C/D matrix and record second-user/concurrency evidence
 - [x] Add an authenticated caller-scoped Plans read model and native Plans states
 - [x] Release exact coordinates only for accepted membership while the activity is published and not ended
 - [x] Verify the accepted host Plans card and exact coordinate in Simulator
 - [x] Prevent cross-account cached-plan rendering and suppress inactive-plan exact coordinates
 - [x] Make Auth cancellation explicit by disabling modal dismissal gestures and clearing protected intent on close
-- [ ] Exercise signed-out Plans intent and pending/waitlisted locked-location cards in Simulator
+- [x] Exercise signed-out Plans intent through OTP/profile onboarding and automatic Plans resume in Simulator
+- [ ] Exercise pending/waitlisted locked-location cards in Simulator
 - [ ] Exercise cancelled/ended card labels and exact-location suppression in Simulator
 - [ ] Add cursor pagination, upcoming/past sections, plan details, and useful meeting-point actions
 

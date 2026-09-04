@@ -49,7 +49,7 @@ flowchart TD
 
 Authentication success is not onboarding success, and onboarding success is not Join success. Authentication proves identity; profile completion supplies the minimum application identity; the deployed Join transaction then evaluates availability, existing membership, capacity, and join mode. Blocking/safety rules remain future work.
 
-Current result semantics are explicit: an open activity returns `accepted` while capacity remains and `waitlisted` when full; an approval activity returns `pending`; an existing active membership is returned unchanged on retry. The mobile flow disables repeat taps while submitting, refreshes nearby data, and shows status-specific feedback. Only the existing-host idempotent path has been accepted in Simulator; a second actor is still needed to observe new accepted, pending, and waitlisted outcomes end to end.
+Current result semantics are explicit: an open activity returns `accepted` while capacity remains and `waitlisted` when full; an approval activity returns `pending`; an existing active membership is returned unchanged on retry. The 2026-08-15 hosted A/B/C/D run verified all participation outcomes through the RPC boundary. The rebuilt iPhone 17 Pro Simulator accepted the Actor C Auth/onboarding/Leave flow and Host A approval flow. Pending/waitlisted participant cards and host Reject still need Simulator acceptance.
 
 ## 3. Host creation
 
@@ -123,7 +123,7 @@ flowchart TD
 
 The signed-out state preserves an `openPlans` protected intent before routing to phone Auth. The Auth modal cannot be dismissed by a swipe that bypasses cleanup; the explicit close action clears the pending intent. The signed-in hook refreshes whenever the tab gains focus. During refresh or recoverable failure it can retain previously loaded rows rather than blanking the whole screen, but cached rows are keyed/gated by user ID so one account's private point cannot flash for another account. The current card displays type, membership/host status, time, accepted count/capacity, host, and either the exact coordinate or explicit locked/no-longer-available copy. Cancelled and ended cards suppress the exact point and use `Cancelled`/`Ended` status labels.
 
-Verified in Simulator: the signed-in hosted test user saw the real hosted activity `NearHere development walk` as `Hosting`, with `1/8 going`, `Hosted by Anshuman`, and the unlocked exact meeting point `12.9279, 77.6717`. The signed-out interaction and pending/waitlisted cards are implemented but have not yet been exercised end to end.
+Verified in Simulator: the signed-in host saw the real hosted activity and unlocked exact meeting point. Actor C completed phone OTP/onboarding/resume, saw the accepted exact point, and confirmed Leave to remove the card/private point. Host A then opened Plans for `TEST UI HOST REQUEST`, saw a Join requests count of one for `Test Participant C`, and tapped Accept. The request section disappeared, the activity count changed from `1/2` to `2/2`, and the host's private meeting point remained displayed. This accepts the approval UI and coordinated request/Plans refresh; it does not accept Reject or pending/waitlisted participant cards.
 
 ## 7. Required interface states
 

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useSegments } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -55,6 +55,7 @@ function formatDistance(distanceM: number) {
 
 export default function NearbyScreen() {
   const router = useRouter();
+  const segments = useSegments();
   const mapRef = useRef<MapView>(null);
   const { pendingIntent, session, setPendingIntent } = useAuth();
   const { state: profileState } = useProfile();
@@ -110,7 +111,21 @@ export default function NearbyScreen() {
   );
 
   useEffect(() => {
-    if (!session || !pendingIntent) return;
+    // Auth and onboarding are modal routes rendered above this mounted tab.
+    // Defer intent execution until the tabs are visible so two routes do not
+    // race to replace each other during OTP/profile completion.
+    if (segments[0] !== '(tabs)' || !session || !pendingIntent) return;
+
+    // Every authenticated flow waits for profile resolution before consuming
+    // its intent. The onboarding route is displayed above this tab screen, so
+    // consuming openPlans/openAccount first would let the background map route
+    // away from onboarding and lose the user's original destination.
+    if (profileState.status === 'needsProfile') {
+      router.push('/onboarding/profile');
+      return;
+    }
+    if (profileState.status !== 'ready') return;
+
     if (pendingIntent.kind === 'openAccount') {
       setPendingIntent(null);
       router.replace('/me');
@@ -121,12 +136,6 @@ export default function NearbyScreen() {
       router.replace('/plans');
       return;
     }
-
-    if (profileState.status === 'needsProfile') {
-      router.push('/onboarding/profile');
-      return;
-    }
-    if (profileState.status !== 'ready') return;
 
     if (pendingIntent.kind === 'joinActivity') {
       void performJoin(pendingIntent.activityId).then((joined) => {
@@ -141,7 +150,7 @@ export default function NearbyScreen() {
       pathname: '/host/create',
       params: { latitude: String(region.latitude), longitude: String(region.longitude) },
     });
-  }, [pendingIntent, performJoin, profileState.status, region.latitude, region.longitude, router, session, setPendingIntent]);
+  }, [pendingIntent, performJoin, profileState.status, region.latitude, region.longitude, router, segments, session, setPendingIntent]);
 
   const visibleActivities = activityState.activities;
 

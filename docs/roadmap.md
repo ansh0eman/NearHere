@@ -31,7 +31,7 @@ flowchart LR
 - Apply versioned `profiles` migration with Row Level Security — completed in development
 - Verify anonymous profile access is denied — completed
 - Connect real OTP flow and verify session restoration — completed
-- Add minimal display-name onboarding and generated placeholder avatar — implemented; Simulator acceptance pending
+- Add minimal display-name onboarding and generated placeholder avatar — implemented; Actor C flow accepted in Simulator
 - Add auth/profile integration tests and abuse-control checklist — unit tests and hosted harness added; two-user run pending
 
 Exit condition: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. The remaining proof is the two-actor hosted RLS matrix and onboarding interaction acceptance.
@@ -53,12 +53,12 @@ Exit condition: two devices can create and discover a real activity without expo
 - Mobile auth/profile gates, protected-intent resume, runtime parsing, and Join feedback — implemented
 - Anonymous denial and same-host idempotent acceptance — verified
 - Caller-scoped My Plans read model with accepted, published, not-ended exact-location release — deployed and forward-hardened
-- Native Plans loading/error/empty/list states and signed-out Auth intent — implemented
+- Native Plans loading/error/empty/list states and signed-out Auth intent — Actor C OTP/onboarding/resume accepted in Simulator
 - Account-keyed plan cache, inactive location suppression, and explicit Auth cancellation — implemented
 - Accepted host plan and unlocked exact point — accepted in Simulator
-- Signed-out, pending, and waitlisted Plans interactions — pending Simulator/second-user acceptance
-- Optional C/D hosted harness for second-user, concurrent last-place, and FIFO promotion — implemented locally; run pending
-- Approve/reject, Leave, host request queue, and FIFO promotion — deployed to development with clean schema lint/parity; hosted and Simulator acceptance pending
+- Pending and waitlisted Plans cards — pending Simulator acceptance
+- A/B/C/D hosted matrix for second-user, concurrent last-place, exact gating, and FIFO promotion — verified 2026-08-15
+- Approve/reject, Leave, host request queue, and FIFO promotion — deployed/hosted-verified; participant Leave and host approval accepted in Simulator, Reject pending
 - Participant removal — pending
 - General idempotency-key records for later commands — pending
 - Plans pagination/detail actions and useful meeting-point navigation — pending

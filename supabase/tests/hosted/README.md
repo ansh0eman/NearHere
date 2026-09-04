@@ -184,3 +184,19 @@ release, run with the additional configured identities and assert that:
 5. `waitlist_promoted` is true and accepted count remains within capacity; and
 6. the promoted caller's Plans row changes to accepted and only then contains
    the exact active meeting point.
+
+### Latest hosted result
+
+On 2026-08-15, the development project run with A/B/C/D completed with all
+checks passing. It established distinct actors; verified anonymous and non-host
+denial plus caller-scoped Plans; confirmed retry-safe Join, Leave, approval,
+and rejection; observed `null` exact coordinates while pending/waitlisted and
+exact coordinates only after acceptance/promotion; produced exactly one
+accepted and one waitlisted participant in the concurrent final-place race;
+promoted atomically after the accepted participant left; and promoted the
+older of two chronological waiters while the newer waiter stayed locked.
+
+No phone, OTP, token, user/activity ID, or exact coordinate was printed. This
+is hosted database/RPC evidence. It is not Simulator acceptance of the mobile
+Leave or host-decision UI, and it does not exercise the equal-timestamp
+`user_id` tie-break.

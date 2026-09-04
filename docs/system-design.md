@@ -139,11 +139,19 @@ sequenceDiagram
     Auth->>DB: Create/read auth user
     DB->>DB: Trigger creates public profile
     Auth-->>App: Session tokens
+    App->>App: Complete required profile onboarding
+    App->>App: Wait until Router is in stable tabs tree
     App->>App: Resume protected intent
     Note over App,DB: Join/Host still requires server authorization
 ```
 
 Authentication proves identity. Authorization decides whether that identity may perform an action. The app can display a signed-in state, but it cannot be trusted to approve its own join request.
+
+Protected-intent readiness is conjunctive: the session must be valid, the
+profile must be ready, and Expo Router must have settled into the tabs tree.
+The implementation gates intent execution on `segments[0] === '(tabs)'` plus
+profile readiness. This prevents an asynchronous intent effect from racing and
+replacing a still-required onboarding screen.
 
 ## 5. Discovery and location privacy
 
@@ -276,8 +284,8 @@ Every command is retry-safe for the same logical state:
 - An opposite decision or an invalid terminal transition is rejected rather than silently rewritten.
 
 These properties are deployed in development migration `007`. Local/remote
-migration history is in parity and scoped schema lint passes; the multi-actor
-runtime harness remains the evidence gate for their behavior under real calls.
+migration history is in parity, scoped schema lint passes, and the hosted
+A/B/C/D runtime matrix verified the transitions under real calls on 2026-08-15.
 
 Required invariants:
 
@@ -330,7 +338,7 @@ Every network input is runtime data, even when the client and server share TypeS
 | Session expired | Refresh once; if invalid, return to phone auth while preserving safe protected intent. |
 | Nearby API timeout | Keep the last labeled result if appropriate, show retry, do not invent live activities. |
 | Duplicate Join retry | Idempotency returns the existing result. |
-| Concurrent last-place joins | All capacity writers use one activity-row lock; optional hosted Actor C will race two real sessions and require exactly one accepted plus one waitlisted result. |
+| Concurrent last-place joins | All capacity writers use one activity-row lock; the 2026-08-15 hosted B/C race returned exactly one accepted plus one waitlisted result at capacity. |
 | Realtime disconnected | Persisted API remains authoritative; reconnect and refetch from a cursor. |
 | Redis unavailable in the future | Lose ephemeral presence/rate-limit optimization gracefully; never lose memberships. |
 
@@ -388,8 +396,10 @@ Scaling is a response to evidence. Adding Redis, queues, replicas, or microservi
 
 **Implemented in source:** Expo/React Native native app, TypeScript/runtime boundaries, native live-discovery map states, foreground permission flow, persisted manual location, searchable development geocoder, native development build, hosted phone/OTP, retryable session restoration, protected-intent modeling, profile onboarding, native Host form, Join feedback, My Plans states, participant Leave, and host request approval/rejection. Leave optimistically removes the plan so an exact point disappears immediately, invalidates older reads, restores the row on failure, and then refreshes server truth. Host decisions invalidate in-flight request reads, remove the decided request locally after success, and refetch both requests and Plans.
 
-**Deployed to development:** versioned identity/profile, PostGIS activity, capacity-safe Join, Join hardening, caller-scoped My Plans, forward-only Plans privacy hardening, and migration `007` participation transitions; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; anonymous-safe nearby discovery; authenticated `join_activity` with per-activity row locking/natural-key idempotency; authenticated `my_plans` with accepted-plus-active exact-location release; and authenticated Leave/host-decision/request-queue RPCs. Anonymous discovery/direct-table/Join/Plans denial and authenticated Host/host-idempotency/accepted-host Plans Simulator paths are proven. Migration `007` has local/remote history parity and clean scoped schema lint, but its runtime behavior is not yet hosted-verified.
+**Deployed to development:** versioned identity/profile, PostGIS activity, capacity-safe Join, Join hardening, caller-scoped My Plans, forward-only Plans privacy hardening, and migration `007` participation transitions; owner-only profile RLS; separate private meeting geometry; server-derived public geometry; atomic activity/host-membership creation; anonymous-safe nearby discovery; authenticated `join_activity` with per-activity row locking/natural-key idempotency; authenticated `my_plans` with accepted-plus-active exact-location release; and authenticated Leave/host-decision/request-queue RPCs. Anonymous discovery/direct-table/Join/Plans denial and authenticated Host/host-idempotency/accepted-host Plans Simulator paths are proven. The hosted A/B/C/D matrix additionally proves distinct-actor caller scoping, new-command denials, idempotent Join/Leave/approve/reject, exact-location gating, the concurrent final-place lock, atomic promotion, and oldest-created-at FIFO behavior.
 
-**Implemented but not yet hosted-verified:** migration `007` Leave, host decision, FIFO promotion, and host-scoped request projection; the corresponding mobile repositories, runtime parsers, hooks, and UI; and the A/B plus optional C/D hosted harness.
+**Hosted-verified on 2026-08-15:** migration `007` Leave, host decision, FIFO promotion, host-scoped request projection, and the A/B/C/D black-box harness.
 
-**Not yet verified or implemented:** run the multi-actor hosted matrix; Simulator acceptance for Leave/approval/locked-location transitions; equal-timestamp FIFO tie-break runtime proof; participant removal; useful plan detail/directions; activity cancellation; real SMS delivery; realtime chat; moderation; MapLibre styling; custom avatar builder; payments; recommendations; direct messages; or recurring-event administration.
+**Simulator-verified on 2026-08-15:** the rebuilt iPhone 17 Pro app preserved a signed-out Plans intent through Actor C OTP and required profile onboarding, resumed Plans only after the profile became ready, rendered the accepted exact point, presented Leave confirmation, and optimistically removed the card/private point to an empty state after successful Leave. Host approve/reject remains unaccepted in Simulator.
+
+**Not yet verified or implemented:** Simulator acceptance for host approval/rejection and pending/waitlisted locked-location cards; equal-timestamp FIFO tie-break runtime proof; participant removal; useful plan detail/directions; activity cancellation; real SMS delivery; realtime chat; moderation; MapLibre styling; custom avatar builder; payments; recommendations; direct messages; or recurring-event administration.

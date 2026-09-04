@@ -172,11 +172,13 @@ This operation is **semantically idempotent by natural key**: the primary key `(
 
 The mobile repository runtime-validates the returned `{ membership_status, participant_count }` row. The map disables duplicate submission while one request is active, refreshes discovery after success, and shows status-specific copy. These client controls improve UX; the database key, lock, and transaction provide correctness.
 
-### Deployed to development, pending runtime acceptance: Leave and host decisions
+### Deployed and hosted-verified: Leave and host decisions
 
 `leave_activity` and `decide_activity_request` lock the same activity row used by Join before changing any capacity-consuming state. This creates one serial order for Join, approval, Leave, and promotion on a given activity. Retrying the same command returns its durable outcome; opposite terminal transitions fail.
 
-The host request projection is deliberately smaller than `my_plans`: it exposes only what a host needs to decide a pending request and never joins private locations. All three functions derive the caller from `auth.uid()`, use `SECURITY DEFINER` with an empty search path and schema-qualified objects, revoke execution from `public`/`anon`, and grant only `authenticated` execution. Migration history parity and scoped schema lint prove deployment shape; behavior remains unproven until the black-box actor matrix passes.
+The host request projection is deliberately smaller than `my_plans`: it exposes only what a host needs to decide a pending request and never joins private locations. All three functions derive the caller from `auth.uid()`, use `SECURITY DEFINER` with an empty search path and schema-qualified objects, revoke execution from `public`/`anon`, and grant only `authenticated` execution.
+
+On 2026-08-15, the hosted A/B/C/D black-box matrix verified anonymous and non-host denial, caller-scoped Plans, idempotent Join/Leave/approve/reject, pending/waitlisted `null` exact locations, accepted/promoted exact-location release, a true concurrent final-place race yielding exactly one accepted and one waitlisted participant, atomic promotion after Leave, and chronological oldest-waiter FIFO selection. This is RPC/database verification; the corresponding mobile interactions have not yet been accepted in Simulator.
 
 ### Future HTTP commands
 
