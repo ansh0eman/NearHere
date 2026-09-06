@@ -14,6 +14,7 @@ export type {
   JoinActivityOutcome,
   JoinMode,
   LeaveActivityResponse,
+  RemoveParticipantResponse,
   MembershipRequestDecision,
   MembershipRequestSummary,
   MyPlanSummary,
@@ -30,6 +31,7 @@ import type {
   DecideMembershipRequestResponse,
   JoinActivityResponse,
   LeaveActivityResponse,
+  RemoveParticipantResponse,
   MembershipRequestDecision,
   MembershipRequestSummary,
   MyPlanSummary,
@@ -66,6 +68,10 @@ export type JoinActivityOperationResult =
 
 export type LeaveActivityOperationResult =
   | { ok: true; result: LeaveActivityResponse }
+  | { ok: false; message: string };
+
+export type RemoveParticipantOperationResult =
+  | { ok: true; result: RemoveParticipantResponse }
   | { ok: false; message: string };
 
 export type CancelActivityOperationResult =

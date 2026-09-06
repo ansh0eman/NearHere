@@ -8,6 +8,7 @@ import {
   parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
   parseLeaveActivityResponseRow,
+  parseRemoveParticipantResponseRow,
   parseMembershipRequestRows,
   parseMyPlanRow,
   parseMyPlanRows,
@@ -357,6 +358,25 @@ test('cancel parser maps the canonical cancellation receipt', () => {
       status: 'cancelled',
     }),
     /invalid cancelled_at/,
+  );
+});
+
+test('remove participant parser requires removed state and promotion flag', () => {
+  assert.deepEqual(
+    parseRemoveParticipantResponseRow({
+      membership_status: 'removed',
+      participant_count: 2,
+      waitlist_promoted: true,
+    }),
+    { membershipStatus: 'removed', participantCount: 2, waitlistPromoted: true },
+  );
+  assert.throws(
+    () => parseRemoveParticipantResponseRow({
+      membership_status: 'accepted',
+      participant_count: 2,
+      waitlist_promoted: false,
+    }),
+    /invalid membership_status/,
   );
 });
 

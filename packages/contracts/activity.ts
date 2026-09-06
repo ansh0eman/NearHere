@@ -114,6 +114,12 @@ export interface LeaveActivityResponse {
   waitlistPromoted: boolean;
 }
 
+export interface RemoveParticipantResponse {
+  membershipStatus: Extract<ActivityMembershipStatus, 'removed'>;
+  participantCount: number;
+  waitlistPromoted: boolean;
+}
+
 export interface CancelActivityResponse {
   activityId: string;
   status: Extract<ActivityStatus, 'cancelled'>;

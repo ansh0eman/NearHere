@@ -102,6 +102,6 @@ These checks answer different questions: lint checks configured code-quality rul
 
 **Hosted-verified:** migration `202609040001` is deployed. The hosted Activity Detail/cancellation harness verifies anonymous-safe detail, caller membership states, accepted-only exact-location release, host-only atomic cancellation, idempotent retries, and post-cancellation redaction. Simulator acceptance of this slice is still pending.
 
-**Planned:** Simulator acceptance for Activity Detail, host Reject, and pending/waitlisted participant cards; participant removal, chat, safety flows, MapLibre styling, and avatar builder. The full two-actor profile-RLS matrix passed on 2026-09-04.
+**Next implementation slice:** host-only participant removal is implemented locally as migration `202609060001`, with a typed mobile repository boundary and runtime parser. It still needs deployment and a hosted concurrency harness before UI wiring. Simulator acceptance remains open for Activity Detail, host Reject, and pending/waitlisted participant cards; chat, safety flows, MapLibre styling, and avatar builder follow afterward.
 
 For the complete runbook, see [`../../docs/ios-simulator-workflow.md`](../../docs/ios-simulator-workflow.md). For architecture, see [`../../docs/system-design.md`](../../docs/system-design.md).

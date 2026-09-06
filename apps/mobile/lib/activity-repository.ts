@@ -5,6 +5,7 @@ import {
   parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
   parseLeaveActivityResponseRow,
+  parseRemoveParticipantResponseRow,
   parseMembershipRequestRows,
   parseMyPlanRows,
   parseNearbyActivityRows,
@@ -19,6 +20,7 @@ import type {
   DecideMembershipRequestOperationResult,
   JoinActivityOperationResult,
   LeaveActivityOperationResult,
+  RemoveParticipantOperationResult,
   MembershipRequestsResult,
   MyPlansResult,
   NearbyActivitiesQuery,
@@ -102,6 +104,33 @@ export async function leaveActivity(activityId: string): Promise<LeaveActivityOp
     return { ok: true, result: parseLeaveActivityResponseRow(data[0]) };
   } catch {
     return { ok: false, message: 'NearHere received an invalid leave response. Please try again.' };
+  }
+}
+
+export async function removeActivityParticipant(
+  activityId: string,
+  participantUserId: string,
+): Promise<RemoveParticipantOperationResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Participant removal is unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('remove_activity_participant', {
+    p_activity_id: activityId,
+    p_participant_user_id: participantUserId,
+  });
+  if (error) {
+    if (error.code === '42501') return { ok: false, message: 'Only the activity host can remove participants.' };
+    if (error.code === 'P0002') return { ok: false, message: 'This participant is no longer in the activity.' };
+    if (error.code === 'P0003') return { ok: false, message: 'This participant cannot be removed in their current state.' };
+    return { ok: false, message: 'NearHere could not remove this participant. Please try again.' };
+  }
+
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one removal result.');
+    return { ok: true, result: parseRemoveParticipantResponseRow(data[0]) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid participant-removal response. Please try again.' };
   }
 }
 

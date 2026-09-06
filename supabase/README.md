@@ -416,7 +416,7 @@ Deployment and acceptance evidence recorded on 2026-08-15:
 | Existing host taps Join | Returned `accepted`; participant count remained one | Existing active membership is returned without duplication, preserving the host path. |
 | Mobile runtime checks | Join response parser accepts only known status/count shapes | Untrusted RPC JSON does not enter UI state unchecked. |
 
-At the end of Lesson 7, this evidence did **not** yet prove the multi-actor branches. Lesson 9 subsequently supplied that proof on 2026-08-15: the hosted A/B/C/D matrix verified open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. It also verified Leave and host approval/rejection. Participant removal and general idempotency records remain unimplemented. Accepted-only meeting-point release is implemented through `my_plans`.
+At the end of Lesson 7, this evidence did **not** yet prove the multi-actor branches. Lesson 9 subsequently supplied that proof on 2026-08-15: the hosted A/B/C/D matrix verified open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. It also verified Leave and host approval/rejection. Participant removal is now implemented locally in migration `202609060001`, pending deployment and hosted concurrency verification. General idempotency records remain unimplemented. Accepted-only meeting-point release is implemented through `my_plans`.
 
 ## Lesson 8 deployed caller-scoped My Plans
 

@@ -10,6 +10,7 @@ import type {
   JoinActivityResponse,
   JoinActivityOutcome,
   LeaveActivityResponse,
+  RemoveParticipantResponse,
   MembershipRequestSummary,
   MyPlanSummary,
   NearbyActivitySummary,
@@ -254,6 +255,14 @@ export function parseLeaveActivityResponseRow(value: unknown): LeaveActivityResp
     throw new Error('Leave response has an invalid waitlist_promoted.');
   }
   return { ...parsed, waitlistPromoted: value.waitlist_promoted } as LeaveActivityResponse;
+}
+
+export function parseRemoveParticipantResponseRow(value: unknown): RemoveParticipantResponse {
+  const parsed = parseParticipantMutationRow(value, ['removed'], 'Remove participant');
+  if (!isRecord(value) || typeof value.waitlist_promoted !== 'boolean') {
+    throw new Error('Remove participant response has an invalid waitlist_promoted.');
+  }
+  return { ...parsed, waitlistPromoted: value.waitlist_promoted } as RemoveParticipantResponse;
 }
 
 export function parseCancelActivityResponseRow(value: unknown): CancelActivityResponse {
