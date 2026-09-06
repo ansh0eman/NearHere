@@ -1,4 +1,6 @@
 import {
+  parseActivityDetailRow,
+  parseCancelActivityResponseRow,
   parseActivitySummaryRow,
   parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
@@ -9,6 +11,8 @@ import {
 } from '@/lib/activity-validation';
 import { supabase } from '@/lib/supabase';
 import type {
+  ActivityDetailResult,
+  CancelActivityOperationResult,
   CreateActivityOperationResult,
   CreateActivityRequest,
   DecideMembershipRequestInput,
@@ -20,6 +24,46 @@ import type {
   NearbyActivitiesQuery,
   NearbyActivitiesResult,
 } from '@/types/activity';
+
+export async function getActivityDetail(activityId: string): Promise<ActivityDetailResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Activity details are unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('activity_detail', { p_activity_id: activityId });
+  if (error) {
+    if (error.code === 'P0002') return { ok: false, message: 'This activity is no longer available.' };
+    return { ok: false, message: 'NearHere could not load this activity. Check your connection and try again.' };
+  }
+
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one activity detail.');
+    return { ok: true, activity: parseActivityDetailRow(data[0]) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid activity response. Please try again.' };
+  }
+}
+
+export async function cancelActivity(activityId: string): Promise<CancelActivityOperationResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Cancellation is unavailable. Check the Supabase configuration.' };
+  }
+
+  const { data, error } = await supabase.rpc('cancel_activity', { p_activity_id: activityId });
+  if (error) {
+    if (error.code === '42501') return { ok: false, message: 'Only the activity host can cancel it.' };
+    if (error.code === 'P0002') return { ok: false, message: 'This activity is no longer available.' };
+    if (error.code === 'P0003') return { ok: false, message: 'Only an upcoming or active activity can be cancelled.' };
+    return { ok: false, message: 'NearHere could not cancel the activity. Please try again.' };
+  }
+
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one cancellation result.');
+    return { ok: true, result: parseCancelActivityResponseRow(data[0]) };
+  } catch {
+    return { ok: false, message: 'NearHere received an invalid cancellation response. Please try again.' };
+  }
+}
 
 export async function getMembershipRequests(activityId: string): Promise<MembershipRequestsResult> {
   if (!supabase) {

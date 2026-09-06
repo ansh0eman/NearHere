@@ -85,6 +85,20 @@ export interface MyPlanSummary extends ActivitySummary {
   exactMeetingLocation: ExactActivityLocation | null;
 }
 
+/**
+ * A single activity read model shaped for the current caller.
+ *
+ * Public facts are available without an account. Membership fields are null
+ * for anonymous callers and authenticated non-members. Exact coordinates are
+ * present only for an accepted caller while the activity is still published
+ * and has not ended.
+ */
+export interface ActivityDetail extends ActivitySummary {
+  membershipRole: ActivityMembershipRole | null;
+  membershipStatus: ActivityMembershipStatus | null;
+  exactMeetingLocation: ExactActivityLocation | null;
+}
+
 export interface CreateActivityResponse {
   activity: ActivitySummary;
 }
@@ -98,6 +112,12 @@ export interface LeaveActivityResponse {
   membershipStatus: Extract<ActivityMembershipStatus, 'left'>;
   participantCount: number;
   waitlistPromoted: boolean;
+}
+
+export interface CancelActivityResponse {
+  activityId: string;
+  status: Extract<ActivityStatus, 'cancelled'>;
+  cancelledAt: string;
 }
 
 export type MembershipRequestDecision = 'approve' | 'reject';

@@ -1623,7 +1623,12 @@ Join/Host intent and the pending phone number survive the continuous OTP flow bu
 - Mobile session restoration after restart: user-confirmed.
 - Display-name onboarding interaction: Actor C saved `Test Participant C` in
   the rebuilt iPhone 17 Pro Simulator; onboarding remained visible until save.
-- Two-actor hosted RLS matrix: harness ready; second fictional identity/configuration pending.
+- Two-actor hosted RLS matrix: passed on 2026-09-04, covering distinct actors,
+  trigger-created rows, anonymous denial, owner reads and updates, cross-user
+  isolation, protected-column/insert/delete denial, constraints, and cleanup.
+- Operational observation: the first OTP request received a transient HTTP 502.
+  An Auth health request returned HTTP 200, and a deliberate retry completed
+  the entire matrix. No security assertion was counted from the failed attempt.
 
 ## 11. Interview explanation
 
@@ -2395,3 +2400,46 @@ is not a substitute for an explicit readiness predicate.
   locks, idempotent Leave/approval/rejection, deterministic FIFO waitlist
   promotion, least-privilege Supabase RPCs, privacy-aware optimistic React
   Native state, stale-response invalidation, and multi-session acceptance tests.
+
+## Lesson 10 — Activity detail as a caller-scoped read model
+
+An activity-detail screen is not merely a larger map card. It combines public
+facts, the current caller's membership, and conditionally private operational
+data. Returning a raw table row would either omit necessary context or expose
+fields the caller should never receive. The database therefore produces a
+purpose-built **read model**: one response shaped for this use case.
+
+```mermaid
+flowchart LR
+    ID["Activity ID"] --> RPC["activity_detail"]
+    JWT["Optional verified session"] --> ACTOR["auth.uid() or anonymous"]
+    ACTOR --> RPC
+    RPC --> PUBLIC["Public facts + approximate area"]
+    RPC --> OWN["Caller's membership only"]
+    OWN --> GATE{"Accepted + published + unended?"}
+    GATE -->|"Yes"| EXACT["Exact meeting point"]
+    GATE -->|"No"| NULL["No exact coordinates"]
+```
+
+The authorization predicate lives in PostgreSQL because hiding coordinates in
+React Native would be cosmetic: a modified client can inspect every byte it
+receives. The TypeScript parser repeats the rule as defense in depth and fails
+closed if a malformed response tries to reveal private coordinates.
+
+Cancellation is modeled as a command rather than a generic status update. The
+database derives the host from the signed session, locks the activity row,
+rejects ended or non-published activities, changes `status` and `cancelled_at`
+atomically, and returns the original receipt on retry. The same row lock orders
+cancellation against Join, Leave, and host decisions.
+
+On the device, Leave and Cancel invalidate in-flight reads and remove exact
+coordinates before waiting for the network. A canonical refetch follows both
+success and failure. This separates two responsibilities:
+
+- PostgreSQL decides whether access is authorized.
+- React Native prevents stale authorized data from lingering or repainting.
+
+Current evidence is intentionally limited: contracts, migration, parser, native
+route, unit tests, and an export build exist locally. Deployment, the hosted
+privacy/cancellation harness, and Simulator interaction remain required before
+this lesson can be called verified.

@@ -139,7 +139,12 @@ export default function NearbyScreen() {
 
     if (pendingIntent.kind === 'joinActivity') {
       void performJoin(pendingIntent.activityId).then((joined) => {
-        if (joined) setPendingIntent(null);
+        if (!joined) return;
+        const shouldReturnToActivity = pendingIntent.returnToActivity;
+        setPendingIntent(null);
+        if (shouldReturnToActivity) {
+          router.push({ pathname: '/activity/[id]', params: { id: pendingIntent.activityId } });
+        }
       });
       return;
     }
@@ -216,6 +221,14 @@ export default function NearbyScreen() {
 
     setPendingIntent({ kind: 'joinActivity', activityId: selected.id });
     router.push('/auth/phone');
+  }
+
+  function openSelectedActivity() {
+    if (!selected) return;
+    router.push({
+      pathname: '/activity/[id]',
+      params: { distanceM: String(selected.distanceM), id: selected.id },
+    });
   }
 
   function requireAuthenticationForHosting() {
@@ -348,35 +361,38 @@ export default function NearbyScreen() {
           </View>
         ) : selected ? (
           <View style={styles.activityCard}>
-            <View style={styles.activityMetaRow}>
-              <Text style={[styles.activityKind, { color: KIND_COLORS[selected.kind] }]}>
-                {selected.kind.toUpperCase()}
-              </Text>
-              <Text style={styles.startsIn}>{formatStartsAt(selected.startsAt)}</Text>
-            </View>
-            <Text style={styles.activityTitle}>{selected.title}</Text>
-            <Text style={styles.activityDescription}>{selected.description}</Text>
-            <View style={styles.detailRow}>
-              <View style={styles.detailItem}>
-                <Ionicons name="walk-outline" size={17} color="#66717D" />
-                <Text style={styles.detailText}>{formatDistance(selected.distanceM)}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="people-outline" size={17} color="#66717D" />
-                <Text style={styles.detailText}>
-                  {selected.participantCount}/{selected.capacity} going
+            <Pressable
+              accessibilityHint="Opens full activity details"
+              accessibilityLabel={`View ${selected.title}`}
+              accessibilityRole="button"
+              onPress={openSelectedActivity}
+              style={({ pressed }) => pressed && styles.cardPressed}>
+              <View style={styles.activityMetaRow}>
+                <Text style={[styles.activityKind, { color: KIND_COLORS[selected.kind] }]}>
+                  {selected.kind.toUpperCase()}
                 </Text>
+                <Text style={styles.startsIn}>{formatStartsAt(selected.startsAt)}</Text>
               </View>
-            </View>
-            <Text style={styles.hostText}>Hosted by {selected.hostDisplayName}</Text>
+              <Text style={styles.activityTitle}>{selected.title}</Text>
+              <Text style={styles.activityDescription}>{selected.description}</Text>
+              <View style={styles.detailRow}>
+                <View style={styles.detailItem}>
+                  <Ionicons name="walk-outline" size={17} color="#66717D" />
+                  <Text style={styles.detailText}>{formatDistance(selected.distanceM)}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Ionicons name="people-outline" size={17} color="#66717D" />
+                  <Text style={styles.detailText}>
+                    {selected.participantCount}/{selected.capacity} going
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.hostText}>Hosted by {selected.hostDisplayName}</Text>
+            </Pressable>
             <View style={styles.cardActions}>
-              <View style={styles.avatarStack}>
-                {['🦊', '🐸', '🌈'].map((avatar, index) => (
-                  <View key={avatar} style={[styles.avatar, { marginLeft: index === 0 ? 0 : -8 }]}>
-                    <Text>{avatar}</Text>
-                  </View>
-                ))}
-              </View>
+              <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.detailsButton}>
+                <Text style={styles.detailsButtonText}>View details</Text>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 disabled={joiningId === selected.id}
@@ -578,6 +594,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
+  cardPressed: { opacity: 0.72 },
   activityMetaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   activityKind: { fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
   startsIn: { color: '#3E8E68', fontSize: 12, fontWeight: '800' },
@@ -589,6 +606,8 @@ const styles = StyleSheet.create({
   detailText: { color: '#66717D', fontSize: 12, fontWeight: '700' },
   hostText: { color: '#89919A', fontSize: 11, fontWeight: '700', marginTop: 10 },
   cardActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+  detailsButton: { paddingHorizontal: 3, paddingVertical: 11 },
+  detailsButtonText: { color: '#4D5A66', fontSize: 12, fontWeight: '900' },
   avatarStack: { alignItems: 'center', flexDirection: 'row' },
   avatar: {
     alignItems: 'center',

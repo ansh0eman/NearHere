@@ -163,7 +163,12 @@ export default function PlansScreen() {
               </Pressable>
             )}
             {state.plans.map((plan) => (
-              <PlanCard key={plan.id} onLeave={() => confirmLeave(plan)} plan={plan} />
+              <PlanCard
+                key={plan.id}
+                onLeave={() => confirmLeave(plan)}
+                onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })}
+                plan={plan}
+              />
             ))}
           </View>
         )}
@@ -172,7 +177,15 @@ export default function PlansScreen() {
   );
 }
 
-function PlanCard({ onLeave, plan }: { onLeave: () => void; plan: MyPlanSummary }) {
+function PlanCard({
+  onLeave,
+  onOpen,
+  plan,
+}: {
+  onLeave: () => void;
+  onOpen: () => void;
+  plan: MyPlanSummary;
+}) {
   const isHost = plan.membershipRole === 'host';
   const meetingPoint = plan.exactMeetingLocation;
   const hasEnded = new Date(plan.endsAt).getTime() <= Date.now();
@@ -183,52 +196,59 @@ function PlanCard({ onLeave, plan }: { onLeave: () => void; plan: MyPlanSummary 
 
   return (
     <View style={styles.card}>
-      <View style={styles.cardTopRow}>
-        <Text style={styles.kind}>{plan.kind.toUpperCase()}</Text>
-        <View
-          style={[
-            styles.statusPill,
-            (isInactive || plan.membershipStatus !== 'accepted') && styles.statusPillMuted,
-          ]}>
-          <Text style={styles.statusText}>{membershipLabel}</Text>
+      <Pressable
+        accessibilityHint="Opens full activity details"
+        accessibilityLabel={`View ${plan.title}`}
+        accessibilityRole="button"
+        onPress={onOpen}
+        style={({ pressed }) => pressed && styles.buttonPressed}>
+        <View style={styles.cardTopRow}>
+          <Text style={styles.kind}>{plan.kind.toUpperCase()}</Text>
+          <View
+            style={[
+              styles.statusPill,
+              (isInactive || plan.membershipStatus !== 'accepted') && styles.statusPillMuted,
+            ]}>
+            <Text style={styles.statusText}>{membershipLabel}</Text>
+          </View>
         </View>
-      </View>
-      <Text style={styles.cardTitle}>{plan.title}</Text>
-      <View style={styles.detailRow}>
-        <Ionicons color="#66717D" name="time-outline" size={16} />
-        <Text style={styles.detailText}>{formatPlanTime(plan.startsAt)}</Text>
-      </View>
-      <View style={styles.detailRow}>
-        <Ionicons color="#66717D" name="people-outline" size={16} />
-        <Text style={styles.detailText}>
-          {plan.participantCount}/{plan.capacity} {isInactive ? 'participants' : 'going'} · Hosted by{' '}
-          {plan.hostDisplayName}
-        </Text>
-      </View>
+        <Text style={styles.cardTitle}>{plan.title}</Text>
+        <View style={styles.detailRow}>
+          <Ionicons color="#66717D" name="time-outline" size={16} />
+          <Text style={styles.detailText}>{formatPlanTime(plan.startsAt)}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons color="#66717D" name="people-outline" size={16} />
+          <Text style={styles.detailText}>
+            {plan.participantCount}/{plan.capacity} {isInactive ? 'participants' : 'going'} · Hosted by{' '}
+            {plan.hostDisplayName}
+          </Text>
+        </View>
 
-      <View style={[styles.locationBox, !meetingPoint && styles.locationBoxLocked]}>
-        <Ionicons
-          color={meetingPoint ? '#3E8E68' : '#8A929A'}
-          name={meetingPoint ? 'location' : 'lock-closed-outline'}
-          size={18}
-        />
-        <View style={styles.locationCopy}>
-          <Text style={styles.locationTitle}>
-            {meetingPoint
-              ? 'Private meeting point unlocked'
-              : isInactive ? 'Meeting point no longer available' : 'Exact meeting point stays private'}
-          </Text>
-          <Text style={styles.locationText}>
-            {meetingPoint
-              ? `${meetingPoint.latitude.toFixed(4)}, ${meetingPoint.longitude.toFixed(4)}`
-              : isInactive
-                ? 'NearHere removes exact-location access after an activity ends or is cancelled.'
-              : plan.membershipStatus === 'pending'
-                ? 'It appears after the host accepts your request.'
-                : 'It appears if a place opens and you are accepted.'}
-          </Text>
+        <View style={[styles.locationBox, !meetingPoint && styles.locationBoxLocked]}>
+          <Ionicons
+            color={meetingPoint ? '#3E8E68' : '#8A929A'}
+            name={meetingPoint ? 'location' : 'lock-closed-outline'}
+            size={18}
+          />
+          <View style={styles.locationCopy}>
+            <Text style={styles.locationTitle}>
+              {meetingPoint
+                ? 'Private meeting point unlocked'
+                : isInactive ? 'Meeting point no longer available' : 'Exact meeting point stays private'}
+            </Text>
+            <Text style={styles.locationText}>
+              {meetingPoint
+                ? `${meetingPoint.latitude.toFixed(4)}, ${meetingPoint.longitude.toFixed(4)}`
+                : isInactive
+                  ? 'NearHere removes exact-location access after an activity ends or is cancelled.'
+                : plan.membershipStatus === 'pending'
+                  ? 'It appears after the host accepts your request.'
+                  : 'It appears if a place opens and you are accepted.'}
+            </Text>
+          </View>
         </View>
-      </View>
+      </Pressable>
       {!isHost && !isInactive && (
         <Pressable
           accessibilityLabel={`Leave ${plan.title}`}

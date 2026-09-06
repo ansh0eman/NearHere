@@ -23,7 +23,7 @@ flowchart LR
 - Native iOS development build and Simulator workflow
 - Provider-gated phone/OTP UI, session boundary, and protected intents
 
-## Phase 1 — Identity foundation: implemented, final security acceptance pending
+## Phase 1 — Identity foundation: completed for development
 
 - Create a user-owned Supabase development project — completed
 - Configure phone authentication and a fixed server-side development OTP — completed through a narrow hosted Management API update
@@ -32,17 +32,17 @@ flowchart LR
 - Verify anonymous profile access is denied — completed
 - Connect real OTP flow and verify session restoration — completed
 - Add minimal display-name onboarding and generated placeholder avatar — implemented; Actor C flow accepted in Simulator
-- Add auth/profile integration tests and abuse-control checklist — unit tests and hosted harness added; two-user run pending
+- Add auth/profile integration tests and abuse-control checklist — unit tests and full two-user hosted RLS matrix completed
 
-Exit condition: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. The remaining proof is the two-actor hosted RLS matrix and onboarding interaction acceptance.
+Exit condition met in development: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. Production SMS delivery, rate limiting, and monitoring remain later operational work rather than Phase 1 correctness gaps.
 
 ## Phase 2 — First real activity vertical slice: implemented, privacy acceptance pending
 
 - Core PostGIS activity schema and privacy-safe geometry — deployed
 - Create activity RPC/transaction and native Host form — authenticated Simulator acceptance completed
 - Nearby discovery RPC replacing fixtures — deployed and anonymous empty-state verified
-- Activity detail screen with public/private field boundaries
-- Host ownership and cancellation rules
+- Activity detail screen with public/private field boundaries — implemented locally; deployment/Simulator acceptance pending
+- Host ownership and cancellation rules — implemented locally as a separate row-locked command; deployment/Simulator acceptance pending
 
 Exit condition: two devices can create and discover a real activity without exposing private geometry.
 

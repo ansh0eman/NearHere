@@ -54,7 +54,7 @@ flowchart LR
 
 ## 4. Backend responsibility split
 
-The mobile app calls Supabase Auth directly, reads/updates only its own simple profile row, and calls narrowly shaped database functions for activity creation, discovery, Join, and Plans. Direct profile access is safe because grants, owner-only RLS, and constraints express the whole rule. Multi-table creation is atomic, Join serializes the capacity decision by locking one activity row, and `my_plans` creates a caller-scoped read model whose exact-location release also requires a published, not-ended activity. Future Leave/approval commands must preserve equally explicit state-transition, authorization, and idempotency rules.
+The mobile app calls Supabase Auth directly, reads/updates only its own simple profile row, and calls narrowly shaped database functions for activity creation, discovery, Join, Plans, Leave, and host request decisions. Direct profile access is safe because grants, owner-only RLS, and constraints express the whole rule. Multi-table creation is atomic; Join, Leave, approval, rejection, and waiter promotion serialize capacity decisions by locking one activity row; and `my_plans` creates a caller-scoped read model whose exact-location release also requires a published, not-ended activity. Future participation commands must preserve the same explicit state-transition, authorization, and idempotency rules.
 
 ```mermaid
 flowchart LR

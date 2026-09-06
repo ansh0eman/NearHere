@@ -60,7 +60,7 @@ Supabase browser authorization
 | `migration list` | Local and remote both `202608150001` | Migration-history records agree. |
 | Anonymous `GET /rest/v1/profiles` | HTTP 401, PostgreSQL `42501` | Table exists but the anonymous role lacks access, as designed. |
 
-These original deployment checks did not prove authenticated behavior. The later hosted fixed-OTP check proved that one newly verified Auth user receives exactly one owner-readable profile; the other-user and restricted-operation matrix remains open.
+These original deployment checks did not prove authenticated behavior. The later hosted fixed-OTP check proved that one newly verified Auth user receives exactly one owner-readable profile. On 2026-09-04, the complete two-actor harness additionally verified distinct trigger rows, anonymous denial, owner reads and updates, cross-user isolation, protected-column/insert/delete denial, constraints, and cleanup. Its first OTP request received a transient HTTP 502; Auth health returned HTTP 200 and a deliberate retry completed the matrix, so no failed-attempt assertion was misreported as proof.
 
 ### Test OTP decision
 
@@ -379,7 +379,7 @@ Deployment and black-box evidence recorded on 2026-08-15:
 | Anonymous direct activity select | HTTP 401 / `42501` | The RPC projection does not imply table access. |
 | Hosted lint, schemas `public,private` | No schema errors | NearHere-owned functions pass Supabase's PL/pgSQL checks. |
 
-Authenticated creation and its existing host membership were subsequently accepted in Simulator. Still pending: exact/public displacement measurement through a protected check, private-schema denial through a privileged integration harness, and `EXPLAIN (ANALYZE, BUFFERS)` with representative data.
+Authenticated creation and its existing host membership were subsequently accepted in Simulator. The hosted participation harness now contains a protected exact/public displacement assertion, but it needs a recorded re-run. Also pending are private-schema denial through a privileged integration harness and `EXPLAIN (ANALYZE, BUFFERS)` with representative data.
 
 A broad lint including `extensions` reported static-analysis errors inside vendor-owned PostGIS functions that use dynamic SQL and extension-specific name resolution. Restricting the same hosted lint to NearHere-owned `public,private` schemas returned `No schema errors found`. This distinction prevents third-party analyzer noise from being mislabeled as an application defect.
 
@@ -450,7 +450,7 @@ Deployment and acceptance evidence recorded on 2026-08-15:
 | Accepted host location | `Private meeting point unlocked`, `12.9279, 77.6717` | An accepted host membership receives its exact stored meeting point. |
 | Runtime parser tests | Active accepted requires valid exact coordinates; pending/waitlisted/inactive plans reject non-null exact coordinates | Malformed or prematurely revealing JSON is stopped before UI state. |
 
-Not yet proven: signed-out intent in Simulator; a second actor seeing only their own plans; pending/waitlisted hosted rows returning `null`; pagination beyond the first 50; or plan-detail/copy/directions behavior. The coordinate above is deliberate development activity data, not public discovery geometry or a production user's home.
+The later 2026-08-15 acceptance pass proved signed-out intent restoration, second-actor caller isolation, and pending/waitlisted `null` coordinates. Still unproven are pagination beyond the first 50 and plan-detail/copy/directions behavior. The coordinate above is deliberate development activity data, not public discovery geometry or a production user's home.
 
 ## Historical local-tooling limitation
 
@@ -503,8 +503,26 @@ Deployment and runtime evidence recorded on 2026-08-15:
 
 The hosted run does not prove the equal-`created_at` UUID tie-break, which still
 needs a controlled fixture. It also does not prove the React Native interaction;
-Participant Leave has since been accepted in the rebuilt iPhone 17 Pro
-Simulator; host approve/reject remains the next UI gate.
+Participant Leave and host approval have since been accepted in the rebuilt
+iPhone 17 Pro Simulator; host Reject remains the next decision UI gate.
+
+## Lesson 10 implemented locally: activity detail and cancellation
+
+Migration `202609040001_activity_detail_and_cancellation.sql` is additive and
+not yet deployed. `activity_detail(activity_id)` returns public activity facts
+to anonymous or authenticated callers, adds only the caller's own membership
+state, and joins the private meeting point only for accepted members while the
+activity is published and unended. `cancel_activity(activity_id)` derives and
+authorizes the host from `auth.uid()`, locks the same parent activity row used
+by participation commands, rejects ended/non-published activities, and returns
+the original cancellation timestamp on retry. Cancellation immediately makes
+the exact-location predicate false.
+
+The mobile screen independently validates the response and invalidates any
+in-flight read before redacting exact coordinates during Leave or cancellation.
+These client checks prevent stale private data from repainting, but PostgreSQL
+remains the authorization boundary. Deployment, the hosted black-box harness,
+and Simulator acceptance are still required before calling Lesson 10 verified.
 
 ## Rollback thinking
 

@@ -1,8 +1,10 @@
 import type {
+  ActivityDetail,
   ActivityKind,
   ActivityMembershipRole,
   ActivitySummary,
   ActivityStatus,
+  CancelActivityResponse,
   DecideMembershipRequestResponse,
   JoinMode,
   JoinActivityResponse,
@@ -27,6 +29,14 @@ const JOIN_MODES: JoinMode[] = ['open', 'approval'];
 const JOIN_OUTCOMES: JoinActivityOutcome[] = ['pending', 'accepted', 'waitlisted'];
 const MEMBERSHIP_ROLES: ActivityMembershipRole[] = ['host', 'participant'];
 const PLAN_MEMBERSHIP_STATUSES = ['pending', 'accepted', 'waitlisted'] as const;
+const ACTIVITY_MEMBERSHIP_STATUSES = [
+  'pending',
+  'accepted',
+  'waitlisted',
+  'rejected',
+  'left',
+  'removed',
+] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -119,6 +129,55 @@ export function parseNearbyActivityRows(value: unknown): NearbyActivitySummary[]
   return value.map(parseNearbyActivityRow);
 }
 
+export function parseActivityDetailRow(value: unknown): ActivityDetail {
+  if (!isRecord(value)) throw new Error('Activity detail response is not an object.');
+
+  const membershipRole = value.membership_role;
+  const membershipStatus = value.membership_status;
+  if (membershipRole !== null && !MEMBERSHIP_ROLES.includes(membershipRole as ActivityMembershipRole)) {
+    throw new Error('Activity detail response has an invalid membership_role.');
+  }
+  if (
+    membershipStatus !== null
+    && !ACTIVITY_MEMBERSHIP_STATUSES.includes(
+      membershipStatus as (typeof ACTIVITY_MEMBERSHIP_STATUSES)[number],
+    )
+  ) {
+    throw new Error('Activity detail response has an invalid membership_status.');
+  }
+  if ((membershipRole === null) !== (membershipStatus === null)) {
+    throw new Error('Activity detail response has inconsistent membership fields.');
+  }
+  if (membershipRole === 'host' && membershipStatus !== 'accepted') {
+    throw new Error('Activity detail response has an invalid host membership.');
+  }
+
+  const summary = parseActivitySummaryRow(value);
+  const exactLatitude = value.exact_latitude;
+  const exactLongitude = value.exact_longitude;
+  let exactMeetingLocation = null;
+  const maySeeExactLocation = membershipStatus === 'accepted'
+    && summary.status === 'published'
+    && Date.parse(summary.endsAt) > Date.now();
+  if (maySeeExactLocation) {
+    const latitude = requireFiniteNumber(value, 'exact_latitude');
+    const longitude = requireFiniteNumber(value, 'exact_longitude');
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new Error('Activity detail response contains invalid exact coordinates.');
+    }
+    exactMeetingLocation = { latitude, longitude };
+  } else if (exactLatitude !== null || exactLongitude !== null) {
+    throw new Error('Activity detail response exposed exact coordinates without authorization.');
+  }
+
+  return {
+    ...summary,
+    exactMeetingLocation,
+    membershipRole: membershipRole as ActivityDetail['membershipRole'],
+    membershipStatus: membershipStatus as ActivityDetail['membershipStatus'],
+  };
+}
+
 export function parseMyPlanRow(value: unknown): MyPlanSummary {
   if (!isRecord(value)) throw new Error('Plan response is not an object.');
 
@@ -195,6 +254,17 @@ export function parseLeaveActivityResponseRow(value: unknown): LeaveActivityResp
     throw new Error('Leave response has an invalid waitlist_promoted.');
   }
   return { ...parsed, waitlistPromoted: value.waitlist_promoted } as LeaveActivityResponse;
+}
+
+export function parseCancelActivityResponseRow(value: unknown): CancelActivityResponse {
+  if (!isRecord(value) || value.status !== 'cancelled') {
+    throw new Error('Cancel response has an invalid status.');
+  }
+  return {
+    activityId: requireString(value, 'activity_id'),
+    cancelledAt: requireTimestamp(value, 'cancelled_at'),
+    status: 'cancelled',
+  };
 }
 
 export function parseDecideMembershipRequestResponseRow(

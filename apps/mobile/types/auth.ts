@@ -8,7 +8,7 @@ export type AuthStatus =
   | 'signedIn';
 
 export type ProtectedIntent =
-  | { kind: 'joinActivity'; activityId: string }
+  | { kind: 'joinActivity'; activityId: string; returnToActivity?: boolean }
   | { kind: 'hostActivity' }
   | { kind: 'openPlans' }
   | { kind: 'openAccount' };

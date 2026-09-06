@@ -89,12 +89,17 @@ The server trims/validates values, updates only the authenticated actor's row, a
 
 ### Current MVP transport
 
-The mobile app currently calls four PostgreSQL functions through Supabase RPC:
+The deployed mobile foundation calls the following PostgreSQL functions through Supabase RPC:
 
 - `nearby_activities` is executable by anonymous and authenticated roles and returns only public-safe columns.
 - `create_activity` is executable only by authenticated users with a completed profile. It writes the public activity, exact private meeting point, and accepted host membership in one transaction.
 - `join_activity` is executable only by an authenticated user with a completed profile. It locks the activity row, returns an existing durable membership on retry, or creates an `accepted`, `pending`, or `waitlisted` participant membership.
 - `my_plans` is executable only by authenticated users. It derives the caller from the session and returns only that caller's hosted/joined/requested/waitlisted activities. Exact meeting coordinates are returned only when that caller's durable membership is `accepted` **and** the activity is still published and not ended; otherwise they are `null`.
+
+Migration `202609040001` is implemented locally but not yet deployed. It adds:
+
+- `activity_detail(p_activity_id)`, an anonymous-safe public projection enriched only with the current caller's own membership. Exact coordinates require accepted membership, published status, and an unended activity.
+- `cancel_activity(p_activity_id)`, an authenticated host-only command that locks the activity row, rejects ended/non-published activities, records one durable cancellation timestamp, and returns that same receipt on retry.
 
 Deployed migration `007` and the matching mobile source add three authenticated RPCs:
 

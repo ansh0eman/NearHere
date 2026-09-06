@@ -123,9 +123,21 @@ function hasNullExactPoint(plan) {
   return EXACT_FIELDS.every((field) => plan[field] === null);
 }
 
+function distanceMeters(latitudeA, longitudeA, latitudeB, longitudeB) {
+  const radians = (degrees) => degrees * Math.PI / 180;
+  const earthRadiusM = 6_371_008.8;
+  const latitudeDelta = radians(latitudeB - latitudeA);
+  const longitudeDelta = radians(longitudeB - longitudeA);
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(radians(latitudeA)) * Math.cos(radians(latitudeB))
+      * Math.sin(longitudeDelta / 2) ** 2;
+  return 2 * earthRadiusM * Math.asin(Math.sqrt(haversine));
+}
+
 async function main() {
   const config = requireEnvironment();
   const failures = [];
+  const createdActivities = new Map();
 
   async function request(path, { accessToken, body, method = 'GET', prefer } = {}) {
     const headers = {
@@ -255,7 +267,15 @@ async function main() {
         typeof response.payload[0]?.id === 'string',
       'Activity creation must return exactly one activity.',
     );
-    return response.payload[0].id;
+    const activity = response.payload[0];
+    assert(
+      typeof activity.public_latitude === 'number'
+        && typeof activity.public_longitude === 'number'
+        && typeof activity.privacy_radius_m === 'number',
+      'Activity creation must return public privacy geometry.',
+    );
+    createdActivities.set(activity.id, activity);
+    return activity.id;
   }
 
   async function join(session, activityId) {
@@ -410,6 +430,26 @@ async function main() {
       assert(!plansA.some((plan) => plan.id === actorBOnlyId), 'Actor A can see Actor B-only plan.');
       assert(plansB.some((plan) => plan.id === actorBOnlyId), 'Actor B cannot see own plan.');
       assert(!plansB.some((plan) => plan.id === actorAOnlyId), 'Actor B can see Actor A-only plan.');
+    });
+
+    await runTest('public point is displaced inside the configured privacy annulus', async () => {
+      const activity = createdActivities.get(actorAOnlyId);
+      const plan = findPlan(await plans(sessionA), actorAOnlyId);
+      assert(activity, 'Created activity privacy metadata was unavailable.');
+      assert(plan && hasExactPoint(plan), 'Host plan did not release its exact active point.');
+      const displacementM = distanceMeters(
+        plan.exact_latitude,
+        plan.exact_longitude,
+        activity.public_latitude,
+        activity.public_longitude,
+      );
+      // create_activity intentionally projects into the outer 40% of the
+      // configured radius. Small tolerance covers sphere/spheroid differences.
+      assert(
+        displacementM >= activity.privacy_radius_m * 0.59
+          && displacementM <= activity.privacy_radius_m * 1.01,
+        'Public point fell outside the configured privacy annulus.',
+      );
     });
 
     const openId = actorAOnlyId;

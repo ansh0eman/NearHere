@@ -32,7 +32,10 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Build the first native Host form and profile gate
 - [x] Complete one authenticated Host write and rediscover only the public-safe projection in Simulator
 - [ ] Measure exact/public displacement through a protected operational test without exposing the exact point publicly
-- [ ] Build full activity detail boundary
+- [x] Implement the caller-scoped activity-detail RPC, runtime parser, native route, map/Plans navigation, and protected Join return path
+- [x] Implement host-only, row-locked, retry-safe cancellation with immediate client-side private-location redaction
+- [ ] Deploy and hosted-verify the activity-detail/cancellation migration
+- [ ] Accept anonymous, participant, host, Leave, directions, and cancellation states in Simulator
 - [ ] Add contract, integration, privacy, and query-plan tests
 
 ## Participation correctness

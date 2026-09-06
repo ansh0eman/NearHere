@@ -56,6 +56,19 @@ error codes. A successful run ends with:
 PASS hosted profile RLS verification complete
 ```
 
+### Latest hosted profile result
+
+On 2026-09-04, the complete two-actor matrix passed: distinct authenticated
+actors and trigger-created rows, anonymous denial, one-row owner reads,
+cross-user read/update isolation, allowed owner updates with server-maintained
+`updated_at`, protected-column/insert/delete denial, three constraint failures,
+and client-writable cleanup.
+
+The first OTP request returned a transient HTTP 502. An Auth health request
+then returned HTTP 200, and one deliberate retry completed every assertion.
+The failed attempt was treated as an operational availability signal, not as
+security evidence; only the successful full run is recorded as acceptance.
+
 ## Hosted participation verification
 
 `participation.mjs` exercises the deployed participation boundary through the
@@ -71,6 +84,8 @@ The two-user matrix checks:
 - caller-scoped Plans using one host-only activity per actor;
 - open-mode acceptance and an idempotent Join retry;
 - exact location release for an accepted member;
+- public-marker displacement within the configured privacy annulus, measured
+  against the accepted host's exact point without printing either coordinate;
 - idempotent Leave, capacity release, and removal from active Plans;
 - approval-mode `pending`, a `null` exact point, and the host-only pending queue;
 - idempotent host approval, its capacity effect, and exact-point release; and

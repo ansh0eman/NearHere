@@ -1,9 +1,11 @@
 export type {
+  ActivityDetail,
   ActivityKind,
   ActivityMembershipRole,
   ActivityMembershipStatus,
   ActivityStatus,
   ActivitySummary,
+  CancelActivityResponse,
   CreateActivityRequest,
   CreateActivityResponse,
   DecideMembershipRequestResponse,
@@ -21,8 +23,10 @@ export type {
 } from '../../../packages/contracts/activity';
 
 import type {
+  ActivityDetail,
   ActivityKind,
   ActivitySummary,
+  CancelActivityResponse,
   DecideMembershipRequestResponse,
   JoinActivityResponse,
   LeaveActivityResponse,
@@ -43,6 +47,15 @@ export type NearbyActivitiesResult =
   | { ok: true; activities: NearbyActivitySummary[] }
   | { ok: false; message: string };
 
+export type ActivityDetailResult =
+  | { ok: true; activity: ActivityDetail }
+  | { ok: false; message: string };
+
+export type ActivityDetailState =
+  | { status: 'loading'; activity: ActivityDetail | null }
+  | { status: 'ready'; activity: ActivityDetail }
+  | { status: 'error'; activity: ActivityDetail | null; message: string };
+
 export type CreateActivityOperationResult =
   | { ok: true; activity: ActivitySummary }
   | { ok: false; message: string };
@@ -53,6 +66,10 @@ export type JoinActivityOperationResult =
 
 export type LeaveActivityOperationResult =
   | { ok: true; result: LeaveActivityResponse }
+  | { ok: false; message: string };
+
+export type CancelActivityOperationResult =
+  | { ok: true; result: CancelActivityResponse }
   | { ok: false; message: string };
 
 export type DecideMembershipRequestOperationResult =

@@ -16,8 +16,9 @@ This directory is the living engineering record for NearHere. It is written for 
 10. [`practical-engineering-curriculum.md`](practical-engineering-curriculum.md) — A-to-Z learning syllabus and progress tracker.
 11. [`engineering-backlog.md`](engineering-backlog.md) and [`roadmap.md`](roadmap.md) — next work and delivery order.
 12. [`ios-simulator-workflow.md`](ios-simulator-workflow.md) — daily native-development workflow.
-13. [`competitive-research-plan.md`](competitive-research-plan.md) and [`gtm-plan.md`](gtm-plan.md) — evidence collection and business launch hypotheses.
-14. [`glossary.md`](glossary.md) — definitions used across the repository.
+13. [`phase-3-acceptance-runbook.md`](phase-3-acceptance-runbook.md) — exact hosted and Simulator gates for participation evidence.
+14. [`competitive-research-plan.md`](competitive-research-plan.md) and [`gtm-plan.md`](gtm-plan.md) — evidence collection and business launch hypotheses.
+15. [`glossary.md`](glossary.md) — definitions used across the repository.
 
 ## Sources of truth
 
@@ -61,11 +62,12 @@ This table prevents an architectural design from being confused with deployed ev
 | --- | --- | --- |
 | Native map and location | Implemented in the Expo development build | Physical-device and accessibility matrix |
 | Phone identity | Hosted fixed development OTP and session restoration verified | Real SMS provider, rate limits, production compliance |
-| Profile | Migration, trigger, owner repository, runtime parser, and onboarding implemented; Actor C onboarding accepted in Simulator | Separate full profile-RLS matrix |
+| Profile | Migration, trigger, owner repository, runtime parser, onboarding, and full two-actor hosted RLS matrix verified | Real SMS provider, abuse controls, and production monitoring |
 | Activity discovery | PostGIS migration/RPC deployed; anonymous empty result and denial paths verified | Representative rows, query-plan measurement, pagination |
-| Activity hosting | Transaction and native form accepted in Simulator; real activity rediscovered | Protected exact/public displacement measurement |
+| Activity hosting | Transaction and native form accepted in Simulator; real activity rediscovered | Re-run the hosted participation harness with the new exact/public displacement assertion |
+| Activity detail/cancellation | Native detail route, caller-scoped read model, runtime parser, directions, and host cancellation implemented locally | Deploy migration `202609040001`, run hosted privacy/cancellation harness, and accept in Simulator |
 | Join participation | A/B/C/D hosted matrix verified all server outcomes; Actor C Auth/onboarding/Leave and Host A approval UI accepted in Simulator | Pending/waitlisted participant cards and host Reject UI acceptance |
-| My Plans | Hosted caller isolation/exact gating verified; signed-out intent through Actor C OTP/onboarding, accepted exact-point card, and post-Leave empty state accepted in Simulator | Pending/waitlisted and inactive-card rendering, pagination, and plan detail actions |
+| My Plans | Hosted caller isolation/exact gating verified; signed-out intent through Actor C OTP/onboarding, accepted exact-point card, and post-Leave empty state accepted in Simulator | Pending/waitlisted and inactive-card rendering plus pagination |
 | Leave/approval | Database matrix fully verified; participant Leave and Host A pending-request approval/count refresh accepted in Simulator | Reject UI still needs Simulator acceptance |
 | Chat/safety | Designed only | Implement only after participation acceptance |
 

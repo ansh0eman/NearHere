@@ -94,12 +94,14 @@ These checks answer different questions: lint checks configured code-quality rul
 
 ## Current versus planned behavior
 
-**Implemented:** live nearby-activity loading/empty/error states, map markers for public approximate geometry, a Host form, capacity-safe Join with accepted/pending/waitlisted outcomes, a caller-scoped Plans screen with accepted-active exact-location release, privacy-aware optimistic Leave, host pending-request approval/rejection, stale-read invalidation, protected-intent resumption, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration, owner-profile loading, runtime boundary validation, and display-name onboarding.
+**Implemented:** live nearby-activity loading/empty/error states, map markers for public approximate geometry, a Host form, capacity-safe Join with accepted/pending/waitlisted outcomes, a caller-scoped Plans screen, a full activity-detail route, accepted-active exact-location release, platform directions, privacy-aware optimistic Leave/cancellation, host pending-request approval/rejection, stale-read invalidation, protected-intent resumption, permission states, manual location persistence, place search, tabs, hosted phone/OTP, session restoration, owner-profile loading, runtime boundary validation, and display-name onboarding.
 
 **Hosted configuration verified:** a fixed development OTP requests and verifies successfully, issues a real hosted session, creates the triggered profile, and restores the session after an app restart. Real SMS-provider delivery remains deferred.
 
 **Hosted/Simulator activity evidence:** the 2026-08-15 A/B/C/D hosted run verified the participation RPC matrix. In the rebuilt iPhone 17 Pro app, Actor C completed signed-out Plans/OTP/onboarding/resume and confirmed Leave with immediate private-point removal. Signed-in Host A then opened Plans, saw one request from `Test Participant C` for `TEST UI HOST REQUEST`, tapped Accept, saw the request section disappear and count change from `1/2` to `2/2`, while the host private point remained displayed. Reject is not yet Simulator-accepted.
 
-**Planned:** Simulator acceptance for host Reject and pending/waitlisted participant cards, participant removal, full activity detail and useful meeting-point actions, the separate full profile-RLS matrix, chat, safety flows, MapLibre styling, and avatar builder.
+**Locally implemented, deployment pending:** `activity_detail` and host-only `cancel_activity` require migration `202609040001` to be deployed before hosted/Simulator acceptance.
+
+**Planned:** Simulator acceptance for Activity Detail, host Reject, and pending/waitlisted participant cards; participant removal, chat, safety flows, MapLibre styling, and avatar builder. The full two-actor profile-RLS matrix passed on 2026-09-04.
 
 For the complete runbook, see [`../../docs/ios-simulator-workflow.md`](../../docs/ios-simulator-workflow.md). For architecture, see [`../../docs/system-design.md`](../../docs/system-design.md).

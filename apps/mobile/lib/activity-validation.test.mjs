@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  parseActivityDetailRow,
   parseActivitySummaryRow,
+  parseCancelActivityResponseRow,
   parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
   parseLeaveActivityResponseRow,
@@ -211,6 +213,81 @@ test('activity parser normalizes a missing description to an empty public string
   assert.equal(parseNearbyActivityRow({ ...validRow, description: null }).description, '');
 });
 
+test('detail parser keeps anonymous reads public and accepts every durable membership state', () => {
+  const anonymous = parseActivityDetailRow({
+    ...validRow,
+    exact_latitude: null,
+    exact_longitude: null,
+    membership_role: null,
+    membership_status: null,
+  });
+  assert.equal(anonymous.membershipRole, null);
+  assert.equal(anonymous.exactMeetingLocation, null);
+
+  for (const membershipStatus of ['pending', 'waitlisted', 'rejected', 'left', 'removed']) {
+    assert.equal(parseActivityDetailRow({
+      ...validRow,
+      exact_latitude: null,
+      exact_longitude: null,
+      membership_role: 'participant',
+      membership_status: membershipStatus,
+    }).membershipStatus, membershipStatus);
+  }
+});
+
+test('detail parser releases an exact point only to an active accepted caller', () => {
+  const activeRow = {
+    ...validRow,
+    ends_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    exact_latitude: 12.9279,
+    exact_longitude: 77.6717,
+    membership_role: 'participant',
+    membership_status: 'accepted',
+  };
+  assert.deepEqual(
+    parseActivityDetailRow(activeRow).exactMeetingLocation,
+    { latitude: 12.9279, longitude: 77.6717 },
+  );
+  assert.throws(
+    () => parseActivityDetailRow({
+      ...activeRow,
+      membership_status: 'pending',
+    }),
+    /exposed exact coordinates/,
+  );
+  assert.throws(
+    () => parseActivityDetailRow({
+      ...activeRow,
+      exact_latitude: null,
+      exact_longitude: null,
+    }),
+    /invalid exact_latitude/,
+  );
+});
+
+test('detail parser rejects half-present or invalid host membership', () => {
+  assert.throws(
+    () => parseActivityDetailRow({
+      ...validRow,
+      exact_latitude: null,
+      exact_longitude: null,
+      membership_role: null,
+      membership_status: 'pending',
+    }),
+    /inconsistent membership fields/,
+  );
+  assert.throws(
+    () => parseActivityDetailRow({
+      ...validRow,
+      exact_latitude: null,
+      exact_longitude: null,
+      membership_role: 'host',
+      membership_status: 'pending',
+    }),
+    /invalid host membership/,
+  );
+});
+
 test('nearby parser rejects malformed timestamps', () => {
   assert.throws(
     () => parseNearbyActivityRow({ ...validRow, starts_at: 'tomorrow-ish' }),
@@ -257,6 +334,29 @@ test('leave parser requires the durable left state and promotion flag', () => {
       waitlist_promoted: null,
     }),
     /invalid waitlist_promoted/,
+  );
+});
+
+test('cancel parser maps the canonical cancellation receipt', () => {
+  assert.deepEqual(
+    parseCancelActivityResponseRow({
+      activity_id: validRow.id,
+      cancelled_at: '2026-09-04T08:00:00.000Z',
+      status: 'cancelled',
+    }),
+    {
+      activityId: validRow.id,
+      cancelledAt: '2026-09-04T08:00:00.000Z',
+      status: 'cancelled',
+    },
+  );
+  assert.throws(
+    () => parseCancelActivityResponseRow({
+      activity_id: validRow.id,
+      cancelled_at: 'not-a-time',
+      status: 'cancelled',
+    }),
+    /invalid cancelled_at/,
   );
 });
 

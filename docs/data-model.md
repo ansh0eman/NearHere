@@ -131,7 +131,7 @@ flowchart TB
 
 The function is `stable` because it reads but does not intentionally modify data. It is `security definer` because normal client roles deliberately lack direct access to these tables; its empty `search_path`, schema-qualified names, explicit return columns, actor check, non-null bounded limit, status filter, and authenticated-only execute grant constrain that elevated privilege. The host already has an `accepted` host membership by database constraint, so the same accepted/active release rule unlocks the host's exact point without a special client-side exception.
 
-The ordering places non-ended plans first by nearest start time, followed by ended plans from newest start time backward. This is useful presentation ordering, not an archival or retention policy. Cancelled/completed activities can still be projected if the caller retains an active membership. Leave and approval/rejection now exist in the deployed development database and local mobile source, pending hosted/Simulator acceptance; cancellation and removal commands remain unimplemented.
+The ordering places non-ended plans first by nearest start time, followed by ended plans from newest start time backward. This is useful presentation ordering, not an archival or retention policy. Cancelled/completed activities can still be projected if the caller retains an active membership. Leave and approval/rejection are deployed and hosted-verified; participant Leave and host approval are also Simulator-accepted, while host Reject still needs Simulator acceptance. Cancellation and removal commands remain unimplemented.
 
 ### `idempotency_records`
 

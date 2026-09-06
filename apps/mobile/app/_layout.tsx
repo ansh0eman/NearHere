@@ -64,6 +64,10 @@ function AppNavigator() {
           name="host"
           options={{ animation: 'slide_from_bottom', headerShown: false, presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="activity"
+          options={{ animation: 'slide_from_right', headerShown: false }}
+        />
       </Stack>
       <StatusBar style="dark" />
     </ProfileProvider>
