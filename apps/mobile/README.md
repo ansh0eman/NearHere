@@ -100,7 +100,7 @@ These checks answer different questions: lint checks configured code-quality rul
 
 **Hosted/Simulator activity evidence:** the 2026-08-15 A/B/C/D hosted run verified the participation RPC matrix. In the rebuilt iPhone 17 Pro app, Actor C completed signed-out Plans/OTP/onboarding/resume and confirmed Leave with immediate private-point removal. Signed-in Host A then opened Plans, saw one request from `Test Participant C` for `TEST UI HOST REQUEST`, tapped Accept, saw the request section disappear and count change from `1/2` to `2/2`, while the host private point remained displayed. Reject is not yet Simulator-accepted.
 
-**Locally implemented, deployment pending:** `activity_detail` and host-only `cancel_activity` require migration `202609040001` to be deployed before hosted/Simulator acceptance.
+**Hosted-verified:** migration `202609040001` is deployed. The hosted Activity Detail/cancellation harness verifies anonymous-safe detail, caller membership states, accepted-only exact-location release, host-only atomic cancellation, idempotent retries, and post-cancellation redaction. Simulator acceptance of this slice is still pending.
 
 **Planned:** Simulator acceptance for Activity Detail, host Reject, and pending/waitlisted participant cards; participant removal, chat, safety flows, MapLibre styling, and avatar builder. The full two-actor profile-RLS matrix passed on 2026-09-04.
 

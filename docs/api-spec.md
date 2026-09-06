@@ -96,10 +96,12 @@ The deployed mobile foundation calls the following PostgreSQL functions through 
 - `join_activity` is executable only by an authenticated user with a completed profile. It locks the activity row, returns an existing durable membership on retry, or creates an `accepted`, `pending`, or `waitlisted` participant membership.
 - `my_plans` is executable only by authenticated users. It derives the caller from the session and returns only that caller's hosted/joined/requested/waitlisted activities. Exact meeting coordinates are returned only when that caller's durable membership is `accepted` **and** the activity is still published and not ended; otherwise they are `null`.
 
-Migration `202609040001` is implemented locally but not yet deployed. It adds:
+Migration `202609040001` is deployed to the hosted development project. Its black-box harness passed on 2026-09-06. It adds:
 
 - `activity_detail(p_activity_id)`, an anonymous-safe public projection enriched only with the current caller's own membership. Exact coordinates require accepted membership, published status, and an unended activity.
 - `cancel_activity(p_activity_id)`, an authenticated host-only command that locks the activity row, rejects ended/non-published activities, records one durable cancellation timestamp, and returns that same receipt on retry.
+
+The hosted result also verifies that anonymous and non-member callers never receive membership or exact coordinates, pending members receive no exact point, accepted host/participant callers receive the active exact point, and cancellation is atomic, idempotent, and permanently redacts the exact point from the cancelled activity. The mobile route still needs Simulator acceptance; hosted RPC evidence does not prove visual labels or interaction refresh behavior.
 
 Deployed migration `007` and the matching mobile source add three authenticated RPCs:
 

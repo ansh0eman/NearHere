@@ -506,10 +506,11 @@ needs a controlled fixture. It also does not prove the React Native interaction;
 Participant Leave and host approval have since been accepted in the rebuilt
 iPhone 17 Pro Simulator; host Reject remains the next decision UI gate.
 
-## Lesson 10 implemented locally: activity detail and cancellation
+## Lesson 10 deployed and hosted-verified: activity detail and cancellation
 
 Migration `202609040001_activity_detail_and_cancellation.sql` is additive and
-not yet deployed. `activity_detail(activity_id)` returns public activity facts
+deployed to the hosted development project. The 2026-09-06 hosted harness
+passed all Activity Detail and cancellation assertions. `activity_detail(activity_id)` returns public activity facts
 to anonymous or authenticated callers, adds only the caller's own membership
 state, and joins the private meeting point only for accepted members while the
 activity is published and unended. `cancel_activity(activity_id)` derives and
@@ -521,8 +522,9 @@ the exact-location predicate false.
 The mobile screen independently validates the response and invalidates any
 in-flight read before redacting exact coordinates during Leave or cancellation.
 These client checks prevent stale private data from repainting, but PostgreSQL
-remains the authorization boundary. Deployment, the hosted black-box harness,
-and Simulator acceptance are still required before calling Lesson 10 verified.
+remains the authorization boundary. The hosted black-box harness is complete;
+Simulator acceptance is still required before calling the mobile portion of
+Lesson 10 verified.
 
 ## Rollback thinking
 

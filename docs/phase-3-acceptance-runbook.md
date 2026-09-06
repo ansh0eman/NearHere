@@ -93,11 +93,21 @@ the **Ended** branch: the card must say **Meeting point no longer available**,
 show no exact coordinate, and hide Leave. Verify the response also contains
 `null` exact fields.
 
-The **Cancelled** branch cannot currently be produced through the public client
-boundary because activity cancellation is not implemented. Do not mutate the
-hosted database with an administrative shortcut merely to produce a screenshot.
-Accept this branch later through the real cancellation command, or in a
-disposable local database fixture once that command is designed.
+The **Cancelled** branch is now producible through the authenticated host
+`cancel_activity` command. Use the real command and verify the detail response
+has no exact point; do not mutate the hosted database with an administrative
+shortcut merely to produce a screenshot. The mobile cancellation screen still
+needs Simulator acceptance.
+
+## Gate F: Activity Detail and cancellation — hosted verified 2026-09-06
+
+Run `supabase/tests/hosted/activity-detail.mjs` with the two fictional fixed-OTP
+actors. Accept only a run ending in `PASS hosted activity-detail verification
+complete`. The recorded run passed missing-activity handling, anonymous and
+non-member redaction, pending-versus-accepted location release, host-only
+cancellation, atomic/idempotent cancellation, and terminal-state redaction.
+This proves the database/API privacy boundary; Simulator acceptance remains
+open for the detail screen, directions, cancel confirmation, and refresh.
 
 ## Remaining non-blocking proof
 
