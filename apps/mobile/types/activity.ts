@@ -80,6 +80,10 @@ export type HostActivityParticipantsResult =
   | { ok: true; participants: HostActivityParticipant[] }
   | { ok: false; message: string };
 
+export type SafetyOperationResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
 export type CancelActivityOperationResult =
   | { ok: true; result: CancelActivityResponse }
   | { ok: false; message: string };

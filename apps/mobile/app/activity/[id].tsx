@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useActivityDetail } from '@/hooks/use-activity-detail';
-import { cancelActivity, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant } from '@/lib/activity-repository';
+import { cancelActivity, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
 import type { ActivityDetail, ActivityKind, HostActivityParticipant } from '@/types/activity';
@@ -234,6 +234,30 @@ export default function ActivityDetailScreen() {
     await refresh();
   }
 
+  function confirmReport() {
+    if (!activity || !session) {
+      Alert.alert('Sign in required', 'Sign in to report an activity.');
+      return;
+    }
+    Alert.alert(
+      'Report this activity?',
+      'Choose this only if the activity appears unsafe, misleading, or inappropriate.',
+      [
+        { text: 'Keep activity', style: 'cancel' },
+        {
+          text: 'Report activity',
+          style: 'destructive',
+          onPress: () => {
+            void reportActivity(activity.id, 'safety concern').then((result) => {
+              setActionNotice(result.ok ? 'Thanks. Your report was submitted.' : result.message);
+              if (!result.ok) setActionError(result.message);
+            });
+          },
+        },
+      ],
+    );
+  }
+
   function confirmRemove(participant: HostActivityParticipant) {
     Alert.alert(
       `Remove ${participant.participantDisplayName}?`,
@@ -446,6 +470,12 @@ export default function ActivityDetailScreen() {
             {action === 'cancel' ? <ActivityIndicator color="#9D3E2B" /> : <Text style={styles.cancelButtonText}>Cancel activity</Text>}
           </Pressable>
         )}
+
+        {!isHost && session && (
+          <Pressable accessibilityRole="button" onPress={confirmReport} style={styles.reportButton}>
+            <Text style={styles.reportButtonText}>Report activity</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -505,6 +535,8 @@ const styles = StyleSheet.create({
   leaveButton: { backgroundColor: '#9D3E2B' },
   cancelButton: { alignItems: 'center', borderColor: 'rgba(157,62,43,0.25)', borderRadius: 999, borderWidth: 1, justifyContent: 'center', marginTop: 12, minHeight: 52, paddingHorizontal: 20 },
   cancelButtonText: { color: '#9D3E2B', fontSize: 14, fontWeight: '900' },
+  reportButton: { alignItems: 'center', marginTop: 18, padding: 10 },
+  reportButtonText: { color: '#66717D', fontSize: 12, fontWeight: '800' },
   disabledButton: { opacity: 0.5 },
   centerState: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
   centerTitle: { color: '#16202A', fontSize: 25, fontWeight: '900', letterSpacing: -0.8, marginTop: 16, textAlign: 'center' },

@@ -104,4 +104,6 @@ These checks answer different questions: lint checks configured code-quality rul
 
 **Hosted-verified participant moderation:** migrations `202609060001` and `202609060002` are deployed. The hosted participation matrix verifies host-safe participant projection, non-host denial, durable removal, retry safety, and cleanup. The native Activity Detail screen now shows accepted/waitlisted participants to the host and provides confirmation-based removal with refresh. Simulator acceptance remains open for this UI, Activity Detail/cancellation, host Reject, and pending/waitlisted participant cards; chat, safety flows, MapLibre styling, and avatar builder follow afterward.
 
+**Safety foundation:** migration `202609080001` is deployed. Authenticated reports are private and idempotent; self-reporting and anonymous submission are denied. Private block/unblock commands are also idempotent and self-protected. Activity Detail exposes the first report-activity action for signed-in non-hosts; operator review and user-profile blocking UI remain follow-up work.
+
 For the complete runbook, see [`../../docs/ios-simulator-workflow.md`](../../docs/ios-simulator-workflow.md). For architecture, see [`../../docs/system-design.md`](../../docs/system-design.md).

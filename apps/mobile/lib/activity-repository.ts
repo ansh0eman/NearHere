@@ -23,6 +23,7 @@ import type {
   LeaveActivityOperationResult,
   RemoveParticipantOperationResult,
   HostActivityParticipantsResult,
+  SafetyOperationResult,
   MembershipRequestsResult,
   MyPlansResult,
   NearbyActivitiesQuery,
@@ -142,6 +143,20 @@ export async function getHostActivityParticipants(activityId: string): Promise<H
   if (error) return { ok: false, message: 'NearHere could not load participants. Check your connection and try again.' };
   try { return { ok: true, participants: parseHostActivityParticipantRows(data) }; }
   catch { return { ok: false, message: 'NearHere received an invalid participants response. Please try again.' }; }
+}
+
+export async function reportActivity(activityId: string, reason: string, details = ''): Promise<SafetyOperationResult> {
+  if (!supabase) return { ok: false, message: 'Reporting is unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('report_safety_issue', {
+    p_activity_id: activityId,
+    p_reason: reason,
+    p_details: details,
+  });
+  if (error) return { ok: false, message: 'NearHere could not submit the report. Please try again.' };
+  if (!Array.isArray(data) || data.length !== 1 || data[0]?.reported !== true) {
+    return { ok: false, message: 'NearHere received an invalid report response. Please try again.' };
+  }
+  return { ok: true };
 }
 
 export async function decideMembershipRequest(

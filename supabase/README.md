@@ -542,6 +542,20 @@ remains the authorization boundary. The hosted black-box harness is complete;
 Simulator acceptance is still required before calling the mobile portion of
 Lesson 10 verified.
 
+## Lesson 12 hosted-verified: safety foundation
+
+Migration `202609080001_safety_foundation.sql` keeps operational reports and
+blocks in the private schema. `report_safety_issue` accepts an authenticated
+report for a user or activity, rejects self-reports, and upserts the caller's
+existing target report so retries do not create duplicates. `block_user` and
+`unblock_user` are similarly caller-derived, self-protected, and idempotent.
+
+The hosted safety harness passed on 2026-09-08: anonymous denial, distinct
+authenticated actors, self-report denial, idempotent report submission,
+self-block denial, and block/unblock lifecycle. Before chat is implemented,
+its message/activity read models must explicitly exclude blocked relationships;
+the commands alone do not provide that guarantee.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.
