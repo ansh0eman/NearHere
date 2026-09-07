@@ -45,6 +45,22 @@ Result: PASS / FAIL
 Notes: <privacy, accessibility, or layout observation>
 ```
 
+## Captured evidence
+
+![V00 NearHere browse screen](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/V00-launch.png)
+
+`V00-launch.png` shows the native map shell, selected-area control, discovery
+filters, empty state, and tab navigation on an iPhone 17 Pro Simulator. It is
+safe for documentation because it contains no account, OTP, token, or private
+meeting-point data.
+
+![V12 operator denial](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/V12-operator-denied.png)
+
+`V12-operator-denied.png` shows the rebuilt operator route for an ordinary
+authenticated development user. The visible “Operator access is required”
+state is an intentional security acceptance: the route exists, the client
+handles the denial, and PostgreSQL remains the authority.
+
 ## Diagram: evidence boundaries
 
 ```mermaid
@@ -60,3 +76,7 @@ flowchart LR
 Until the Simulator captures are recorded, documentation must say “hosted
 verified” rather than “fully accepted.” That distinction is intentional and
 important for an honest resume.
+
+Physical-device evidence is still open. Simulator screenshots prove layout and
+navigation, but not GPS behavior, SMS delivery, camera/audio hardware,
+accessibility on a real screen, thermal performance, or TestFlight signing.
