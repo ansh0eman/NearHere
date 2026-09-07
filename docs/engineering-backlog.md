@@ -74,7 +74,8 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add private report/block foundations and a signed-in report-activity action
 - [x] Add operator-only report lifecycle and review RPCs; hosted denial proves non-operators cannot access the queue
 - [ ] Provision a deliberate operator account and build a minimal operator console
-- [ ] Add immutable operator audit events and block-aware discovery/participant consumers
+- [x] Apply the block predicate to chat, authenticated discovery, and host participant projection; hosted harness covers all three
+- [ ] Add immutable operator audit events and a deliberate block policy for Join/participation
 - [ ] Add rate limits and abuse controls based on threat model
 - [ ] Add accessibility and reduced-motion audit
 - [ ] Add structured errors, request IDs, logs, metrics, traces, and crash reporting

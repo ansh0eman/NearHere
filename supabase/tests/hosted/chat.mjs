@@ -72,6 +72,15 @@ async function main() {
     assert(blocked.ok, 'Block setup failed.');
     const hidden = await rpc('activity_messages', { p_activity_id: activityId, p_limit: 50 }, a.token);
     assert(hidden.ok && !hidden.payload.some((message) => message.author_user_id === b.userId), 'Blocked author message was not filtered.');
+
+    const participants = await rpc('host_activity_participants', { p_activity_id: activityId }, a.token);
+    assert(participants.ok && !participants.payload.some((participant) => participant.participant_user_id === b.userId), 'Blocked participant was not filtered from the host projection.');
+
+    const nearby = await rpc('nearby_activities', {
+      p_latitude: 12.9352, p_longitude: 77.6245, p_radius_m: 1000, p_kinds: null, p_starts_before: null, p_limit: 50,
+    }, b.token);
+    assert(nearby.ok && !nearby.payload.some((activity) => activity.id === activityId), 'Blocked host activity was still visible in discovery.');
+
     await rpc('unblock_user', { p_blocked_user_id: b.userId }, a.token);
   });
   if (failures.length) { console.error(`Verification stopped: ${failures.length} chat check(s) failed.`); process.exitCode = 1; return; }

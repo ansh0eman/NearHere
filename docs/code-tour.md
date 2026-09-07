@@ -275,8 +275,8 @@ default: ordinary authenticated users cannot read or mutate the review queue.
 2. Trace `sendActivityMessage` from the button press to the SQL insert.
 3. Change the parser test to reject a blank body and explain why validation is
    duplicated at both client and database boundaries.
-4. Read `activity_messages` in the migration and identify where blocks are
-   applied.
+4. Read `activity_messages` and `nearby_activities` in the migrations and
+   identify where blocks are applied.
 5. Open the Activity Detail screen in Simulator and record a screenshot for
    anonymous, pending, accepted, and ended states.
 6. Read `202609090003_operator_safety_review.sql` and explain why an empty

@@ -587,6 +587,20 @@ writes. Provisioning the first operator and building a console remain separate
 deliberate steps because they change real authority and require an audit/recovery
 procedure.
 
+## Lesson 15 hosted-verified: block-aware product consumers
+
+Migration `202609090004_block_aware_consumers.sql` applies the private block
+predicate to authenticated discovery and the host participant projection. An
+anonymous caller can still browse public activities; a signed-in caller does
+not see activities hosted by either side of a block. A host also does not see a
+blocked relationship in the participant-management projection.
+
+The chat harness now verifies all three consumers together: blocked messages
+are hidden, blocked participants are hidden from the host projection, and the
+blocked host's activity disappears from the other actor's nearby results. Join
+and other participation commands are intentionally not changed yet because
+their block policy needs a product decision about existing memberships.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.

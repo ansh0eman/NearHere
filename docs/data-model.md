@@ -157,9 +157,10 @@ Append-only business audit events such as created, cancelled, joined, approved, 
 Migration `202609080001` deploys the first private `safety_reports` and
 `user_blocks` tables. Reports contain reporter, optional reported user/activity,
 reason, details, and timestamp; direct client access is denied. A block relation
-is private and idempotent. The commands exist today, but discovery,
-participation, and the future chat read models must explicitly consume the
-block relation before it can be claimed as an exposure-prevention policy.
+is private and idempotent. Chat reads, authenticated discovery, and host
+participant projections now consume the block relation. Join authorization and
+other participation commands still need a deliberate block policy before
+launch.
 
 Migration `202609090003_operator_safety_review.sql` adds a report lifecycle
 (`open`, `reviewing`, `resolved`, `dismissed`) and review metadata. The private
