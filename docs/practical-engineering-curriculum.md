@@ -26,6 +26,11 @@ During implementation:
 - Call out security, privacy, concurrency, and error-handling decisions.
 - Record problems as they occur: observed symptoms, evidence, hypotheses, rejected fixes, root causes, and verified resolutions.
 
+Use [`code-tour.md`](code-tour.md) for a compact end-to-end walkthrough of one
+feature. For every lesson, also answer: what user problem is solved, what data
+enters the system, which states are possible, which layer owns the invariant,
+and what evidence proves success and denial.
+
 After implementation:
 
 - Run proportionate checks and explain what each check can and cannot prove.
@@ -316,6 +321,28 @@ The goal is not to finish modules quickly. A module is understood when you can:
 - Defend the chosen tradeoff against a reasonable alternative.
 - Change the implementation without copying instructions blindly.
 - Describe what must change at ten times the load.
+
+## Feature worksheet
+
+Copy this for each future slice:
+
+```text
+Feature:
+Product rule:
+User states:
+Domain types:
+Screen route:
+Repository function:
+Runtime parser:
+Database table/RPC:
+Authorization rule:
+Concurrency invariant:
+Unit test:
+Hosted test:
+Simulator screenshot IDs:
+Challenge and resolution:
+Resume/interview explanation:
+```
 
 ## Current lesson sequence
 

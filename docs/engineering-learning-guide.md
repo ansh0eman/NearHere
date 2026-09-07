@@ -31,7 +31,7 @@ For each lesson, be able to answer six questions:
 5. What alternatives did we reject?
 6. How did we verify the result?
 
-Do not memorize framework syntax first. Understand the system boundaries and data flow; syntax can always be looked up.
+Do not memorize framework syntax first. Understand the system boundaries and data flow; syntax can always be looked up. Use [`code-tour.md`](code-tour.md) for a compact end-to-end walkthrough and [`visual-evidence.md`](visual-evidence.md) to connect code behavior to what appears in the Simulator.
 
 # Lesson 1: From a static web concept to a native mobile vertical slice
 

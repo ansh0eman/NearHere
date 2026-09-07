@@ -8,18 +8,20 @@ This directory is the living engineering record for NearHere. It is written for 
 2. [`prd.md`](prd.md) — testable beta requirements and acceptance criteria.
 3. [`ux-flows.md`](ux-flows.md) — user journeys, state transitions, and failure paths.
 4. [`design-system.md`](design-system.md) — interaction and visual rules.
-5. [`system-design.md`](system-design.md) — end-to-end system, trust boundaries, data flows, failure handling, and scaling.
-6. [`technical-architecture.md`](technical-architecture.md) — concrete technology choices and deployment boundaries.
-7. [`data-model.md`](data-model.md) — relational and geospatial model, invariants, indexes, and migrations.
-8. [`api-spec.md`](api-spec.md) — client/server contract and endpoint behavior.
-9. [`engineering-learning-guide.md`](engineering-learning-guide.md) — chronological lessons, challenges, and interview explanations.
-10. [`practical-engineering-curriculum.md`](practical-engineering-curriculum.md) — A-to-Z learning syllabus and progress tracker.
-11. [`engineering-backlog.md`](engineering-backlog.md) and [`roadmap.md`](roadmap.md) — next work and delivery order.
-12. [`ios-simulator-workflow.md`](ios-simulator-workflow.md) — daily native-development workflow.
-13. [`phase-3-acceptance-runbook.md`](phase-3-acceptance-runbook.md) — exact hosted and Simulator gates for participation evidence.
-14. [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md) — staged startup launch, metric definitions, scale decisions, and honest resume/interview evidence.
-15. [`competitive-research-plan.md`](competitive-research-plan.md) and [`gtm-plan.md`](gtm-plan.md) — evidence collection and business launch hypotheses.
-16. [`glossary.md`](glossary.md) — definitions used across the repository.
+5. [`practical-engineering-curriculum.md`](practical-engineering-curriculum.md) — the module-by-module learning path.
+6. [`code-tour.md`](code-tour.md) — one feature traced from product rule through TypeScript, SQL, and tests.
+7. [`system-design.md`](system-design.md) — end-to-end system, trust boundaries, data flows, failure handling, and scaling.
+8. [`technical-architecture.md`](technical-architecture.md) — concrete technology choices and deployment boundaries.
+9. [`data-model.md`](data-model.md) — relational and geospatial model, invariants, indexes, and migrations.
+10. [`api-spec.md`](api-spec.md) — client/server contract and endpoint behavior.
+11. [`engineering-learning-guide.md`](engineering-learning-guide.md) — chronological lessons, challenges, and interview explanations.
+12. [`engineering-backlog.md`](engineering-backlog.md) and [`roadmap.md`](roadmap.md) — next work and delivery order.
+13. [`ios-simulator-workflow.md`](ios-simulator-workflow.md) and [`visual-evidence.md`](visual-evidence.md) — daily native workflow and screenshot record.
+14. [`phase-3-acceptance-runbook.md`](phase-3-acceptance-runbook.md) — exact hosted and Simulator gates for participation evidence.
+15. [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md) — staged startup launch, metric definitions, scale decisions, and honest resume/interview evidence.
+16. [`competitive-research-plan.md`](competitive-research-plan.md) and [`gtm-plan.md`](gtm-plan.md) — evidence collection and business launch hypotheses.
+17. [`glossary.md`](glossary.md) — definitions used across the repository.
+18. [`documentation-audit.md`](documentation-audit.md) — what every document owns and how completeness is judged.
 
 ## Sources of truth
 
@@ -84,3 +86,13 @@ This table prevents an architectural design from being confused with deployed ev
 - Mark statements as **implemented**, **planned**, **hypothesis**, or **decision** when ambiguity is possible.
 - Never turn an untested hypothesis into a claimed result.
 - Add every material engineering challenge using: symptom, investigation, root cause, rejected shortcut, resolution, verification, and lesson.
+- Every feature chapter should include: product rule, domain types, screen state, repository call, SQL/RLS boundary, denial cases, tests, and a screenshot evidence ID.
+- Code examples must name their repository path and explain unfamiliar TypeScript immediately below the snippet.
+- Screenshots must be privacy-reviewed and must never contain OTPs, tokens, phone numbers, or exact private meeting coordinates.
+
+## Learning contract
+
+When a new slice is implemented, update the relevant product/design/API/data
+document, [`code-tour.md`](code-tour.md), the learning guide, backlog status,
+and visual evidence matrix. This keeps the repository useful as both a working
+product and a software-engineering portfolio.
