@@ -10,15 +10,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useActivityDetail } from '@/hooks/use-activity-detail';
-import { cancelActivity, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity } from '@/lib/activity-repository';
+import { cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
-import type { ActivityDetail, ActivityKind, HostActivityParticipant } from '@/types/activity';
+import type { ActivityDetail, ActivityKind, ActivityMessage, HostActivityParticipant } from '@/types/activity';
 
 const KIND_EMOJIS: Record<ActivityKind, string> = {
   coffee: '☕',
@@ -82,6 +83,9 @@ export default function ActivityDetailScreen() {
   );
   const [action, setAction] = useState<'cancel' | 'join' | 'leave' | 'remove' | null>(null);
   const [participants, setParticipants] = useState<HostActivityParticipant[]>([]);
+  const [messages, setMessages] = useState<ActivityMessage[]>([]);
+  const [messageDraft, setMessageDraft] = useState('');
+  const [chatSending, setChatSending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const actionRef = useRef<typeof action>(null);
@@ -96,6 +100,7 @@ export default function ActivityDetailScreen() {
   const hasEnded = activity ? Date.parse(activity.endsAt) <= Date.now() : false;
   const isInactive = activity ? activity.status !== 'published' || hasEnded : false;
   const isHost = activity?.membershipRole === 'host';
+  const canChat = Boolean(activity && !isInactive && (isHost || activity.membershipStatus === 'accepted'));
   const refreshParticipants = useCallback(async () => {
     if (!activityId || !isHost) return;
     const result = await getHostActivityParticipants(activityId);
@@ -103,6 +108,13 @@ export default function ActivityDetailScreen() {
   }, [activityId, isHost]);
 
   useFocusEffect(useCallback(() => { void refreshParticipants(); }, [refreshParticipants]));
+  const refreshMessages = useCallback(async () => {
+    if (!activityId || !canChat) return;
+    const result = await getActivityMessages(activityId);
+    if (result.ok) setMessages(result.messages);
+  }, [activityId, canChat]);
+
+  useFocusEffect(useCallback(() => { void refreshMessages(); }, [refreshMessages]));
   const canLeave = activity?.membershipRole === 'participant'
     && ['accepted', 'pending', 'waitlisted'].includes(activity.membershipStatus ?? '')
     && !isInactive;
@@ -117,6 +129,21 @@ export default function ActivityDetailScreen() {
     if (activity.membershipStatus === 'left') return 'You left this activity';
     return activity.membershipStatus ? MEMBERSHIP_LABELS[activity.membershipStatus] : null;
   }, [activity, hasEnded, isHost]);
+
+  async function submitMessage() {
+    const body = messageDraft.trim();
+    if (!activity || !body || chatSending) return;
+    setChatSending(true);
+    setActionError(null);
+    const result = await sendActivityMessage(activity.id, body);
+    setChatSending(false);
+    if (!result.ok) {
+      setActionError(result.message);
+      return;
+    }
+    setMessageDraft('');
+    setMessages((current) => [...current, result.message]);
+  }
 
   async function performJoin() {
     if (!activity || actionRef.current) return;
@@ -389,6 +416,47 @@ export default function ActivityDetailScreen() {
           </>
         )}
 
+        {canChat && (
+          <>
+            <Text style={styles.sectionLabel}>ACTIVITY CHAT</Text>
+            <View style={styles.chatCard}>
+              {messages.length === 0 ? (
+                <Text style={styles.chatEmpty}>No messages yet. Start the coordination.</Text>
+              ) : messages.map((message) => (
+                <View key={message.id} style={styles.messageBubble}>
+                  <View style={styles.messageHeader}>
+                    <Text style={styles.messageAuthor}>{message.authorDisplayName}</Text>
+                    <Text style={styles.messageTime}>{new Date(message.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</Text>
+                  </View>
+                  <Text style={styles.messageBody}>{message.body}</Text>
+                </View>
+              ))}
+              <View style={styles.chatInputRow}>
+                <TextInput
+                  accessibilityLabel="Activity message"
+                  editable={!chatSending}
+                  maxLength={1000}
+                  multiline
+                  onChangeText={setMessageDraft}
+                  placeholder="Write to the activity…"
+                  placeholderTextColor="#8A929A"
+                  style={styles.chatInput}
+                  value={messageDraft}
+                />
+                <Pressable
+                  accessibilityLabel="Send message"
+                  accessibilityRole="button"
+                  disabled={chatSending || !messageDraft.trim()}
+                  onPress={() => void submitMessage()}
+                  style={[styles.sendButton, (chatSending || !messageDraft.trim()) && styles.disabledButton]}
+                >
+                  {chatSending ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons color="#FFFFFF" name="arrow-up" size={18} />}
+                </Pressable>
+              </View>
+            </View>
+          </>
+        )}
+
         <Text style={styles.sectionLabel}>LOCATION & PRIVACY</Text>
         <View style={styles.locationCard}>
           <View style={styles.locationIcon}>
@@ -523,6 +591,16 @@ const styles = StyleSheet.create({
   participantCopy: { flex: 1 },
   participantName: { color: '#16202A', fontSize: 14, fontWeight: '800' },
   participantStatus: { color: '#66717D', fontSize: 12, marginTop: 3 },
+  chatCard: { backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 20, borderWidth: 1, gap: 10, marginTop: 10, padding: 14 },
+  chatEmpty: { color: '#66717D', fontSize: 13, lineHeight: 19, paddingVertical: 6 },
+  messageBubble: { backgroundColor: '#F7F4EE', borderRadius: 14, padding: 11 },
+  messageHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  messageAuthor: { color: '#16202A', fontSize: 12, fontWeight: '900' },
+  messageTime: { color: '#8A929A', fontSize: 10 },
+  messageBody: { color: '#394652', fontSize: 13, lineHeight: 19, marginTop: 4 },
+  chatInputRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, marginTop: 4 },
+  chatInput: { backgroundColor: '#F7F4EE', borderColor: 'rgba(22,32,42,0.1)', borderRadius: 14, borderWidth: 1, color: '#16202A', flex: 1, fontSize: 13, maxHeight: 90, minHeight: 44, paddingHorizontal: 12, paddingVertical: 11 },
+  sendButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
   removeParticipantButton: { borderColor: 'rgba(157,62,43,0.25)', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   removeParticipantText: { color: '#9D3E2B', fontSize: 11, fontWeight: '900' },
   feedback: { backgroundColor: '#FBE4DF', borderRadius: 14, marginTop: 18, padding: 13 },

@@ -127,6 +127,15 @@ export interface HostActivityParticipant {
   joinedAt: string | null;
 }
 
+export interface ActivityMessage {
+  id: string;
+  activityId: string;
+  authorUserId: string;
+  authorDisplayName: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface CancelActivityResponse {
   activityId: string;
   status: Extract<ActivityStatus, 'cancelled'>;

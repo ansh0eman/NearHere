@@ -16,6 +16,7 @@ export type {
   LeaveActivityResponse,
   RemoveParticipantResponse,
   HostActivityParticipant,
+  ActivityMessage,
   MembershipRequestDecision,
   MembershipRequestSummary,
   MyPlanSummary,
@@ -34,6 +35,7 @@ import type {
   LeaveActivityResponse,
   RemoveParticipantResponse,
   HostActivityParticipant,
+  ActivityMessage,
   MembershipRequestDecision,
   MembershipRequestSummary,
   MyPlanSummary,
@@ -82,6 +84,14 @@ export type HostActivityParticipantsResult =
 
 export type SafetyOperationResult =
   | { ok: true }
+  | { ok: false; message: string };
+
+export type ActivityMessagesResult =
+  | { ok: true; messages: ActivityMessage[] }
+  | { ok: false; message: string };
+
+export type SendActivityMessageResult =
+  | { ok: true; message: ActivityMessage }
   | { ok: false; message: string };
 
 export type CancelActivityOperationResult =

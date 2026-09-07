@@ -12,6 +12,7 @@ import type {
   LeaveActivityResponse,
   RemoveParticipantResponse,
   HostActivityParticipant,
+  ActivityMessage,
   MembershipRequestSummary,
   MyPlanSummary,
   NearbyActivitySummary,
@@ -278,6 +279,21 @@ export function parseHostActivityParticipantRows(value: unknown): HostActivityPa
       membershipStatus: status,
       joinedAt: item.joined_at === null ? null : requireTimestamp(item, 'joined_at'),
     } as HostActivityParticipant;
+  });
+}
+
+export function parseActivityMessageRows(value: unknown): ActivityMessage[] {
+  if (!Array.isArray(value)) throw new Error('Message response is not a list.');
+  return value.map((item) => {
+    if (!isRecord(item)) throw new Error('Message response is not an object.');
+    return {
+      id: requireString(item, 'id'),
+      activityId: requireString(item, 'activity_id'),
+      authorUserId: requireString(item, 'author_user_id'),
+      authorDisplayName: requireString(item, 'author_display_name'),
+      body: requireString(item, 'body'),
+      createdAt: requireTimestamp(item, 'created_at'),
+    };
   });
 }
 

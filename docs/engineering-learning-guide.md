@@ -2480,6 +2480,28 @@ accepted membership and the block predicate.
 self-report/self-block denial, idempotent report submission, and block/unblock
 lifecycle on 2026-09-08.
 
+## Lesson 13 — Durable chat before realtime chat
+
+**Problem:** the first chat migration authorized only `role = participant`.
+That looked reasonable until the hosted harness proved the activity host could
+not send or read their own coordination thread.
+
+**Resolution:** membership authorization is based on the durable invariant
+`status = accepted`; the host is represented by an accepted membership row, so
+one predicate covers both host and participants. Reads also exclude messages
+when either actor has a private block relationship. The message table remains
+private and the RPCs return an explicit safe projection.
+
+**Verification:** the hosted chat harness passed anonymous denial,
+host/participant exchange, and block-filtered reads. The native UI validates
+the projection and refetches on focus. Realtime is deliberately deferred: it
+can improve freshness later without changing durable authorization or storage.
+
+**Interview explanation:** “I established PostgreSQL as the source of truth for
+activity chat, tested the authorization matrix first, and kept realtime as a
+replaceable delivery optimization rather than coupling correctness to a
+WebSocket.”
+
 ## Startup and resume lesson — code is not startup validation
 
 NearHere is resume-quality because its claims can be tied to migrations,

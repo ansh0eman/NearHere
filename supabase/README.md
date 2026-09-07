@@ -556,6 +556,22 @@ self-block denial, and block/unblock lifecycle. Before chat is implemented,
 its message/activity read models must explicitly exclude blocked relationships;
 the commands alone do not provide that guarantee.
 
+## Lesson 13 hosted-verified: durable activity chat
+
+Migrations `202609090001_activity_chat.sql` and
+`202609090002_fix_activity_chat_host_membership.sql` add a private
+`activity_messages` table plus `send_activity_message` and
+`activity_messages` RPCs. Direct table grants remain disabled. Both RPCs
+derive the caller from Auth, require an active accepted membership, bound the
+body to 1–1000 characters, and apply the private block predicate to reads.
+
+The first implementation used `role = participant`, which accidentally
+excluded the host. The correction uses the stronger durable invariant
+`status = accepted`, because activity creation already records the host as an
+accepted membership. The hosted chat harness passed anonymous denial,
+host/participant exchange, and block-filtered reads. The mobile client uses
+explicit refetch today; realtime and push are later delivery improvements.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.

@@ -67,7 +67,7 @@ Exit condition: concurrent attempts cannot violate membership invariants.
 
 ## Phase 4 — Coordination and safety: in progress
 
-- Durable activity-scoped chat with block-aware accepted-member authorization
+- Durable activity-scoped chat with block-aware accepted-member authorization — deployed and hosted-verified; native UI now implemented
 - Realtime delivery using managed capability first
 - Push notifications where needed
 - Private idempotent report/block foundation — deployed and hosted-verified

@@ -110,9 +110,25 @@ Deployed migration `007` and the matching mobile source add three authenticated 
 - `host_pending_activity_requests(p_activity_id, p_limit)` returns only requester ID, display name, and request timestamp to the host, ordered FIFO and bounded to 1–100 rows.
 - `remove_activity_participant(p_activity_id, p_participant_user_id)` is host-only. It records `removed` durably and atomically promotes the oldest waitlisted participant when an active accepted place opens. `host_activity_participants(p_activity_id)` returns only accepted/waitlisted participant identity and membership state to the host; neither function exposes private location fields. The hosted A/B/C/D matrix verified denial, projection scoping, removal, retry safety, and cleanup on 2026-09-07.
 - `report_safety_issue(p_reported_user_id, p_activity_id, p_reason, p_details)` accepts one private idempotent report from an authenticated caller; anonymous calls and self-reports are denied.
-- `block_user(p_blocked_user_id)` and `unblock_user(p_blocked_user_id)` manage a private idempotent block relationship. They do not yet alter discovery or chat reads; those consumers must adopt the block predicate before chat launches.
+- `block_user(p_blocked_user_id)` and `unblock_user(p_blocked_user_id)` manage a private idempotent block relationship. The deployed chat read model consumes this predicate; discovery and participant projections still need the same integration.
 
 The tables have no client-facing grants. These RPCs are the first modular-monolith implementation boundary; the HTTP routes below remain the stable future API contract when an application server takes over orchestration.
+
+### Activity chat (current RPC boundary)
+
+`send_activity_message(p_activity_id, p_body)` and
+`activity_messages(p_activity_id, p_limit)` are authenticated commands/read
+models over the private `activity_messages` table. The actor comes from the
+verified session. The activity must be published and active, and the actor
+must have an accepted membership; the host qualifies through the accepted host
+membership created at activity creation. Message bodies are trimmed and
+bounded to 1–1000 characters. Reads return only safe author/display/body/time
+fields and exclude messages when either side has blocked the other.
+
+The hosted harness verifies anonymous denial, host/participant exchange, and
+block filtering. The mobile client currently refetches on Activity Detail
+focus; realtime subscriptions and push notifications are future delivery
+optimizations, not authorization mechanisms.
 
 ### Current MVP `my_plans(limit)` read model
 

@@ -15,6 +15,7 @@ import {
   parseMyPlanRows,
   parseNearbyActivityRow,
   parseNearbyActivityRows,
+  parseActivityMessageRows,
 } from './activity-validation.ts';
 
 const validRow = {
@@ -41,6 +42,30 @@ test('nearby parser maps a database row into the mobile domain shape', () => {
   assert.equal(activity.publicLocation.latitude, 12.9352);
   assert.equal(activity.distanceM, 812.4);
   assert.equal(activity.participantCount, 1);
+});
+
+test('activity message parser maps the private chat projection', () => {
+  const [message] = parseActivityMessageRows([{
+    id: 'message-1',
+    activity_id: validRow.id,
+    author_user_id: 'author-1',
+    author_display_name: 'Anshu',
+    body: 'Meet by the south gate.',
+    created_at: '2026-09-09T10:00:00.000Z',
+  }]);
+  assert.deepEqual(message, {
+    id: 'message-1',
+    activityId: validRow.id,
+    authorUserId: 'author-1',
+    authorDisplayName: 'Anshu',
+    body: 'Meet by the south gate.',
+    createdAt: '2026-09-09T10:00:00.000Z',
+  });
+});
+
+test('activity message parser rejects malformed responses', () => {
+  assert.throws(() => parseActivityMessageRows({}), /not a list/);
+  assert.throws(() => parseActivityMessageRows([{ body: 'missing fields' }]), /id/);
 });
 
 test('activity parser maps every public contract field without leaking private fields', () => {

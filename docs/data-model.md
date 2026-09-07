@@ -137,9 +137,16 @@ The ordering places non-ended plans first by nearest start time, followed by end
 
 This table remains planned for general commands. Representative fields: actor, operation scope, idempotency key, request fingerprint, stored response, status code, and expiration. A uniqueness constraint prevents the same logical write from being executed twice. The current Join command instead uses membership identity plus an existing-state early return.
 
-### `chat_messages`
+### `activity_messages`
 
-Representative fields: `id`, `activity_id`, `author_user_id`, client-generated idempotency identifier, body, `created_at`, and `deleted_at`. Membership authorization is evaluated server-side.
+Deployed in `202609090001_activity_chat.sql` inside the private schema. Each row
+stores an activity, author, bounded message body, and server timestamp. Direct
+client table access is revoked; `send_activity_message` and
+`activity_messages` are the only current application boundary. Both require a
+published, active activity and an accepted membership (the host's accepted
+membership is included). Reads exclude either side of a private block.
+The mobile slice uses explicit refetch on focus; realtime delivery is a later
+transport optimization, not a second source of truth.
 
 ### `activity_events`
 
@@ -188,7 +195,7 @@ The deployed access surface is deliberately narrower than the beta target:
 | `public.activity_memberships` | None for `anon` or `authenticated` | Host row is written inside `create_activity`; participant Join is written inside `join_activity`; caller state is projected by `my_plans` |
 | `private.activity_locations` | None; schema and table are not client-exposed | `my_plans` releases the exact point only to an accepted caller while the activity is published and not ended |
 
-The following table is the **target authorization model**, not a claim that participant/chat policies already exist:
+The following table describes the current authorization model for deployed rows:
 
 | Actor | Profiles | Public activities | Private meeting data | Memberships/chat |
 | --- | --- | --- | --- | --- |

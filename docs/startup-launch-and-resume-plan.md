@@ -217,8 +217,7 @@ measurement or user evidence changes a prior assumption.
 
 ## 8. Immediate next work
 
-1. Finish the remaining Simulator acceptance gates.
-2. Build block-aware activity chat and its hosted harness.
-3. Add minimal operator report review and audit event model.
-4. Add product analytics with strict privacy rules.
-5. Prepare TestFlight and recruit anchor hosts for one selected neighborhood.
+1. Finish the remaining Simulator acceptance gates, including the new chat UI.
+2. Add minimal operator report review and audit event model.
+3. Add product analytics with strict privacy rules.
+4. Prepare TestFlight and recruit anchor hosts for one selected neighborhood.

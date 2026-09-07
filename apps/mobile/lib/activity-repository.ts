@@ -7,6 +7,7 @@ import {
   parseLeaveActivityResponseRow,
   parseRemoveParticipantResponseRow,
   parseHostActivityParticipantRows,
+  parseActivityMessageRows,
   parseMembershipRequestRows,
   parseMyPlanRows,
   parseNearbyActivityRows,
@@ -24,6 +25,8 @@ import type {
   RemoveParticipantOperationResult,
   HostActivityParticipantsResult,
   SafetyOperationResult,
+  ActivityMessagesResult,
+  SendActivityMessageResult,
   MembershipRequestsResult,
   MyPlansResult,
   NearbyActivitiesQuery,
@@ -157,6 +160,25 @@ export async function reportActivity(activityId: string, reason: string, details
     return { ok: false, message: 'NearHere received an invalid report response. Please try again.' };
   }
   return { ok: true };
+}
+
+export async function getActivityMessages(activityId: string): Promise<ActivityMessagesResult> {
+  if (!supabase) return { ok: false, message: 'Chat is unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('activity_messages', { p_activity_id: activityId, p_limit: 50 });
+  if (error) return { ok: false, message: 'NearHere could not load activity chat. Check your connection and try again.' };
+  try { return { ok: true, messages: parseActivityMessageRows(data) }; }
+  catch { return { ok: false, message: 'NearHere received an invalid chat response. Please try again.' }; }
+}
+
+export async function sendActivityMessage(activityId: string, body: string): Promise<SendActivityMessageResult> {
+  if (!supabase) return { ok: false, message: 'Chat is unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('send_activity_message', { p_activity_id: activityId, p_body: body });
+  if (error) return { ok: false, message: 'NearHere could not send that message. Please try again.' };
+  try {
+    const messages = parseActivityMessageRows(data);
+    if (messages.length !== 1) throw new Error('Expected one sent message.');
+    return { ok: true, message: messages[0] };
+  } catch { return { ok: false, message: 'NearHere received an invalid send response. Please try again.' }; }
 }
 
 export async function decideMembershipRequest(
