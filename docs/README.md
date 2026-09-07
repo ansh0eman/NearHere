@@ -73,7 +73,7 @@ This table prevents an architectural design from being confused with deployed ev
 | Join participation | A/B/C/D hosted matrix verified all server outcomes; Actor C Auth/onboarding/Leave and Host A approval UI accepted in Simulator | Pending/waitlisted participant cards and host Reject UI acceptance |
 | My Plans | Hosted caller isolation/exact gating verified; signed-out intent through Actor C OTP/onboarding, accepted exact-point card, and post-Leave empty state accepted in Simulator | Pending/waitlisted and inactive-card rendering plus pagination |
 | Leave/approval | Database matrix fully verified; participant Leave and Host A pending-request approval/count refresh accepted in Simulator | Reject UI still needs Simulator acceptance |
-| Safety foundation | Private idempotent report/block RPCs, operator-only report lifecycle, and block-aware chat/discovery/host/Join/exact-location behavior; hosted harness covers denial and filtering | Explicit operator provisioning, operator console, audit events, rate limits, and Simulator acceptance |
+| Safety foundation | Private report/block RPCs, operator lifecycle/console, immutable audit events, block-aware consumers, and database rate limits; hosted harness covers denial and filtering | Explicit operator provisioning, rate-limit tuning, and Simulator/device acceptance |
 | Chat | Durable accepted-member chat RPCs, block filtering, hosted harness, and initial native UI implemented/verified | Simulator acceptance, realtime/push, operator moderation |
 
 “Implemented” means source exists and local checks pass. “Deployed” means the hosted development environment accepted it. “Verified” names a specific observed behavior. These words are intentionally not interchangeable.

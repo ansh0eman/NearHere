@@ -615,6 +615,39 @@ location access as well as chat, discovery, and participant-projection access.
 The remaining product question is how notifications and already-open screens
 should refresh when a block changes; the database boundary is already safe.
 
+## Lesson 17 hosted-verified: immutable safety audit events
+
+Migration `202609090006_safety_audit_events.sql` adds a private append-only
+event table. Database triggers record report creation/review and block/unblock
+changes, so the event cannot be skipped because a UI path forgot to call a
+logger. Direct table writes are revoked and the operator-only read RPC is
+denied to ordinary authenticated users.
+
+## Lesson 18 hosted-verified: user-facing block and refresh
+
+Migration `202609090007_block_activity_host_command.sql` lets a signed-in user
+block an activity host without exposing the host's private identity fields.
+Activity Detail calls its normal server refresh and chat refresh after success;
+when focus returns later, the same refetch path runs again. This is a simple,
+reliable freshness model until push/realtime is justified by beta evidence.
+
+## Lesson 19 hosted-verified: database rate limits
+
+Migration `202609090008_rate_limit_sensitive_writes.sql` records bounded
+per-actor windows for chat messages, reports, blocks, and participant joins.
+Each decision takes a transaction-scoped advisory lock for its actor/scope,
+counts recent events, and rejects excess writes with `P0004`. This is an abuse
+guard, not an authoritative product counter; the durable tables remain the
+source of truth.
+
+## Lesson 20 hosted-verified: bounded observability
+
+Migration `202609090009_observability_events.sql` records minimal warnings when
+a rate limit is exceeded. Operator-only audit and observability reads are
+bounded and contain no message bodies, phone numbers, tokens, or exact
+coordinates. The route `apps/mobile/app/operator.tsx` demonstrates the client
+boundary, while PostgreSQL remains responsible for authorization.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.

@@ -17,6 +17,8 @@ hosted tests prove what the backend permits. Neither replaces the other.
 | V08 | Chat with message and composer | Durable coordination UI | Capture in Simulator |
 | V09 | Cancelled/ended activity | Exact point remains redacted | Capture in Simulator |
 | V10 | Plans after leaving | Stale private data disappears | Capture in Simulator |
+| V11 | Block host confirmation and refreshed detail | Private access changes without silent membership deletion | Capture in Simulator |
+| V12 | Operator route as ordinary user | Database-backed access denial is visible and safe | Capture in Simulator |
 
 ## Screenshot procedure
 

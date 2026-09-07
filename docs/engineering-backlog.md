@@ -73,11 +73,12 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [ ] Add managed realtime subscriptions and reconnect/refetch behavior
 - [x] Add private report/block foundations and a signed-in report-activity action
 - [x] Add operator-only report lifecycle and review RPCs; hosted denial proves non-operators cannot access the queue
-- [ ] Provision a deliberate operator account and build a minimal operator console
-- [x] Apply the block predicate to chat, authenticated discovery, and host participant projection; hosted harness covers all three
+- [x] Provision-safe minimal operator console route; ordinary users receive database-backed access denial
+- [x] Apply the block predicate to chat, authenticated discovery, host participant projection, Join, and exact-location release; hosted harness covers the blocked relationship
 - [x] Define block policy for Join and exact-location privacy without silently deleting existing memberships; hosted harness covers the blocked relationship
-- [ ] Add immutable operator audit events and review recovery paths
-- [ ] Add rate limits and abuse controls based on threat model
+- [x] Add immutable safety audit events and operator-only operational logs
+- [x] Add database-enforced rate limits for sensitive writes and bounded rate-limit observability
+- [ ] Add immutable operator review recovery paths and tune limits with beta evidence
 - [ ] Add accessibility and reduced-motion audit
 - [ ] Add structured errors, request IDs, logs, metrics, traces, and crash reporting
 - [ ] Add physical-device, TestFlight, and Android internal-test workflows

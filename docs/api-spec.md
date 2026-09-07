@@ -232,6 +232,12 @@ Realtime subscriptions deliver freshness hints/events; they do not replace pagin
 
 Operator resolution endpoints require a separate administrative authorization boundary and audit logging. The hosted implementation now provides `operator_safety_reports(status, limit)` and `review_safety_report(report_id, decision, resolution)` as authenticated RPCs, additionally gated by the private operator allowlist. The allowlist is empty by default; ordinary authenticated users receive `42501` and cannot read or mutate the queue.
 
+`operator_safety_audit_events(limit)` and `operator_observability_events(limit)`
+expose bounded operational evidence only to the same operator allowlist. There
+is no public logs endpoint. Protected writes use database-enforced per-actor
+windows; rejected requests record a minimal rate-limit warning without storing
+message bodies, phone numbers, or tokens.
+
 ## 9. Request lifecycle
 
 ### Current Supabase RPC lifecycle

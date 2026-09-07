@@ -68,6 +68,10 @@ function AppNavigator() {
           name="activity"
           options={{ animation: 'slide_from_right', headerShown: false }}
         />
+        <Stack.Screen
+          name="operator"
+          options={{ animation: 'slide_from_right', headerShown: false }}
+        />
       </Stack>
       <StatusBar style="dark" />
     </ProfileProvider>

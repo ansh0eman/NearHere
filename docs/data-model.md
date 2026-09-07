@@ -168,6 +168,14 @@ Join attempt and redacts the exact meeting point for the blocked relationship.
 The user can leave, and the host can remove, so membership history remains
 explicit rather than being silently destroyed.
 
+Migration `202609090006_safety_audit_events.sql` adds append-only private audit
+events. Database triggers record report creation/review and block/unblock
+changes, so logging is coupled to the state mutation rather than remembered by
+the UI. Migration `202609090008_rate_limit_sensitive_writes.sql` adds bounded
+per-actor windows for chat, reports, blocks, and joins; migration
+`202609090009_observability_events.sql` records rate-limit warnings for the
+operator boundary without exposing operational data to clients.
+
 Migration `202609090003_operator_safety_review.sql` adds a report lifecycle
 (`open`, `reviewing`, `resolved`, `dismissed`) and review metadata. The private
 `operator_accounts` table is deliberately empty by default. Operator queue and

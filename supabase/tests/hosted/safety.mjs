@@ -96,6 +96,13 @@ async function main() {
     assert(!review.ok && review.payload?.code === '42501', 'Non-operator review was accepted.');
   });
 
+  await test('non-operators cannot read immutable audit events', async () => {
+    const events = await rpc('operator_safety_audit_events', { p_limit: 10 }, actorA.accessToken);
+    assert(!events.ok && events.payload?.code === '42501', 'Non-operator audit read was accepted.');
+    const operations = await rpc('operator_observability_events', { p_limit: 10 }, actorA.accessToken);
+    assert(!operations.ok && operations.payload?.code === '42501', 'Non-operator observability read was accepted.');
+  });
+
   if (failures.length) { console.error(`Verification stopped: ${failures.length} safety check(s) failed.`); process.exitCode = 1; return; }
   console.log('PASS hosted safety verification complete');
 }

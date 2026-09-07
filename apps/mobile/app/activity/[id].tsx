@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useActivityDetail } from '@/hooks/use-activity-detail';
-import { cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
+import { blockActivityHost, cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
 import type { ActivityDetail, ActivityKind, ActivityMessage, HostActivityParticipant } from '@/types/activity';
@@ -285,6 +285,29 @@ export default function ActivityDetailScreen() {
     );
   }
 
+  function confirmBlockHost() {
+    if (!activity || !session || isHost) return;
+    Alert.alert(
+      'Block this host?',
+      'You will no longer see this host’s activities or private coordination. Your existing membership will remain until you leave or the host removes you.',
+      [
+        { text: 'Keep host', style: 'cancel' },
+        {
+          text: 'Block host',
+          style: 'destructive',
+          onPress: () => {
+            void blockActivityHost(activity.id).then(async (result) => {
+              if (!result.ok) { setActionError(result.message); return; }
+              setActionNotice('Host blocked. Private location and coordination access were refreshed.');
+              await refresh();
+              await refreshMessages();
+            });
+          },
+        },
+      ],
+    );
+  }
+
   function confirmRemove(participant: HostActivityParticipant) {
     Alert.alert(
       `Remove ${participant.participantDisplayName}?`,
@@ -540,9 +563,14 @@ export default function ActivityDetailScreen() {
         )}
 
         {!isHost && session && (
-          <Pressable accessibilityRole="button" onPress={confirmReport} style={styles.reportButton}>
-            <Text style={styles.reportButtonText}>Report activity</Text>
-          </Pressable>
+          <View style={styles.safetyActions}>
+            <Pressable accessibilityRole="button" onPress={confirmReport} style={styles.reportButton}>
+              <Text style={styles.reportButtonText}>Report activity</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={confirmBlockHost} style={styles.reportButton}>
+              <Text style={styles.reportButtonText}>Block host</Text>
+            </Pressable>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -615,6 +643,7 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: '#9D3E2B', fontSize: 14, fontWeight: '900' },
   reportButton: { alignItems: 'center', marginTop: 18, padding: 10 },
   reportButtonText: { color: '#66717D', fontSize: 12, fontWeight: '800' },
+  safetyActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 12 },
   disabledButton: { opacity: 0.5 },
   centerState: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
   centerTitle: { color: '#16202A', fontSize: 25, fontWeight: '900', letterSpacing: -0.8, marginTop: 16, textAlign: 'center' },

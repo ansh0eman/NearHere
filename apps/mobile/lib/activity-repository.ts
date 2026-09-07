@@ -13,6 +13,7 @@ import {
   parseNearbyActivityRows,
 } from '@/lib/activity-validation';
 import { supabase } from '@/lib/supabase';
+import { parseOperatorSafetyReports, parseSafetyReviewReceipt } from '@/lib/safety-validation';
 import type {
   ActivityDetailResult,
   CancelActivityOperationResult,
@@ -32,6 +33,7 @@ import type {
   NearbyActivitiesQuery,
   NearbyActivitiesResult,
 } from '@/types/activity';
+import type { OperatorReportsResult, SafetyReviewResult } from '@/types/safety';
 
 export async function getActivityDetail(activityId: string): Promise<ActivityDetailResult> {
   if (!supabase) {
@@ -160,6 +162,34 @@ export async function reportActivity(activityId: string, reason: string, details
     return { ok: false, message: 'NearHere received an invalid report response. Please try again.' };
   }
   return { ok: true };
+}
+
+export async function blockActivityHost(activityId: string): Promise<SafetyOperationResult> {
+  if (!supabase) return { ok: false, message: 'Blocking is unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('block_activity_host', { p_activity_id: activityId });
+  if (error) return { ok: false, message: 'NearHere could not block this host. Please try again.' };
+  if (!Array.isArray(data) || data.length !== 1 || data[0]?.blocked !== true) {
+    return { ok: false, message: 'NearHere received an invalid block response. Please try again.' };
+  }
+  return { ok: true };
+}
+
+export async function getOperatorSafetyReports(status = 'open'): Promise<OperatorReportsResult> {
+  if (!supabase) return { ok: false, message: 'Safety operations are unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('operator_safety_reports', { p_status: status, p_limit: 50 });
+  if (error) return { ok: false, message: error.code === '42501' ? 'Operator access is required.' : 'NearHere could not load the safety queue.' };
+  try { return { ok: true, reports: parseOperatorSafetyReports(data) }; }
+  catch { return { ok: false, message: 'NearHere received an invalid safety queue response.' }; }
+}
+
+export async function reviewSafetyReport(reportId: string, decision: 'reviewing' | 'resolved' | 'dismissed', resolution = ''): Promise<SafetyReviewResult> {
+  if (!supabase) return { ok: false, message: 'Safety operations are unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('review_safety_report', { p_report_id: reportId, p_decision: decision, p_resolution: resolution || null });
+  if (error) return { ok: false, message: error.code === '42501' ? 'Operator access is required.' : 'NearHere could not review this report.' };
+  try {
+    if (!Array.isArray(data) || data.length !== 1) throw new Error('Expected one review receipt.');
+    return { ok: true, receipt: parseSafetyReviewReceipt(data[0]) };
+  } catch { return { ok: false, message: 'NearHere received an invalid review response.' }; }
 }
 
 export async function getActivityMessages(activityId: string): Promise<ActivityMessagesResult> {

@@ -218,6 +218,6 @@ measurement or user evidence changes a prior assumption.
 ## 8. Immediate next work
 
 1. Finish the remaining Simulator acceptance gates, including the new chat UI.
-2. Provision the first operator account deliberately and build the minimal report-review console on top of the deployed RPC boundary.
-3. Add product analytics with strict privacy rules.
-4. Prepare TestFlight and recruit anchor hosts for one selected neighborhood.
+2. Provision the first operator account deliberately and validate the report-review console with an audited recovery path.
+3. Capture Simulator/device evidence for chat, blocking, and operator denial.
+4. Add product analytics with strict privacy rules, then prepare TestFlight and recruit anchor hosts for one selected neighborhood.
