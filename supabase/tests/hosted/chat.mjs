@@ -81,6 +81,9 @@ async function main() {
     }, b.token);
     assert(nearby.ok && !nearby.payload.some((activity) => activity.id === activityId), 'Blocked host activity was still visible in discovery.');
 
+    const detail = await rpc('activity_detail', { p_activity_id: activityId }, b.token);
+    assert(detail.ok && detail.payload?.[0]?.exact_latitude === null && detail.payload?.[0]?.exact_longitude === null, 'Blocked member still received the exact meeting point.');
+
     await rpc('unblock_user', { p_blocked_user_id: b.userId }, a.token);
   });
   if (failures.length) { console.error(`Verification stopped: ${failures.length} chat check(s) failed.`); process.exitCode = 1; return; }

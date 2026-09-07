@@ -162,6 +162,12 @@ participant projections now consume the block relation. Join authorization and
 other participation commands still need a deliberate block policy before
 launch.
 
+Migration `202609090005_block_existing_membership_privacy.sql` records the MVP
+policy: a block does not delete an existing membership, but it prevents a new
+Join attempt and redacts the exact meeting point for the blocked relationship.
+The user can leave, and the host can remove, so membership history remains
+explicit rather than being silently destroyed.
+
 Migration `202609090003_operator_safety_review.sql` adds a report lifecycle
 (`open`, `reviewing`, `resolved`, `dismissed`) and review metadata. The private
 `operator_accounts` table is deliberately empty by default. Operator queue and

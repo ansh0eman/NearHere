@@ -601,6 +601,20 @@ blocked host's activity disappears from the other actor's nearby results. Join
 and other participation commands are intentionally not changed yet because
 their block policy needs a product decision about existing memberships.
 
+## Lesson 16 hosted-verified: blocking existing membership privacy
+
+Migration `202609090005_block_existing_membership_privacy.sql` defines the MVP
+meaning of a block. A new Join attempt is denied when either actor has blocked
+the other. Existing membership rows are not silently deleted; instead,
+activity detail redacts the exact meeting point and the user can explicitly
+Leave while the host can explicitly Remove. This preserves an auditable state
+transition and avoids a surprising destructive side effect inside `block_user`.
+
+The hosted chat harness verifies that a blocked accepted member loses exact
+location access as well as chat, discovery, and participant-projection access.
+The remaining product question is how notifications and already-open screens
+should refresh when a block changes; the database boundary is already safe.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.

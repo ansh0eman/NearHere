@@ -47,7 +47,7 @@ flowchart TD
     OUTCOME -->|"Full/rejected/error"| DETAIL
 ```
 
-Authentication success is not onboarding success, and onboarding success is not Join success. Authentication proves identity; profile completion supplies the minimum application identity; the deployed Join transaction then evaluates availability, existing membership, capacity, and join mode. Activity chat, authenticated discovery, and host participant projections apply the deployed block predicate; Join and other participation commands still need a deliberate product policy.
+Authentication success is not onboarding success, and onboarding success is not Join success. Authentication proves identity; profile completion supplies the minimum application identity; the deployed Join transaction then evaluates availability, existing membership, capacity, join mode, and blocks. Activity chat, authenticated discovery, host participant projections, and exact-location release apply the same block predicate. Existing membership is not silently deleted; Leave or host removal remains explicit.
 
 Current result semantics are explicit: an open activity returns `accepted` while capacity remains and `waitlisted` when full; an approval activity returns `pending`; an existing active membership is returned unchanged on retry. The 2026-08-15 hosted A/B/C/D run verified all participation outcomes through the RPC boundary. The rebuilt iPhone 17 Pro Simulator accepted the Actor C Auth/onboarding/Leave flow and Host A approval flow. Pending/waitlisted participant cards and host Reject still need Simulator acceptance.
 
