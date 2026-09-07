@@ -161,6 +161,12 @@ is private and idempotent. The commands exist today, but discovery,
 participation, and the future chat read models must explicitly consume the
 block relation before it can be claimed as an exposure-prevention policy.
 
+Migration `202609090003_operator_safety_review.sql` adds a report lifecycle
+(`open`, `reviewing`, `resolved`, `dismissed`) and review metadata. The private
+`operator_accounts` table is deliberately empty by default. Operator queue and
+review RPCs check that allowlist inside the database; there is no client-side
+admin flag that a modified app could manufacture.
+
 ## 5. Keys, constraints, and indexes
 
 ```mermaid

@@ -85,6 +85,17 @@ async function main() {
     assert(self.payload?.code === '22023', 'Self-block was accepted.');
   });
 
+  await test('non-operators cannot read or mutate the review queue', async () => {
+    const queue = await rpc('operator_safety_reports', { p_status: 'open', p_limit: 10 }, actorA.accessToken);
+    const review = await rpc('review_safety_report', {
+      p_report_id: '00000000-0000-0000-0000-000000000000',
+      p_decision: 'dismissed',
+      p_resolution: 'Development denial check.',
+    }, actorA.accessToken);
+    assert(!queue.ok && queue.payload?.code === '42501', 'Non-operator read was accepted.');
+    assert(!review.ok && review.payload?.code === '42501', 'Non-operator review was accepted.');
+  });
+
   if (failures.length) { console.error(`Verification stopped: ${failures.length} safety check(s) failed.`); process.exitCode = 1; return; }
   console.log('PASS hosted safety verification complete');
 }

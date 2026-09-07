@@ -72,7 +72,9 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add initial accepted-member chat UI with validated messages and explicit refetch
 - [ ] Add managed realtime subscriptions and reconnect/refetch behavior
 - [x] Add private report/block foundations and a signed-in report-activity action
-- [ ] Add operator moderation review, audit events, and block-aware product consumers
+- [x] Add operator-only report lifecycle and review RPCs; hosted denial proves non-operators cannot access the queue
+- [ ] Provision a deliberate operator account and build a minimal operator console
+- [ ] Add immutable operator audit events and block-aware discovery/participant consumers
 - [ ] Add rate limits and abuse controls based on threat model
 - [ ] Add accessibility and reduced-motion audit
 - [ ] Add structured errors, request IDs, logs, metrics, traces, and crash reporting

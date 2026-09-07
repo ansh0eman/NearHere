@@ -230,7 +230,7 @@ Realtime subscriptions deliver freshness hints/events; they do not replace pagin
 - `POST /blocks/:userId` — protected block
 - `DELETE /blocks/:userId` — protected unblock
 
-Operator resolution endpoints require a separate administrative authorization boundary and audit logging.
+Operator resolution endpoints require a separate administrative authorization boundary and audit logging. The hosted implementation now provides `operator_safety_reports(status, limit)` and `review_safety_report(report_id, decision, resolution)` as authenticated RPCs, additionally gated by the private operator allowlist. The allowlist is empty by default; ordinary authenticated users receive `42501` and cannot read or mutate the queue.
 
 ## 9. Request lifecycle
 

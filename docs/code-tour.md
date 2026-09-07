@@ -254,7 +254,21 @@ For chat, a concise interview answer is:
 > and filters blocked users. I verified the authorization matrix with a hosted
 > multi-actor harness and kept realtime as a replaceable delivery optimization.”
 
-## 9. Exercises for the learner
+## 9. Safety operations and least privilege
+
+The safety foundation demonstrates that a signed-in user is not automatically
+an operator. `private.operator_accounts` is an allowlist, and it is empty until
+an explicit provisioning procedure is chosen. The review RPCs check this table
+inside the database. This is stronger than a hidden button or an environment
+variable in the app because a modified client cannot manufacture operator
+authority.
+
+The implementation intentionally stops before a console and operator bootstrap.
+Granting the first operator is an external authority change that needs a named
+owner, recovery plan, and audit trail. The hosted harness proves the safe
+default: ordinary authenticated users cannot read or mutate the review queue.
+
+## 10. Exercises for the learner
 
 1. Find `ActivityMessage` in `packages/contracts/activity.ts` and explain each
    field without looking at the UI.
@@ -265,6 +279,8 @@ For chat, a concise interview answer is:
    applied.
 5. Open the Activity Detail screen in Simulator and record a screenshot for
    anonymous, pending, accepted, and ended states.
+6. Read `202609090003_operator_safety_review.sql` and explain why an empty
+   operator table is safer than a hard-coded email check.
 
 The answers belong in the challenge log, not in memory. A future LaTeX book
 can turn each section into a chapter with the diagrams and screenshot evidence

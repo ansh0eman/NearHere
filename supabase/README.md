@@ -572,6 +572,21 @@ accepted membership. The hosted chat harness passed anonymous denial,
 host/participant exchange, and block-filtered reads. The mobile client uses
 explicit refetch today; realtime and push are later delivery improvements.
 
+## Lesson 14 hosted-verified: operator review boundary
+
+Migration `202609090003_operator_safety_review.sql` gives reports an explicit
+lifecycle and adds two operator-only RPCs: `operator_safety_reports` reads a
+bounded queue, while `review_safety_report` records a decision and timestamp.
+Both functions derive the actor from Auth and check the private
+`operator_accounts` allowlist inside PostgreSQL. The allowlist is empty by
+default, so no ordinary user can self-promote through the mobile client.
+
+The hosted safety harness now proves anonymous denial, authenticated report
+and block behavior, and non-operator denial for both queue reads and review
+writes. Provisioning the first operator and building a console remain separate
+deliberate steps because they change real authority and require an audit/recovery
+procedure.
+
 ## Rollback thinking
 
 This is the first schema and contains no production data. During local development, a reset can recreate it. Once shared/production data exists, do not casually drop the table or enum; create a reviewed forward migration that preserves or deliberately migrates data.

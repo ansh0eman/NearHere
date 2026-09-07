@@ -71,7 +71,8 @@ Exit condition: concurrent attempts cannot violate membership invariants.
 - Realtime delivery using managed capability first
 - Push notifications where needed
 - Private idempotent report/block foundation — deployed and hosted-verified
-- Operator moderation review, audit events, rate limits, and operational tools
+- Operator-only report lifecycle and review boundary — deployed; non-operator denial hosted-verified
+- Operator account provisioning, audit events, rate limits, and operational tools
 
 Exit condition: accepted participants can coordinate without bypassing membership
 or block rules, and safety events are actionable and auditable by an operator.
