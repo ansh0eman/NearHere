@@ -19,7 +19,8 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Verify mobile session restoration after app restart
 - [x] Build minimal display-name onboarding and profile read/update adapter
 - [x] Add runtime profile-boundary unit tests and a dependency-free hosted RLS harness
-- [ ] Test profile trigger and policies as owner, other user, and protected service operation
+- [x] Test profile trigger and policies as owner and other user through the two-actor hosted RLS harness
+- [ ] Test protected service operation in a narrowly privileged integration environment
 
 ## Current slice — Lesson 6: real activity creation and discovery
 
@@ -31,10 +32,10 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Replace map fixtures with explicit loading/empty/success/error server state
 - [x] Build the first native Host form and profile gate
 - [x] Complete one authenticated Host write and rediscover only the public-safe projection in Simulator
-- [ ] Measure exact/public displacement through a protected operational test without exposing the exact point publicly
+- [x] Measure exact/public displacement through a protected operational test without exposing the exact point publicly
 - [x] Implement the caller-scoped activity-detail RPC, runtime parser, native route, map/Plans navigation, and protected Join return path
 - [x] Implement host-only, row-locked, retry-safe cancellation with immediate client-side private-location redaction
-- [ ] Deploy and hosted-verify the activity-detail/cancellation migration
+- [x] Deploy and hosted-verify the activity-detail/cancellation migration
 - [ ] Accept anonymous, participant, host, Leave, directions, and cancellation states in Simulator
 - [ ] Add contract, integration, privacy, and query-plan tests
 
@@ -52,7 +53,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Accept participant Leave and immediate exact-location removal in Simulator
 - [x] Accept host pending-request approval and participant-count refresh in Simulator
 - [ ] Accept host rejection in Simulator
-- [ ] Implement participant removal separately from voluntary Leave
+- [x] Implement participant removal separately from voluntary Leave
 - [x] Build an optional C/D hosted harness for concurrent last-place and FIFO-promotion proof
 - [x] Run the hosted A/B/C/D matrix and record second-user/concurrency evidence
 - [x] Add an authenticated caller-scoped Plans read model and native Plans states
@@ -67,9 +68,10 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 
 ## Coordination, safety, and beta quality
 
-- [ ] Add durable activity chat history and send operation
+- [ ] Add durable, accepted-member-only activity chat history and send operation
 - [ ] Add managed realtime subscriptions and reconnect/refetch behavior
-- [ ] Add report, block, cancellation, moderation, and audit primitives
+- [x] Add private report/block foundations and a signed-in report-activity action
+- [ ] Add operator moderation review, audit events, and block-aware product consumers
 - [ ] Add rate limits and abuse controls based on threat model
 - [ ] Add accessibility and reduced-motion audit
 - [ ] Add structured errors, request IDs, logs, metrics, traces, and crash reporting

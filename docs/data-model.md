@@ -86,7 +86,7 @@ If exact and approximate coordinates shared a client-readable row, every query, 
 
 Composite identity: `(activity_id, user_id)`.
 
-The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. The deployed `join_activity` command creates or returns participant membership through `pending`, `accepted`, and `waitlisted`. Deployed migration `007` implements `left`, host-produced `rejected`, and deterministic waitlist promotion. On 2026-08-15, the hosted A/B/C/D matrix verified these transitions, retry behavior, concurrent capacity safety, and chronological FIFO promotion. `removed` still has no command.
+The deployed table has composite identity `(activity_id, user_id)`, role, status, `joined_at`, and audit timestamps. The creation transaction inserts exactly one accepted host row; a partial unique index enforces one host per activity. The deployed `join_activity` command creates or returns participant membership through `pending`, `accepted`, and `waitlisted`. Deployed migration `007` implements `left`, host-produced `rejected`, and deterministic waitlist promotion. Migrations `202609060001`/`002` implement host-only `removed` transitions and a host-safe accepted/waitlisted participant projection. Hosted verification covers these transitions, retry behavior, concurrent capacity safety, and chronological FIFO promotion.
 
 The composite primary key is also the natural idempotency key for this one operation: the same actor/activity pair cannot produce a second membership row. If an active membership already exists, the function returns that durable status before attempting an insert. This is narrower than a general request-idempotency system because it cannot distinguish two different payloads under the same client-generated key or replay an arbitrary stored HTTP response.
 
@@ -147,7 +147,12 @@ Append-only business audit events such as created, cancelled, joined, approved, 
 
 ### `reports` and `user_blocks`
 
-Reports have reporter, optional reported user/activity/message, reason/category, status, timestamps, and restricted operator notes. A block relation prevents relevant discovery/participation exposure according to a defined safety policy.
+Migration `202609080001` deploys the first private `safety_reports` and
+`user_blocks` tables. Reports contain reporter, optional reported user/activity,
+reason, details, and timestamp; direct client access is denied. A block relation
+is private and idempotent. The commands exist today, but discovery,
+participation, and the future chat read models must explicitly consume the
+block relation before it can be claimed as an exposure-prevention policy.
 
 ## 5. Keys, constraints, and indexes
 

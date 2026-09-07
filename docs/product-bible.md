@@ -80,6 +80,15 @@ flowchart TB
 
 The startup cannot solve density purely with software. The launch strategy must seed a narrow geographic area with reliable hosts while the product minimizes friction and protects trust.
 
+## Launch discipline
+
+NearHere launches one neighborhood at a time. The first success is not a large
+signup number; it is repeatable, trustworthy participation in a small area.
+The founder recruits and supports anchor hosts, measures whether activities are
+actually held, and expands geography only after supply, trust, and retention
+are visible in the data. The detailed operating plan lives in
+[`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md).
+
 ## Success measures
 
 - Time from open to first meaningful activity view

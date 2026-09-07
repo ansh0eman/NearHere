@@ -40,6 +40,20 @@ Do not broaden geography merely because the app is technically deployable. Expan
 - Moderation and incident response can support the larger area.
 - Infrastructure measurements—not guesses—show adequate reliability and cost.
 
+## First 30-day operating plan
+
+This is a **hypothesis-driven** launch sequence, not a promise of growth.
+
+| Week | Founder action | Evidence to collect |
+| --- | --- | --- |
+| 1 | Select one compact area and interview potential hosts | Category demand, availability, safety concerns, willingness to host again |
+| 2 | Recruit 5–8 anchor hosts and publish a two-week activity calendar | Scheduled supply by time window; host onboarding friction |
+| 3 | Invite a small participant cohort and observe each activity | Detail-to-join, cancellation/no-show reasons, meeting-point confusion |
+| 4 | Run follow-up interviews and decide whether to repeat, refine, or pause | Repeat hosting, repeat joining, held-activity rate, incidents, qualitative value |
+
+Do not broaden geography during this period. A sparse second neighborhood makes
+the product look empty and destroys the learning signal from the first.
+
 ## Metric tree
 
 ```mermaid

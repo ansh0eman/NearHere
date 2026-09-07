@@ -2443,3 +2443,49 @@ Current evidence is intentionally limited: contracts, migration, parser, native
 route, unit tests, and an export build exist locally. Deployment, the hosted
 privacy/cancellation harness, and Simulator interaction remain required before
 this lesson can be called verified.
+
+## Lesson 11 — Participant moderation and the shared capacity invariant
+
+**Problem:** a host needs to remove an accepted or waitlisted participant, but
+removal cannot be a direct client table update. Removing an accepted person may
+create one scarce place, which must not race Join, Leave, or waitlist promotion.
+
+**Resolution:** `remove_activity_participant` derives the host from `auth.uid()`,
+locks the same activity row used by participation commands, records `removed`,
+and promotes at most one FIFO waiter atomically. A separate host-only read model
+returns participant identity/status without any private meeting geometry.
+
+**Verification:** the hosted A/B/C/D matrix passed projection scoping, non-host
+denial, durable removal, retry safety, count correctness, and cleanup. The
+native Activity Detail screen adds confirmation-based controls; its final
+Simulator acceptance is still an open evidence item.
+
+**Interview explanation:** “I treated removal as a capacity-affecting command,
+not a UI operation. By serializing every capacity decision on the activity row,
+I kept cross-row membership invariants correct without prematurely introducing
+a queue or distributed lock.”
+
+## Lesson 12 — Safety foundations before chat
+
+**Problem:** chat multiplies abuse and privacy risk. A report or block button
+that only changes local state is not a safety feature.
+
+**Resolution:** operational reports and block relationships live in the private
+schema. Authenticated RPCs derive the actor from the verified session, reject
+self-targeting, and are retry-safe. Reports are intentionally not readable from
+the mobile client. Before chat ships, every message read/write must enforce both
+accepted membership and the block predicate.
+
+**Verification:** the hosted safety harness passed anonymous denial,
+self-report/self-block denial, idempotent report submission, and block/unblock
+lifecycle on 2026-09-08.
+
+## Startup and resume lesson — code is not startup validation
+
+NearHere is resume-quality because its claims can be tied to migrations,
+contracts, hosted tests, and native acceptance—not because it has a large list
+of screens. Startup success requires a separate proof: repeat participation in
+one local community. The project therefore distinguishes an engineering MVP,
+a closed beta, local liquidity, retention, and a repeatable neighborhood launch
+playbook. See [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md)
+for the operating metrics, launch gates, and honest resume language.

@@ -36,17 +36,17 @@ flowchart LR
 
 Exit condition met in development: an OTP-authenticated user receives exactly one secure public profile, completes a display name, and can restart the app with the session restored. Production SMS delivery, rate limiting, and monitoring remain later operational work rather than Phase 1 correctness gaps.
 
-## Phase 2 — First real activity vertical slice: implemented, privacy acceptance pending
+## Phase 2 — First real activity vertical slice: deployed and hosted-verified
 
 - Core PostGIS activity schema and privacy-safe geometry — deployed
 - Create activity RPC/transaction and native Host form — authenticated Simulator acceptance completed
 - Nearby discovery RPC replacing fixtures — deployed and anonymous empty-state verified
-- Activity detail screen with public/private field boundaries — implemented locally; deployment/Simulator acceptance pending
-- Host ownership and cancellation rules — implemented locally as a separate row-locked command; deployment/Simulator acceptance pending
+- Activity detail screen with public/private field boundaries — deployed and hosted privacy-verified
+- Host ownership and cancellation rules — deployed, row-locked, retry-safe, and hosted-verified
 
 Exit condition: two devices can create and discover a real activity without exposing private geometry.
 
-## Phase 3 — Participation correctness: current
+## Phase 3 — Participation correctness: deployed and hosted-verified
 
 - Join with open acceptance, approval-mode pending, and full-capacity waitlist outcomes — deployed
 - Per-activity row locking and natural-key retry idempotency — deployed
@@ -59,20 +59,22 @@ Exit condition: two devices can create and discover a real activity without expo
 - Pending and waitlisted Plans cards — pending Simulator acceptance
 - A/B/C/D hosted matrix for second-user, concurrent last-place, exact gating, and FIFO promotion — verified 2026-08-15
 - Approve/reject, Leave, host request queue, and FIFO promotion — deployed/hosted-verified; participant Leave and host approval accepted in Simulator, Reject pending
-- Participant removal — pending
+- Participant removal and host-safe participant projection — deployed and hosted-verified; Simulator acceptance pending
 - General idempotency-key records for later commands — pending
 - Plans pagination/detail actions and useful meeting-point navigation — pending
 
 Exit condition: concurrent attempts cannot violate membership invariants.
 
-## Phase 4 — Coordination and safety
+## Phase 4 — Coordination and safety: in progress
 
-- Durable activity-scoped chat
+- Durable activity-scoped chat with block-aware accepted-member authorization
 - Realtime delivery using managed capability first
 - Push notifications where needed
-- Report, block, moderation, audit events, rate limits, and operational tools
+- Private idempotent report/block foundation — deployed and hosted-verified
+- Operator moderation review, audit events, rate limits, and operational tools
 
-Exit condition: accepted participants can coordinate and safety events are actionable and auditable.
+Exit condition: accepted participants can coordinate without bypassing membership
+or block rules, and safety events are actionable and auditable by an operator.
 
 ## Phase 5 — Closed neighborhood beta
 
@@ -81,6 +83,8 @@ Exit condition: accepted participants can coordinate and safety events are actio
 - TestFlight and Android internal distribution
 - Anchor-host operating process and seeded launch data
 - Privacy, retention, SMS compliance, and incident-response review
+- Follow the anchor-host, metric, and expansion gates in
+  [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md)
 
 ## Phase 6 — Differentiation and measured growth
 

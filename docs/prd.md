@@ -134,3 +134,20 @@ flowchart LR
 - Which host trust signals are understandable without creating false safety guarantees?
 - How much public location approximation balances discoverability and privacy?
 - When does the avatar builder improve activation enough to justify onboarding friction?
+
+## 8. Closed-beta and launch requirements
+
+The beta is not ready merely because every screen compiles. Before inviting a
+neighborhood cohort, NearHere must have a narrow operating plan:
+
+- Select one compact beachhead area and 2–3 repeatable activity categories.
+- Recruit anchor hosts before broad participant invitations.
+- Define held activity, attendance proxy, repeat host, repeat participant,
+  cancellation, report, and incident metrics before collecting data.
+- Keep reports and blocks private; provide an operator process for triage,
+  escalation, and retention decisions.
+- Expand only after repeat hosting, trustworthy activity supply, and incident
+  handling demonstrate local value.
+
+The detailed startup execution plan and honest resume evidence are maintained
+in [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md).

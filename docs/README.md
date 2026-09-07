@@ -17,8 +17,9 @@ This directory is the living engineering record for NearHere. It is written for 
 11. [`engineering-backlog.md`](engineering-backlog.md) and [`roadmap.md`](roadmap.md) — next work and delivery order.
 12. [`ios-simulator-workflow.md`](ios-simulator-workflow.md) — daily native-development workflow.
 13. [`phase-3-acceptance-runbook.md`](phase-3-acceptance-runbook.md) — exact hosted and Simulator gates for participation evidence.
-14. [`competitive-research-plan.md`](competitive-research-plan.md) and [`gtm-plan.md`](gtm-plan.md) — evidence collection and business launch hypotheses.
-15. [`glossary.md`](glossary.md) — definitions used across the repository.
+14. [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md) — staged startup launch, metric definitions, scale decisions, and honest resume/interview evidence.
+15. [`competitive-research-plan.md`](competitive-research-plan.md) and [`gtm-plan.md`](gtm-plan.md) — evidence collection and business launch hypotheses.
+16. [`glossary.md`](glossary.md) — definitions used across the repository.
 
 ## Sources of truth
 
@@ -70,7 +71,8 @@ This table prevents an architectural design from being confused with deployed ev
 | Join participation | A/B/C/D hosted matrix verified all server outcomes; Actor C Auth/onboarding/Leave and Host A approval UI accepted in Simulator | Pending/waitlisted participant cards and host Reject UI acceptance |
 | My Plans | Hosted caller isolation/exact gating verified; signed-out intent through Actor C OTP/onboarding, accepted exact-point card, and post-Leave empty state accepted in Simulator | Pending/waitlisted and inactive-card rendering plus pagination |
 | Leave/approval | Database matrix fully verified; participant Leave and Host A pending-request approval/count refresh accepted in Simulator | Reject UI still needs Simulator acceptance |
-| Chat/safety | Designed only | Implement only after participation acceptance |
+| Safety foundation | Private idempotent report/block RPCs plus signed-in activity-report action; hosted safety harness passed | Operator review workflow, block-aware consumers, rate limits, and Simulator acceptance |
+| Chat | Planned | Build durable accepted-member-only chat after block-aware authorization is designed and tested |
 
 “Implemented” means source exists and local checks pass. “Deployed” means the hosted development environment accepted it. “Verified” names a specific observed behavior. These words are intentionally not interchangeable.
 
