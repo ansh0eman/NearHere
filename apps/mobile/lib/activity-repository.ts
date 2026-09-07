@@ -6,6 +6,7 @@ import {
   parseJoinActivityResponseRow,
   parseLeaveActivityResponseRow,
   parseRemoveParticipantResponseRow,
+  parseHostActivityParticipantRows,
   parseMembershipRequestRows,
   parseMyPlanRows,
   parseNearbyActivityRows,
@@ -21,6 +22,7 @@ import type {
   JoinActivityOperationResult,
   LeaveActivityOperationResult,
   RemoveParticipantOperationResult,
+  HostActivityParticipantsResult,
   MembershipRequestsResult,
   MyPlansResult,
   NearbyActivitiesQuery,
@@ -132,6 +134,14 @@ export async function removeActivityParticipant(
   } catch {
     return { ok: false, message: 'NearHere received an invalid participant-removal response. Please try again.' };
   }
+}
+
+export async function getHostActivityParticipants(activityId: string): Promise<HostActivityParticipantsResult> {
+  if (!supabase) return { ok: false, message: 'Participants are unavailable. Check the Supabase configuration.' };
+  const { data, error } = await supabase.rpc('host_activity_participants', { p_activity_id: activityId });
+  if (error) return { ok: false, message: 'NearHere could not load participants. Check your connection and try again.' };
+  try { return { ok: true, participants: parseHostActivityParticipantRows(data) }; }
+  catch { return { ok: false, message: 'NearHere received an invalid participants response. Please try again.' }; }
 }
 
 export async function decideMembershipRequest(

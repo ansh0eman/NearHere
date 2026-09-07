@@ -8,6 +8,7 @@ import {
   parseDecideMembershipRequestResponseRow,
   parseJoinActivityResponseRow,
   parseLeaveActivityResponseRow,
+  parseHostActivityParticipantRows,
   parseRemoveParticipantResponseRow,
   parseMembershipRequestRows,
   parseMyPlanRow,
@@ -377,6 +378,32 @@ test('remove participant parser requires removed state and promotion flag', () =
       waitlist_promoted: false,
     }),
     /invalid membership_status/,
+  );
+});
+
+test('host participant parser accepts only safe identity and membership fields', () => {
+  assert.deepEqual(
+    parseHostActivityParticipantRows([{
+      participant_user_id: validRow.id,
+      participant_display_name: 'Participant A',
+      membership_status: 'accepted',
+      joined_at: '2026-09-07T10:00:00.000Z',
+    }]),
+    [{
+      participantUserId: validRow.id,
+      participantDisplayName: 'Participant A',
+      membershipStatus: 'accepted',
+      joinedAt: '2026-09-07T10:00:00.000Z',
+    }],
+  );
+  assert.throws(
+    () => parseHostActivityParticipantRows([{
+      participant_user_id: validRow.id,
+      participant_display_name: 'Participant A',
+      membership_status: 'removed',
+      joined_at: null,
+    }]),
+    /invalid status/,
   );
 });
 

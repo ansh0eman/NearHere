@@ -15,10 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useActivityDetail } from '@/hooks/use-activity-detail';
-import { cancelActivity, joinActivity, leaveActivity } from '@/lib/activity-repository';
+import { cancelActivity, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
-import type { ActivityDetail, ActivityKind } from '@/types/activity';
+import type { ActivityDetail, ActivityKind, HostActivityParticipant } from '@/types/activity';
 
 const KIND_EMOJIS: Record<ActivityKind, string> = {
   coffee: '☕',
@@ -80,7 +80,8 @@ export default function ActivityDetailScreen() {
     activityId,
     session?.user.id ?? null,
   );
-  const [action, setAction] = useState<'cancel' | 'join' | 'leave' | null>(null);
+  const [action, setAction] = useState<'cancel' | 'join' | 'leave' | 'remove' | null>(null);
+  const [participants, setParticipants] = useState<HostActivityParticipant[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const actionRef = useRef<typeof action>(null);
@@ -95,6 +96,13 @@ export default function ActivityDetailScreen() {
   const hasEnded = activity ? Date.parse(activity.endsAt) <= Date.now() : false;
   const isInactive = activity ? activity.status !== 'published' || hasEnded : false;
   const isHost = activity?.membershipRole === 'host';
+  const refreshParticipants = useCallback(async () => {
+    if (!activityId || !isHost) return;
+    const result = await getHostActivityParticipants(activityId);
+    if (result.ok) setParticipants(result.participants);
+  }, [activityId, isHost]);
+
+  useFocusEffect(useCallback(() => { void refreshParticipants(); }, [refreshParticipants]));
   const canLeave = activity?.membershipRole === 'participant'
     && ['accepted', 'pending', 'waitlisted'].includes(activity.membershipStatus ?? '')
     && !isInactive;
@@ -211,6 +219,34 @@ export default function ActivityDetailScreen() {
     await refresh();
   }
 
+  async function performRemove(participant: HostActivityParticipant) {
+    if (!activity || actionRef.current) return;
+    actionRef.current = 'remove';
+    setAction('remove');
+    setActionError(null);
+    setActionNotice(null);
+    const result = await removeActivityParticipant(activity.id, participant.participantUserId);
+    actionRef.current = null;
+    setAction(null);
+    if (!result.ok) { setActionError(result.message); return; }
+    setActionNotice(`${participant.participantDisplayName} was removed from the activity.`);
+    await refreshParticipants();
+    await refresh();
+  }
+
+  function confirmRemove(participant: HostActivityParticipant) {
+    Alert.alert(
+      `Remove ${participant.participantDisplayName}?`,
+      participant.membershipStatus === 'accepted'
+        ? 'They will lose access to the private meeting point. The oldest waitlisted participant may be promoted.'
+        : 'They will lose their place on the waitlist.',
+      [
+        { text: 'Keep participant', style: 'cancel' },
+        { text: 'Remove participant', style: 'destructive', onPress: () => void performRemove(participant) },
+      ],
+    );
+  }
+
   function confirmCancel() {
     Alert.alert(
       'Cancel this activity?',
@@ -301,6 +337,33 @@ export default function ActivityDetailScreen() {
             text={activity.joinMode === 'approval' ? 'Host approval required' : 'Open joining'}
           />
         </View>
+
+        {isHost && !isInactive && participants.length > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>PARTICIPANTS</Text>
+            <View style={styles.infoCard}>
+              {participants.map((participant) => (
+                <View key={participant.participantUserId} style={styles.participantRow}>
+                  <View style={styles.participantCopy}>
+                    <Text style={styles.participantName}>{participant.participantDisplayName}</Text>
+                    <Text style={styles.participantStatus}>
+                      {participant.membershipStatus === 'accepted' ? 'Going' : 'Waitlisted'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityLabel={`Remove ${participant.participantDisplayName}`}
+                    accessibilityRole="button"
+                    disabled={action !== null}
+                    onPress={() => confirmRemove(participant)}
+                    style={[styles.removeParticipantButton, action !== null && styles.disabledButton]}
+                  >
+                    <Text style={styles.removeParticipantText}>Remove</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
         <Text style={styles.sectionLabel}>LOCATION & PRIVACY</Text>
         <View style={styles.locationCard}>
@@ -426,6 +489,12 @@ const styles = StyleSheet.create({
   locationBody: { color: '#66717D', fontSize: 12, lineHeight: 18, marginTop: 5 },
   mapsButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#3E8E68', borderRadius: 999, flexDirection: 'row', gap: 7, marginTop: 14, paddingHorizontal: 15, paddingVertical: 10 },
   mapsButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  participantRow: { alignItems: 'center', borderBottomColor: 'rgba(22,32,42,0.08)', borderBottomWidth: 1, flexDirection: 'row', gap: 12, paddingVertical: 9 },
+  participantCopy: { flex: 1 },
+  participantName: { color: '#16202A', fontSize: 14, fontWeight: '800' },
+  participantStatus: { color: '#66717D', fontSize: 12, marginTop: 3 },
+  removeParticipantButton: { borderColor: 'rgba(157,62,43,0.25)', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  removeParticipantText: { color: '#9D3E2B', fontSize: 11, fontWeight: '900' },
   feedback: { backgroundColor: '#FBE4DF', borderRadius: 14, marginTop: 18, padding: 13 },
   feedbackSuccess: { backgroundColor: '#E1F2E9' },
   feedbackErrorText: { color: '#9D3E2B', fontSize: 12, fontWeight: '700', lineHeight: 18 },

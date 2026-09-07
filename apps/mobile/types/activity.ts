@@ -15,6 +15,7 @@ export type {
   JoinMode,
   LeaveActivityResponse,
   RemoveParticipantResponse,
+  HostActivityParticipant,
   MembershipRequestDecision,
   MembershipRequestSummary,
   MyPlanSummary,
@@ -32,6 +33,7 @@ import type {
   JoinActivityResponse,
   LeaveActivityResponse,
   RemoveParticipantResponse,
+  HostActivityParticipant,
   MembershipRequestDecision,
   MembershipRequestSummary,
   MyPlanSummary,
@@ -72,6 +74,10 @@ export type LeaveActivityOperationResult =
 
 export type RemoveParticipantOperationResult =
   | { ok: true; result: RemoveParticipantResponse }
+  | { ok: false; message: string };
+
+export type HostActivityParticipantsResult =
+  | { ok: true; participants: HostActivityParticipant[] }
   | { ok: false; message: string };
 
 export type CancelActivityOperationResult =

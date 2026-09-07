@@ -120,6 +120,13 @@ export interface RemoveParticipantResponse {
   waitlistPromoted: boolean;
 }
 
+export interface HostActivityParticipant {
+  participantUserId: string;
+  participantDisplayName: string;
+  membershipStatus: Extract<ActivityMembershipStatus, 'accepted' | 'waitlisted'>;
+  joinedAt: string | null;
+}
+
 export interface CancelActivityResponse {
   activityId: string;
   status: Extract<ActivityStatus, 'cancelled'>;

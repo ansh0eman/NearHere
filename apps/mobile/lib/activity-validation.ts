@@ -11,6 +11,7 @@ import type {
   JoinActivityOutcome,
   LeaveActivityResponse,
   RemoveParticipantResponse,
+  HostActivityParticipant,
   MembershipRequestSummary,
   MyPlanSummary,
   NearbyActivitySummary,
@@ -263,6 +264,21 @@ export function parseRemoveParticipantResponseRow(value: unknown): RemovePartici
     throw new Error('Remove participant response has an invalid waitlist_promoted.');
   }
   return { ...parsed, waitlistPromoted: value.waitlist_promoted } as RemoveParticipantResponse;
+}
+
+export function parseHostActivityParticipantRows(value: unknown): HostActivityParticipant[] {
+  if (!Array.isArray(value)) throw new Error('Participant response is not a list.');
+  return value.map((item) => {
+    if (!isRecord(item)) throw new Error('Participant response is not an object.');
+    const status = item.membership_status;
+    if (status !== 'accepted' && status !== 'waitlisted') throw new Error('Participant response has an invalid status.');
+    return {
+      participantUserId: requireString(item, 'participant_user_id'),
+      participantDisplayName: requireString(item, 'participant_display_name'),
+      membershipStatus: status,
+      joinedAt: item.joined_at === null ? null : requireTimestamp(item, 'joined_at'),
+    } as HostActivityParticipant;
+  });
 }
 
 export function parseCancelActivityResponseRow(value: unknown): CancelActivityResponse {

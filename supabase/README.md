@@ -416,7 +416,23 @@ Deployment and acceptance evidence recorded on 2026-08-15:
 | Existing host taps Join | Returned `accepted`; participant count remained one | Existing active membership is returned without duplication, preserving the host path. |
 | Mobile runtime checks | Join response parser accepts only known status/count shapes | Untrusted RPC JSON does not enter UI state unchecked. |
 
-At the end of Lesson 7, this evidence did **not** yet prove the multi-actor branches. Lesson 9 subsequently supplied that proof on 2026-08-15: the hosted A/B/C/D matrix verified open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. It also verified Leave and host approval/rejection. Participant removal is now implemented locally in migration `202609060001`, pending deployment and hosted concurrency verification. General idempotency records remain unimplemented. Accepted-only meeting-point release is implemented through `my_plans`.
+At the end of Lesson 7, this evidence did **not** yet prove the multi-actor branches. Lesson 9 subsequently supplied that proof on 2026-08-15: the hosted A/B/C/D matrix verified open acceptance, approval-mode `pending`, full-capacity `waitlisted`, and a real concurrent last-place race. It also verified Leave and host approval/rejection. Migrations `202609060001` and `202609060002` now add host participant projection/removal; the 2026-09-07 rerun verified projection scoping, non-host denial, durable removal, retry safety, and cleanup. General idempotency records remain unimplemented. Accepted-only meeting-point release is implemented through `my_plans`.
+
+## Lesson 11 hosted-verified: participant moderation
+
+Participant removal is a transactional host command, not a direct table update.
+The database locks the activity row—the same serialization point used by Join,
+Leave, and approval—then checks host ownership, changes an accepted or
+waitlisted participant to the durable `removed` state, and promotes the oldest
+waitlisted participant only when an active accepted place opens. The host read
+model returns identity and membership state only; exact locations remain behind
+the existing accepted-membership release policy.
+
+The hosted A/B/C/D matrix passed on 2026-09-07. It proved non-host denial,
+caller-scoped participant projection, removal count correctness, idempotent
+retry behavior, disappearance from the removed user's Plans projection, and
+host-projection cleanup. The mobile parser/repository and Activity Detail host
+controls also pass local lint, TypeScript, 36 unit tests, and an iOS Expo export.
 
 ## Lesson 8 deployed caller-scoped My Plans
 

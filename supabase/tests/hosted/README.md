@@ -202,6 +202,12 @@ release, run with the additional configured identities and assert that:
 
 ### Latest hosted result
 
+On 2026-09-07, the participation runner passed the full A/B/C/D matrix,
+including the public/private displacement assertion and the new host participant
+projection/removal check. The removal check proved non-host denial, durable
+`removed` state, retry safety, active-count correctness, and cleanup from both
+the participant's Plans projection and the host's participant projection.
+
 On 2026-08-15, the development project run with A/B/C/D completed with all
 checks passing. It established distinct actors; verified anonymous and non-host
 denial plus caller-scoped Plans; confirmed retry-safe Join, Leave, approval,

@@ -342,6 +342,29 @@ async function main() {
     return response.payload;
   }
 
+  async function hostParticipants(hostSession, activityId) {
+    const response = await rpc(
+      'host_activity_participants',
+      { p_activity_id: activityId },
+      hostSession.accessToken,
+    );
+    assert(response.ok, `Participant read failed (${safeErrorDetails(response)}).`);
+    assert(Array.isArray(response.payload), 'Participants must return a list.');
+    return response.payload;
+  }
+
+  async function removeParticipant(hostSession, activityId, participantUserId) {
+    const response = await rpc(
+      'remove_activity_participant',
+      { p_activity_id: activityId, p_participant_user_id: participantUserId },
+      hostSession.accessToken,
+    );
+    assert(response.ok, `Participant removal failed (${safeErrorDetails(response)}).`);
+    assert(Array.isArray(response.payload) && response.payload.length === 1,
+      'Participant removal must return exactly one outcome.');
+    return response.payload[0];
+  }
+
   async function runTest(name, operation) {
     try {
       await operation();
@@ -434,7 +457,7 @@ async function main() {
 
     await runTest('public point is displaced inside the configured privacy annulus', async () => {
       const activity = createdActivities.get(actorAOnlyId);
-      const plan = findPlan(await plans(sessionA), actorAOnlyId);
+      const plan = (await plans(sessionA)).find((candidate) => candidate.id === actorAOnlyId);
       assert(activity, 'Created activity privacy metadata was unavailable.');
       assert(plan && hasExactPoint(plan), 'Host plan did not release its exact active point.');
       const displacementM = distanceMeters(
@@ -548,6 +571,30 @@ async function main() {
         !(await plans(sessionB)).some((plan) => plan.id === rejectionId),
         'A rejected membership remained in active Plans.',
       );
+    });
+
+    const removalId = await createActivity(sessionA, 'open', 'PARTICIPANT REMOVAL');
+    await join(sessionB, removalId);
+    await runTest('host participant projection and removal are scoped, durable, and retry-safe', async () => {
+      const visible = await hostParticipants(sessionA, removalId);
+      assert(visible.length === 1 && visible[0].participant_user_id === sessionB.userId,
+        'Host participant projection returned the wrong participant.');
+      const nonHost = await rpc('remove_activity_participant', {
+        p_activity_id: removalId,
+        p_participant_user_id: sessionB.userId,
+      }, sessionB.accessToken);
+      assert(!nonHost.ok && (nonHost.status === 401 || nonHost.payload?.code === '42501'),
+        `Non-host removal was not denied (${safeErrorDetails(nonHost)}).`);
+      const removed = await removeParticipant(sessionA, removalId, sessionB.userId);
+      assert(removed.membership_status === 'removed', 'Removal did not return removed state.');
+      assert(removed.participant_count === 1, 'Removal changed the host count incorrectly.');
+      assert(removed.waitlist_promoted === false, 'Removal reported an unexpected promotion.');
+      const retry = await removeParticipant(sessionA, removalId, sessionB.userId);
+      assert(retry.membership_status === 'removed', 'Removal retry changed terminal state.');
+      const participantPlan = (await plans(sessionB)).find((candidate) => candidate.id === removalId);
+      assert(!participantPlan, 'Removed participant still received an active plan.');
+      assert((await hostParticipants(sessionA, removalId)).length === 0,
+        'Removed participant remained in the host projection.');
     });
 
     if (sessionC) {
