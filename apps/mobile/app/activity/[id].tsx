@@ -298,6 +298,9 @@ export default function ActivityDetailScreen() {
           text: 'Block host',
           style: 'destructive',
           onPress: () => {
+            // Invalidate the private point before the network round trip so a
+            // stale detail response cannot leave it visible after blocking.
+            redactExactLocation();
             void blockActivityHost(activity.id).then(async (result) => {
               if (!result.ok) { setActionError(result.message); return; }
               setActionNotice('Host blocked. Private location and coordination access were refreshed.');

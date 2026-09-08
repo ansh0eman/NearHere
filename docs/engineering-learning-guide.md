@@ -2533,3 +2533,22 @@ one local community. The project therefore distinguishes an engineering MVP,
 a closed beta, local liquidity, retention, and a repeatable neighborhood launch
 playbook. See [`startup-launch-and-resume-plan.md`](startup-launch-and-resume-plan.md)
 for the operating metrics, launch gates, and honest resume language.
+
+## Lesson 22 — Presentation changes must preserve the privacy contract
+
+The Nearby screen now supports Map and List modes. This is intentionally a
+presentation change, not a second discovery API: both modes consume the same
+`nearby_activities` repository result. Keeping one data contract prevents the
+list from accidentally exposing fields that the map projection did not show.
+
+The Activity Detail screen also invalidates its exact meeting point immediately
+when a participant leaves, a host cancels, or a participant blocks the host.
+That small client-side step is defense in depth: the database remains the
+authority, while the UI stops displaying a now-unauthorized value during the
+network round trip. The general pattern is **invalidate sensitive local state
+before a revocation request, then refresh from the server**.
+
+Verification separates layers: TypeScript/lint proves the code is structurally
+valid, unit tests prove parsers and state contracts, the iOS export proves the
+bundle, and Simulator accessibility inspection proves the Map/List control and
+list empty state are actually reachable.
