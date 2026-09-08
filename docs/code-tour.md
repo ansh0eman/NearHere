@@ -281,6 +281,8 @@ default: ordinary authenticated users cannot read or mutate the review queue.
    anonymous, pending, accepted, and ended states.
 6. Read `202609090003_operator_safety_review.sql` and explain why an empty
    operator table is safer than a hard-coded email check.
+7. Read `apps/mobile/lib/request-context.ts` and explain why a correlation ID
+   is useful even before a remote tracing system exists.
 
 The answers belong in the challenge log, not in memory. A future LaTeX book
 can turn each section into a chapter with the diagrams and screenshot evidence

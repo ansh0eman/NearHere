@@ -67,6 +67,7 @@ Buttons prevent accidental duplicate submission while loading. Error copy explai
 - Contrast verification against both map and floating surfaces.
 - Logical focus order in sheets, modals, auth, and creation steps.
 - Announce asynchronous success/error state changes.
+- Read the system Reduce Motion preference through `apps/mobile/hooks/use-reduced-motion.ts`; remove decorative motion while preserving the same state and action semantics.
 - Provide non-map ways to understand selected activity details; a future list view may improve accessibility even if not first beta scope.
 
 ## 7. Avatar direction

@@ -79,8 +79,10 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add immutable safety audit events and operator-only operational logs
 - [x] Add database-enforced rate limits for sensitive writes and bounded rate-limit observability
 - [ ] Add immutable operator review recovery paths and tune limits with beta evidence
-- [ ] Add accessibility and reduced-motion audit
-- [ ] Add structured errors, request IDs, logs, metrics, traces, and crash reporting
+- [x] Add reduced-motion preference hook and accessibility-aware safety/chat controls
+- [ ] Complete full VoiceOver/TalkBack, dynamic-type, contrast, and physical-device accessibility audit
+- [x] Add client request correlation IDs for sensitive operations and bounded operator observability
+- [ ] Add shared structured error envelopes, server request IDs, metrics, traces, and crash reporting
 - [ ] Add physical-device, TestFlight, and Android internal-test workflows
 
 ## Deferred until evidence

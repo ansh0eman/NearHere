@@ -2502,6 +2502,28 @@ activity chat, tested the authorization matrix first, and kept realtime as a
 replaceable delivery optimization rather than coupling correctness to a
 WebSocket.”
 
+## Lesson 21 — Accessibility preferences and request correlation
+
+**Problem:** a feature can be functionally correct but still be difficult to
+use with Reduce Motion enabled, and an asynchronous failure is hard to discuss
+if every request looks identical in logs.
+
+**Resolution:** `use-reduced-motion.ts` reads the system preference and lets a
+screen remove decorative transitions without changing information or action
+semantics. `request-context.ts` creates short client correlation IDs and logs
+only operation names and outcomes in development. These IDs are intentionally
+not secrets and never include phones, tokens, coordinates, or message bodies.
+
+**Verification:** lint, TypeScript, unit tests, and iOS export passed after the
+slice. Simulator evidence now includes the operator denial state; the full
+VoiceOver/TalkBack, Dynamic Type, contrast, and physical-device audit remains
+open because those require device-level interaction.
+
+**Interview explanation:** “I treated accessibility and diagnosability as
+cross-cutting requirements. Reduce Motion changes presentation only, while
+correlation IDs make async client behavior discussable without leaking user
+data.”
+
 ## Startup and resume lesson — code is not startup validation
 
 NearHere is resume-quality because its claims can be tied to migrations,

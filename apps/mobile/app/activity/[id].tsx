@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useActivityDetail } from '@/hooks/use-activity-detail';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { blockActivityHost, cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
@@ -86,6 +87,7 @@ export default function ActivityDetailScreen() {
   const [messages, setMessages] = useState<ActivityMessage[]>([]);
   const [messageDraft, setMessageDraft] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const reducedMotion = useReducedMotion();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const actionRef = useRef<typeof action>(null);
@@ -299,6 +301,7 @@ export default function ActivityDetailScreen() {
             void blockActivityHost(activity.id).then(async (result) => {
               if (!result.ok) { setActionError(result.message); return; }
               setActionNotice('Host blocked. Private location and coordination access were refreshed.');
+              if (reducedMotion) setActionNotice('Host blocked. Reduced Motion is enabled; access refreshed without animation.');
               await refresh();
               await refreshMessages();
             });

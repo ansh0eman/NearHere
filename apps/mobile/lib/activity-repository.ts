@@ -14,6 +14,7 @@ import {
 } from '@/lib/activity-validation';
 import { supabase } from '@/lib/supabase';
 import { parseOperatorSafetyReports, parseSafetyReviewReceipt } from '@/lib/safety-validation';
+import { createRequestId, logClientOperation } from '@/lib/request-context';
 import type {
   ActivityDetailResult,
   CancelActivityOperationResult,
@@ -165,12 +166,16 @@ export async function reportActivity(activityId: string, reason: string, details
 }
 
 export async function blockActivityHost(activityId: string): Promise<SafetyOperationResult> {
+  const requestId = createRequestId('block-host');
+  logClientOperation(requestId, 'block host', 'started');
   if (!supabase) return { ok: false, message: 'Blocking is unavailable. Check the Supabase configuration.' };
   const { data, error } = await supabase.rpc('block_activity_host', { p_activity_id: activityId });
-  if (error) return { ok: false, message: 'NearHere could not block this host. Please try again.' };
+  if (error) { logClientOperation(requestId, 'block host', 'failed'); return { ok: false, message: 'NearHere could not block this host. Please try again.' }; }
   if (!Array.isArray(data) || data.length !== 1 || data[0]?.blocked !== true) {
+    logClientOperation(requestId, 'block host', 'failed');
     return { ok: false, message: 'NearHere received an invalid block response. Please try again.' };
   }
+  logClientOperation(requestId, 'block host', 'succeeded');
   return { ok: true };
 }
 
