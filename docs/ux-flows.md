@@ -15,9 +15,16 @@ flowchart TD
     SAVE --> MAP
     MAP --> CHANGE["Change location"]
     CHANGE --> FALLBACK
+    MAP --> TOGGLE["Switch Map / List"]
+    TOGGLE --> MAPVIEW["Map projection"]
+    TOGGLE --> LISTVIEW["List projection"]
+    LISTVIEW --> DETAIL
+    MAPVIEW --> MARKER
 ```
 
 Location denial is not an onboarding dead end. The user retains product access, and the app asks only for foreground—not continuous background—permission.
+
+The Map/List control changes presentation, not the data contract. Both projections use the same caller-scoped `nearby_activities` rows, so privacy rules (approximate public geometry and blocked-host filtering) are applied once in the repository/RPC layer rather than reimplemented separately in each view. The list is also a keyboard/screen-reader-friendly path for people who do not want to interpret a map.
 
 ## 2. Discovery to protected Join
 

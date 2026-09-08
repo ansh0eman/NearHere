@@ -64,6 +64,7 @@ export default function NearbyScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const joiningIdRef = useRef<string | null>(null);
   const { refresh: refreshActivities, state: activityState } = useNearbyActivities(
     region.latitude,
@@ -254,7 +255,7 @@ export default function NearbyScreen() {
 
   return (
     <View style={styles.screen}>
-      <MapView
+      {viewMode === 'map' ? <MapView
         ref={mapRef}
         provider={PROVIDER_DEFAULT}
         style={StyleSheet.absoluteFill}
@@ -277,7 +278,21 @@ export default function NearbyScreen() {
             </Marker>
           );
         })}
-      </MapView>
+      </MapView> : (
+        <View style={styles.listSurface}>
+          <Text style={styles.listHeading}>Nearby activities</Text>
+          <Text style={styles.listSubheading}>{visibleActivities.length ? `${visibleActivities.length} to explore` : 'Nothing live nearby yet'}</Text>
+          <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+            {visibleActivities.map((activity) => (
+              <Pressable key={activity.id} accessibilityRole="button" accessibilityLabel={`View ${activity.title}`} onPress={() => router.push({ pathname: '/activity/[id]', params: { distanceM: String(activity.distanceM), id: activity.id } })} style={styles.listRow}>
+                <View style={[styles.listIcon, { backgroundColor: `${KIND_COLORS[activity.kind]}22` }]}><Text style={styles.listEmoji}>{KIND_EMOJIS[activity.kind]}</Text></View>
+                <View style={styles.listCopy}><Text style={styles.listTitle}>{activity.title}</Text><Text style={styles.listMeta}>{formatDistance(activity.distanceM)} · {formatStartsAt(activity.startsAt)}</Text><Text style={styles.listHost}>Hosted by {activity.hostDisplayName}</Text></View>
+                <Ionicons color="#8A929A" name="chevron-forward" size={18} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <SafeAreaView edges={['top']} style={styles.topArea} pointerEvents="box-none">
         <View style={styles.topRow}>
@@ -297,6 +312,14 @@ export default function NearbyScreen() {
             ) : (
               <Ionicons name="locate" size={21} color="#16202A" />
             )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={viewMode === 'map' ? 'Show activities as a list' : 'Show activities on a map'}
+            accessibilityState={{ selected: viewMode === 'list' }}
+            onPress={() => setViewMode((mode) => mode === 'map' ? 'list' : 'map')}
+            style={styles.iconButton}>
+            <Ionicons name={viewMode === 'map' ? 'list' : 'map'} size={21} color="#16202A" />
           </Pressable>
         </View>
 
@@ -450,6 +473,17 @@ function FilterPill({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#DCEBDC' },
+  listSurface: { backgroundColor: '#F7F4EE', flex: 1, paddingHorizontal: 18, paddingTop: 112 },
+  listHeading: { color: '#16202A', fontSize: 30, fontWeight: '900', letterSpacing: -0.8 },
+  listSubheading: { color: '#66717D', fontSize: 13, marginTop: 5 },
+  listContent: { gap: 10, paddingBottom: 120, paddingTop: 22 },
+  listRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 13 },
+  listIcon: { alignItems: 'center', borderRadius: 21, height: 42, justifyContent: 'center', width: 42 },
+  listEmoji: { fontSize: 20 },
+  listCopy: { flex: 1 },
+  listTitle: { color: '#16202A', fontSize: 14, fontWeight: '900' },
+  listMeta: { color: '#66717D', fontSize: 11, marginTop: 4 },
+  listHost: { color: '#8A929A', fontSize: 10, marginTop: 4 },
   topArea: { position: 'absolute', left: 0, right: 0, top: 0 },
   topRow: {
     alignItems: 'center',

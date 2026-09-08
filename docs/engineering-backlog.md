@@ -89,7 +89,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 
 - [ ] Custom avatar builder
 - [ ] MapLibre custom visual map
-- [ ] Map/list toggle
+- [x] Add map/list toggle using the same privacy-safe nearby result projection
 - [ ] Redis caching/presence/rate-limit infrastructure
 - [ ] Custom WebSocket gateway
 - [ ] Recurring activity administration

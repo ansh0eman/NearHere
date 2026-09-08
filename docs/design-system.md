@@ -68,7 +68,7 @@ Buttons prevent accidental duplicate submission while loading. Error copy explai
 - Logical focus order in sheets, modals, auth, and creation steps.
 - Announce asynchronous success/error state changes.
 - Read the system Reduce Motion preference through `apps/mobile/hooks/use-reduced-motion.ts`; remove decorative motion while preserving the same state and action semantics.
-- Provide non-map ways to understand selected activity details; a future list view may improve accessibility even if not first beta scope.
+- Provide non-map ways to understand selected activity details. The native Nearby screen now offers a list view using the same privacy-safe result projection, improving scanability and accessibility without adding a second data source.
 
 ## 7. Avatar direction
 
