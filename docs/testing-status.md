@@ -76,3 +76,10 @@ Simulator evidence is not claimed yet. Completing those paths requires the
 development project's fictional test actors (and, for waitlist, the optional
 third/fourth actors). Do not guess those values or commit them; enter them
 locally when running the documented harness and Simulator flow.
+
+The Supabase CLI migration-list check was attempted from the repository root
+but could not resolve `registry.npmjs.org` in this environment. This is a local
+network/package-resolution limitation, not evidence that the hosted migrations
+are out of sync; the previously recorded `db push` and hosted RPC runs remain
+the available deployment evidence. Re-run the CLI check from a networked
+terminal before the next hosted release.
