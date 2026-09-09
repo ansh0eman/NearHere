@@ -66,3 +66,13 @@ Actors C and D when those branches need to be re-proven.
 3. Repeat the critical join/leave/privacy flows on a physical iPhone.
 4. Capture screenshots and record device/OS/build details in
    [`visual-evidence.md`](visual-evidence.md).
+
+## 2026-09-09 acceptance attempt
+
+The rebuilt Simulator is healthy and the signed-out Me surface is reachable.
+The rejection, waitlist, cancellation, and ended-card paths are implemented in
+the native source and covered by hosted/parser tests, but their authenticated
+Simulator evidence is not claimed yet. Completing those paths requires the
+development project's fictional test actors (and, for waitlist, the optional
+third/fourth actors). Do not guess those values or commit them; enter them
+locally when running the documented harness and Simulator flow.
