@@ -68,7 +68,7 @@ Exit condition: concurrent attempts cannot violate membership invariants.
 ## Phase 4 — Coordination and safety: in progress
 
 - Durable activity-scoped chat with block-aware accepted-member authorization — deployed and hosted-verified; native UI now implemented
-- Realtime delivery using managed capability first
+- Realtime delivery using managed capability first, with a 15-second polling fallback when the channel cannot subscribe
 - Push notifications where needed
 - Private idempotent report/block foundation — deployed and hosted-verified
 - Operator-only report lifecycle and review boundary — deployed; non-operator denial hosted-verified

@@ -17,6 +17,16 @@ same as a physical-device usability check.
 | Hosted database/RPC | `supabase/tests/hosted/*.mjs` | Prior A/B/C/D matrices passed; rerun requires the configured fictional test OTPs |
 | Physical iPhone | Manual acceptance matrix | Still pending |
 
+## Chat freshness behavior
+
+Activity Detail subscribes to Supabase Realtime for new message events. The
+event payload is not treated as trusted display data; it only triggers the same
+authorized `activity_messages` RPC used for the initial load. If Realtime is
+closed, times out, or cannot be configured for the private table, the screen
+falls back to a bounded 15-second poll and tells the user that updates are
+reconnecting. This is eventual consistency with a clear user-visible status,
+not a claim of lossless realtime delivery.
+
 ## What the local checks prove
 
 Lint catches invalid or inconsistent code patterns. TypeScript checks the
@@ -56,4 +66,3 @@ Actors C and D when those branches need to be re-proven.
 3. Repeat the critical join/leave/privacy flows on a physical iPhone.
 4. Capture screenshots and record device/OS/build details in
    [`visual-evidence.md`](visual-evidence.md).
-

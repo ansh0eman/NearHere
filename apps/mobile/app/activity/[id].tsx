@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useActivityDetail } from '@/hooks/use-activity-detail';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { blockActivityHost, cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
 import type { ActivityDetail, ActivityKind, ActivityMessage, HostActivityParticipant } from '@/types/activity';
@@ -87,6 +88,7 @@ export default function ActivityDetailScreen() {
   const [messages, setMessages] = useState<ActivityMessage[]>([]);
   const [messageDraft, setMessageDraft] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const [chatConnection, setChatConnection] = useState<'idle' | 'live' | 'polling'>('idle');
   const reducedMotion = useReducedMotion();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
@@ -117,6 +119,41 @@ export default function ActivityDetailScreen() {
   }, [activityId, canChat]);
 
   useFocusEffect(useCallback(() => { void refreshMessages(); }, [refreshMessages]));
+
+  useEffect(() => {
+    if (!activityId || !canChat) {
+      setChatConnection('idle');
+      return undefined;
+    }
+
+    let pollingTimer: ReturnType<typeof setInterval> | undefined;
+    const channel = supabase?.channel(`activity-chat:${activityId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'private',
+        table: 'activity_messages',
+        filter: `activity_id=eq.${activityId}`,
+      }, () => { void refreshMessages(); })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setChatConnection('live');
+          if (pollingTimer) clearInterval(pollingTimer);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setChatConnection('polling');
+          if (!pollingTimer) pollingTimer = setInterval(() => { void refreshMessages(); }, 15_000);
+        }
+      });
+
+    if (!channel) {
+      setChatConnection('polling');
+      pollingTimer = setInterval(() => { void refreshMessages(); }, 15_000);
+    }
+
+    return () => {
+      if (pollingTimer) clearInterval(pollingTimer);
+      if (channel) void channel.unsubscribe();
+    };
+  }, [activityId, canChat, refreshMessages]);
   const canLeave = activity?.membershipRole === 'participant'
     && ['accepted', 'pending', 'waitlisted'].includes(activity.membershipStatus ?? '')
     && !isInactive;
@@ -460,6 +497,9 @@ export default function ActivityDetailScreen() {
                   <Text style={styles.messageBody}>{message.body}</Text>
                 </View>
               ))}
+              {chatConnection === 'polling' && (
+                <Text style={styles.chatStatus}>Live updates are reconnecting; checking for new messages automatically.</Text>
+              )}
               <View style={styles.chatInputRow}>
                 <TextInput
                   accessibilityLabel="Activity message"
@@ -627,6 +667,7 @@ const styles = StyleSheet.create({
   participantStatus: { color: '#66717D', fontSize: 12, marginTop: 3 },
   chatCard: { backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 20, borderWidth: 1, gap: 10, marginTop: 10, padding: 14 },
   chatEmpty: { color: '#66717D', fontSize: 13, lineHeight: 19, paddingVertical: 6 },
+  chatStatus: { color: '#8A929A', fontSize: 11, lineHeight: 16, paddingTop: 2 },
   messageBubble: { backgroundColor: '#F7F4EE', borderRadius: 14, padding: 11 },
   messageHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   messageAuthor: { color: '#16202A', fontSize: 12, fontWeight: '900' },
