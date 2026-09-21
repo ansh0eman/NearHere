@@ -131,9 +131,10 @@ authenticated activity flows still require the fictional test actors.
 `202609210002_operator_review_recovery.sql` adds an explicit, audited reopen
 transition for resolved and dismissed safety reports. The mobile operator screen
 now filters the four durable report states and renders the stored resolution.
-The parser test accepts the `open` receipt. Deployment and an operator-account
-hosted test remain pending because the application intentionally has no default
-operator identity.
+The parser test accepts the `open` receipt. On 2026-09-21, `npx supabase
+migration list` confirmed local/remote parity through `202609210002`.
+An operator-account hosted test remains pending because the application
+intentionally has no default operator identity.
 
 ### Anonymous native acceptance
 
