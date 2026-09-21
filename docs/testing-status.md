@@ -125,3 +125,12 @@ reported the remote database up to date. On the iPhone 17 Pro Simulator, the
 Nearby retry action then recovered from the prior error into the real empty
 discovery state. This accepts the unavailable-to-retry-to-empty recovery path;
 authenticated activity flows still require the fictional test actors.
+
+### Anonymous native acceptance
+
+After recovery, the Simulator also accepted the Map/List control: its accessible
+label changed from “Show activities as a list” to “Show activities on a map”
+and the list displayed its empty state. The signed-out Plans screen displayed
+the browse-first explanation and “Sign in to see plans”; tapping it opened the
+phone-auth screen, while explicit close returned to Plans. This verifies the
+protected-intent entry/cancellation boundary without sending a phone number.
