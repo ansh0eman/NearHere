@@ -65,7 +65,8 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [ ] Exercise pending/waitlisted locked-location cards in Simulator
 - [ ] Exercise cancelled/ended card labels and exact-location suppression in Simulator
 - [x] Organize Plans into upcoming and inactive-history sections
-- [ ] Add cursor pagination, plan details, and useful meeting-point actions
+- [x] Add shared walking-direction actions from accepted Plans and Activity Detail
+- [ ] Add cursor pagination and plan details
 
 ## Coordination, safety, and beta quality
 

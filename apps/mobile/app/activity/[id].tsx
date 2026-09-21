@@ -19,6 +19,7 @@ import { useActivityDetail } from '@/hooks/use-activity-detail';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { appendActivityMessage } from '@/lib/activity-message-utils';
 import { blockActivityHost, cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
+import { walkingDirectionsUrl } from '@/lib/directions';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
@@ -379,12 +380,8 @@ export default function ActivityDetailScreen() {
   async function openDirections() {
     const point = activity?.exactMeetingLocation;
     if (!point) return;
-    const url = Platform.select({
-      android: `geo:${point.latitude},${point.longitude}?q=${point.latitude},${point.longitude}`,
-      default: `https://maps.apple.com/?daddr=${point.latitude},${point.longitude}&dirflg=w`,
-    });
     try {
-      await Linking.openURL(url);
+      await Linking.openURL(walkingDirectionsUrl(point, Platform.OS === 'android' ? 'android' : 'ios'));
     } catch {
       Alert.alert('Could not open Maps', 'Copy the meeting coordinates and try again.');
     }

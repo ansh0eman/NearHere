@@ -2640,3 +2640,20 @@ to prove ordering and terminal-state classification deterministically. This is
 a small example of dependency injection: pass a changing external dependency
 (the clock) into pure logic so it can be tested without relying on the machine
 clock.
+
+## Lesson 28 — A directions button is a platform handoff, not a location API
+
+NearHere already receives an exact coordinate only when the database decides
+the current caller may see it. The app should not duplicate that authorization
+decision just to open a map. `walkingDirectionsUrl` is a small pure function:
+given an approved coordinate and platform, it produces the deep link for that
+platform's maps application. iOS uses Apple Maps; Android uses a standard
+`geo:` intent URI.
+
+Keeping URL construction outside a screen gives us a unit-testable boundary:
+tests prove the exact coordinate and walking-mode parameter emitted for each
+platform without launching Maps. The Plans card renders the action only when
+`exactMeetingLocation` exists and the activity is still active. Activity Detail
+uses the same helper. This is defence in depth for UX, not the security boundary:
+the server remains responsible for withholding the exact location from people
+who are pending, waitlisted, removed, or viewing a finished activity.

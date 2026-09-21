@@ -4,6 +4,8 @@ import { useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMyPlans } from '@/hooks/use-my-plans';
 import { useMembershipRequests } from '@/hooks/use-membership-requests';
 import { isInactivePlan, partitionPlans } from '@/lib/plan-utils';
+import { walkingDirectionsUrl } from '@/lib/directions';
 import { useAuth } from '@/providers/auth-provider';
 import type { HostedMembershipRequest, MyPlanSummary } from '@/types/activity';
 
@@ -92,6 +95,21 @@ export default function PlansScreen() {
     return changed;
   }
 
+  async function openDirections(plan: MyPlanSummary) {
+    if (!plan.exactMeetingLocation) return;
+
+    try {
+      await Linking.openURL(
+        walkingDirectionsUrl(
+          plan.exactMeetingLocation,
+          Platform.OS === 'android' ? 'android' : 'ios',
+        ),
+      );
+    } catch {
+      Alert.alert('Could not open Maps', 'Open Activity Details to view the meeting point instead.');
+    }
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -166,11 +184,11 @@ export default function PlansScreen() {
             )}
             {upcoming.length > 0 && <Text style={styles.listSectionTitle}>Upcoming</Text>}
             {upcoming.map((plan) => (
-              <PlanCard key={plan.id} onLeave={() => confirmLeave(plan)} onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })} plan={plan} />
+              <PlanCard key={plan.id} onDirections={() => void openDirections(plan)} onLeave={() => confirmLeave(plan)} onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })} plan={plan} />
             ))}
             {history.length > 0 && <Text style={styles.listSectionTitle}>Past activity</Text>}
             {history.map((plan) => (
-              <PlanCard key={plan.id} onLeave={() => confirmLeave(plan)} onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })} plan={plan} />
+              <PlanCard key={plan.id} onDirections={() => void openDirections(plan)} onLeave={() => confirmLeave(plan)} onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })} plan={plan} />
             ))}
           </View>
         )}
@@ -180,10 +198,12 @@ export default function PlansScreen() {
 }
 
 function PlanCard({
+  onDirections,
   onLeave,
   onOpen,
   plan,
 }: {
+  onDirections: () => void;
   onLeave: () => void;
   onOpen: () => void;
   plan: MyPlanSummary;
@@ -250,6 +270,16 @@ function PlanCard({
           </View>
         </View>
       </Pressable>
+      {meetingPoint && !isInactive && (
+        <Pressable
+          accessibilityLabel={`Open walking directions for ${plan.title}`}
+          accessibilityRole="button"
+          onPress={onDirections}
+          style={({ pressed }) => [styles.directionsButton, pressed && styles.buttonPressed]}>
+          <Ionicons color="#2E7554" name="navigate-outline" size={17} />
+          <Text style={styles.directionsButtonText}>Walking directions</Text>
+        </Pressable>
+      )}
       {!isHost && !isInactive && (
         <Pressable
           accessibilityLabel={`Leave ${plan.title}`}
@@ -471,5 +501,7 @@ const styles = StyleSheet.create({
   acceptButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
   leaveButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 14, paddingHorizontal: 2, paddingVertical: 5 },
   leaveButtonText: { color: '#9D3E2B', fontSize: 12, fontWeight: '900' },
+  directionsButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 14, paddingHorizontal: 2, paddingVertical: 5 },
+  directionsButtonText: { color: '#2E7554', fontSize: 12, fontWeight: '900' },
   buttonPressed: { opacity: 0.65 },
 });

@@ -10,7 +10,7 @@ same as a physical-device usability check.
 | --- | --- | --- |
 | Static quality | `npm run lint` from `apps/mobile` | Pass |
 | Type safety | `npx tsc --noEmit` from `apps/mobile` | Pass |
-| Domain/parser behavior | `npm run test:unit` | 44 passed |
+| Domain/parser behavior | `npm run test:unit` | 46 passed |
 | Production JavaScript bundle | `npx expo export --platform ios` | Pass |
 | Native iOS build | `npx expo run:ios --device "iPhone 17 Pro"` | Build succeeded, 0 errors |
 | Simulator accessibility smoke | Map/List toggle and empty state | Verified live |
@@ -143,3 +143,16 @@ and the list displayed its empty state. The signed-out Plans screen displayed
 the browse-first explanation and “Sign in to see plans”; tapping it opened the
 phone-auth screen, while explicit close returned to Plans. This verifies the
 protected-intent entry/cancellation boundary without sending a phone number.
+
+### 2026-09-21 — Directions handoff verification
+
+The accepted-member journey now offers walking directions from both Activity
+Detail and the active Plans card. The shared `walkingDirectionsUrl` helper has
+two direct unit tests: Android emits a `geo:` URI and iOS emits an Apple Maps
+walking-route URL. The Plans action is rendered only when the caller already
+has an exact meeting location and the activity is not ended or cancelled.
+
+`npm run lint`, `npx tsc --noEmit`, `npm run test:unit` (46 passing tests), and
+`npx expo export --platform ios` all passed on 2026-09-21. This proves source
+correctness and iOS bundle generation. It does not yet prove an external Maps
+app handoff on a signed-in physical device; that remains device acceptance work.
