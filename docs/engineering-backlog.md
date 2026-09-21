@@ -64,7 +64,8 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Exercise signed-out Plans intent through OTP/profile onboarding and automatic Plans resume in Simulator
 - [ ] Exercise pending/waitlisted locked-location cards in Simulator
 - [ ] Exercise cancelled/ended card labels and exact-location suppression in Simulator
-- [ ] Add cursor pagination, upcoming/past sections, plan details, and useful meeting-point actions
+- [x] Organize Plans into upcoming and inactive-history sections
+- [ ] Add cursor pagination, plan details, and useful meeting-point actions
 
 ## Coordination, safety, and beta quality
 

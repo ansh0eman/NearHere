@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMyPlans } from '@/hooks/use-my-plans';
 import { useMembershipRequests } from '@/hooks/use-membership-requests';
+import { isInactivePlan, partitionPlans } from '@/lib/plan-utils';
 import { useAuth } from '@/providers/auth-provider';
 import type { HostedMembershipRequest, MyPlanSummary } from '@/types/activity';
 
@@ -45,6 +46,7 @@ export default function PlansScreen() {
     refresh: refreshRequests,
     state: requestState,
   } = useMembershipRequests(userId, state.plans);
+  const { history, upcoming } = partitionPlans(state.plans);
 
   useFocusEffect(
     useCallback(() => {
@@ -162,13 +164,13 @@ export default function PlansScreen() {
                 <Text style={styles.errorBannerText}>{state.message} Tap to retry.</Text>
               </Pressable>
             )}
-            {state.plans.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                onLeave={() => confirmLeave(plan)}
-                onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })}
-                plan={plan}
-              />
+            {upcoming.length > 0 && <Text style={styles.listSectionTitle}>Upcoming</Text>}
+            {upcoming.map((plan) => (
+              <PlanCard key={plan.id} onLeave={() => confirmLeave(plan)} onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })} plan={plan} />
+            ))}
+            {history.length > 0 && <Text style={styles.listSectionTitle}>Past activity</Text>}
+            {history.map((plan) => (
+              <PlanCard key={plan.id} onLeave={() => confirmLeave(plan)} onOpen={() => router.push({ pathname: '/activity/[id]', params: { id: plan.id } })} plan={plan} />
             ))}
           </View>
         )}
@@ -188,8 +190,7 @@ function PlanCard({
 }) {
   const isHost = plan.membershipRole === 'host';
   const meetingPoint = plan.exactMeetingLocation;
-  const hasEnded = new Date(plan.endsAt).getTime() <= Date.now();
-  const isInactive = plan.status !== 'published' || hasEnded;
+  const isInactive = isInactivePlan(plan);
   const membershipLabel = isInactive
     ? plan.status === 'cancelled' ? 'Cancelled' : 'Ended'
     : isHost ? 'Hosting' : STATUS_LABELS[plan.membershipStatus];
@@ -426,6 +427,7 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#16202A', borderRadius: 999, marginTop: 22, paddingHorizontal: 19, paddingVertical: 13 },
   buttonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
   list: { gap: 14, marginTop: 24 },
+  listSectionTitle: { color: '#66717D', fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginTop: 10, textTransform: 'uppercase' },
   refreshRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
   refreshText: { color: '#66717D', fontSize: 12, fontWeight: '700' },
   errorBanner: { backgroundColor: '#FFE7DE', borderRadius: 14, padding: 13 },

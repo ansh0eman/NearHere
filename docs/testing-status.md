@@ -10,7 +10,7 @@ same as a physical-device usability check.
 | --- | --- | --- |
 | Static quality | `npm run lint` from `apps/mobile` | Pass |
 | Type safety | `npx tsc --noEmit` from `apps/mobile` | Pass |
-| Domain/parser behavior | `npm run test:unit` | 43 passed |
+| Domain/parser behavior | `npm run test:unit` | 44 passed |
 | Production JavaScript bundle | `npx expo export --platform ios` | Pass |
 | Native iOS build | `npx expo run:ios --device "iPhone 17 Pro"` | Build succeeded, 0 errors |
 | Simulator accessibility smoke | Map/List toggle and empty state | Verified live |

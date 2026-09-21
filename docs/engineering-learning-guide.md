@@ -2626,3 +2626,17 @@ operator console can now filter every durable status and exposes Reopen only
 for resolved or dismissed reports. This is not a client-only toggle. The
 operator allowlist, state transition, and immutable audit event remain enforced
 inside PostgreSQL.
+
+## Lesson 27 — View grouping is a client concern, access is not
+
+Plans receives one caller-scoped list from `my_plans`. `partitionPlans` then
+groups it locally into active upcoming plans and inactive history. This is a
+presentation decision: it improves scanning without creating a second database
+endpoint or changing who can receive an exact meeting point.
+
+The utility deliberately receives `now` as an argument for tests. Production
+uses the current time by default, while a unit test supplies a fixed timestamp
+to prove ordering and terminal-state classification deterministically. This is
+a small example of dependency injection: pass a changing external dependency
+(the clock) into pure logic so it can be tested without relying on the machine
+clock.
