@@ -2552,3 +2552,32 @@ Verification separates layers: TypeScript/lint proves the code is structurally
 valid, unit tests prove parsers and state contracts, the iOS export proves the
 bundle, and Simulator accessibility inspection proves the Map/List control and
 list empty state are actually reachable.
+
+## Lesson 23 — A structured error is a product contract
+
+An error is not just a string. A string helps one person in one moment, but it
+cannot reliably drive retry behavior, metrics, or support. NearHere's first
+shared `AppError` has four fields:
+
+```ts
+type AppError = {
+  code: 'rate_limited' | 'network_failure' | 'invalid_response' | /* ... */;
+  message: string;
+  retryable: boolean;
+  requestId?: string;
+};
+```
+
+The `message` is deliberately safe for a user to see. The stable `code` lets
+the application distinguish a temporary network failure from an invalid server
+response without parsing English copy. `retryable` helps a future button or
+automatic retry policy make an intentional decision. `requestId` correlates a
+client action with sanitized operational logs. None of these fields may contain
+phone numbers, OTPs, sessions, exact meeting points, or chat text.
+
+The first adopter is `blockActivityHost`, because blocking is a privacy
+revocation. The existing UI continues to use the safe message, while the
+underlying result now makes future metrics and support tracing possible. This
+is an incremental migration pattern: add a compatible contract, prove it with a
+unit test, then apply it operation by operation rather than changing every
+screen in one risky commit.

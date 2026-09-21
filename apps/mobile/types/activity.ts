@@ -41,6 +41,7 @@ import type {
   MyPlanSummary,
   NearbyActivitySummary,
 } from '../../../packages/contracts/activity';
+import type { AppError } from '@/lib/app-error';
 
 export type ActivityFilter = 'all' | Extract<ActivityKind, 'walk' | 'coffee' | 'sports'>;
 
@@ -84,7 +85,7 @@ export type HostActivityParticipantsResult =
 
 export type SafetyOperationResult =
   | { ok: true }
-  | { ok: false; message: string };
+  | { ok: false; message: string; error?: AppError };
 
 export type ActivityMessagesResult =
   | { ok: true; messages: ActivityMessage[] }

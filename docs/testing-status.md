@@ -10,7 +10,7 @@ same as a physical-device usability check.
 | --- | --- | --- |
 | Static quality | `npm run lint` from `apps/mobile` | Pass |
 | Type safety | `npx tsc --noEmit` from `apps/mobile` | Pass |
-| Domain/parser behavior | `npm run test:unit` | 39 passed |
+| Domain/parser behavior | `npm run test:unit` | 40 passed |
 | Production JavaScript bundle | `npx expo export --platform ios` | Pass |
 | Native iOS build | `npx expo run:ios --device "iPhone 17 Pro"` | Build succeeded, 0 errors |
 | Simulator accessibility smoke | Map/List toggle and empty state | Verified live |
@@ -26,6 +26,16 @@ closed, times out, or cannot be configured for the private table, the screen
 falls back to a bounded 15-second poll and tells the user that updates are
 reconnecting. This is eventual consistency with a clear user-visible status,
 not a claim of lossless realtime delivery.
+
+## Structured-error foundation
+
+`apps/mobile/lib/app-error.ts` defines the first shared error envelope:
+`code`, user-safe `message`, `retryable`, and optional client `requestId`.
+`blockActivityHost` now uses it for configuration, rate-limit/network, and
+invalid-response failures. The existing UI still renders `message`, which keeps
+the migration incremental; later sensitive operations can adopt the same
+contract without a disruptive screen rewrite. The request ID is metadata for
+sanitized diagnosis, never a token, phone number, coordinate, or chat body.
 
 ## What the local checks prove
 
