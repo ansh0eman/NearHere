@@ -104,3 +104,13 @@ longer valid. This is a deployment-credential issue, not a migration result.
 The migration remains committed as pending until the project owner relinks with
 the current database password and runs `npx supabase db push`; only then may the
 hosted chat harness claim the updated write receipt is live.
+
+## 2026-09-21 Simulator discovery availability check
+
+The newly built app launched on the iPhone 17 Pro Simulator and exposed the
+Nearby loading and retry states. Discovery then rendered the expected safe
+error state after one retry. A direct health request could not resolve the
+Supabase project hostname (`HTTP 000`), so this is a DNS/network availability
+condition in the development environment, not a proven mobile discovery
+regression. The error text and retry action are therefore accepted for this
+condition; a successful remote discovery run remains pending network recovery.
