@@ -114,3 +114,14 @@ Supabase project hostname (`HTTP 000`), so this is a DNS/network availability
 condition in the development environment, not a proven mobile discovery
 regression. The error text and retry action are therefore accepted for this
 condition; a successful remote discovery run remains pending network recovery.
+
+### Recovery result
+
+The project owner resumed the development project and relinked the CLI with the
+current database password. A publishable-key Auth health request returned HTTP
+200, `supabase migration list` showed every local migration through
+`202609210001` on the remote database, and `supabase db push --dry-run`
+reported the remote database up to date. On the iPhone 17 Pro Simulator, the
+Nearby retry action then recovered from the prior error into the real empty
+discovery state. This accepts the unavailable-to-retry-to-empty recovery path;
+authenticated activity flows still require the fictional test actors.
