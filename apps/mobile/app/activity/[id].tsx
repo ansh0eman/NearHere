@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useActivityDetail } from '@/hooks/use-activity-detail';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { appendActivityMessage } from '@/lib/activity-message-utils';
 import { blockActivityHost, cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
@@ -181,7 +182,7 @@ export default function ActivityDetailScreen() {
       return;
     }
     setMessageDraft('');
-    setMessages((current) => [...current, result.message]);
+    setMessages((current) => appendActivityMessage(current, result.message));
   }
 
   async function performJoin() {

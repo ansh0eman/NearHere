@@ -2596,3 +2596,18 @@ write receipt with the same fields as the history projection. The hosted chat
 harness now asserts this field explicitly. This is a useful systems lesson:
 runtime validation catches mismatched boundaries that TypeScript alone cannot
 see, because TypeScript types do not change what PostgreSQL actually returns.
+
+## Lesson 25 — Realtime delivery needs deduplication
+
+One user action can produce two client observations: the send RPC returns a
+receipt immediately, while a Realtime notification asks the client to refetch
+authoritative history. If both paths append blindly, the same durable message
+appears twice. `appendActivityMessage` treats the database message ID as the
+identity key, replaces any existing value with that ID, then sorts by the same
+`created_at, id` ordering as the SQL read.
+
+The history refresh still replaces the full message list. That matters for
+block changes, because merging an old local list into a newly authorized server
+projection could retain a message the caller should no longer see. The rule is:
+deduplicate optimistic local receipts, but let an authorized server read define
+the complete visible set.
