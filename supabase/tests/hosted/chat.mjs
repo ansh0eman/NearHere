@@ -62,7 +62,12 @@ async function main() {
   assert(joined.ok && joined.payload?.[0]?.membership_status === 'accepted', 'Participant did not join chat activity.');
   await test('accepted host and participant can exchange durable messages', async () => {
     const sent = await rpc('send_activity_message', { p_activity_id: activityId, p_body: 'Hello from the hosted chat harness.' }, b.token);
-    assert(sent.ok && sent.payload?.[0]?.body === 'Hello from the hosted chat harness.', 'Participant message was not stored.');
+    assert(
+      sent.ok
+        && sent.payload?.[0]?.body === 'Hello from the hosted chat harness.'
+        && sent.payload?.[0]?.author_display_name === 'Chat Harness B',
+      'Participant message write receipt did not match the mobile chat projection.',
+    );
     const messages = await rpc('activity_messages', { p_activity_id: activityId, p_limit: 50 }, a.token);
     assert(messages.ok && Array.isArray(messages.payload), `Host chat read failed (${messages.status}).`);
     assert(messages.payload.some((message) => message.body === 'Hello from the hosted chat harness.'), `Host could not read the durable message (rows=${messages.payload.length}).`);

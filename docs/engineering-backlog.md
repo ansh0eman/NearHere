@@ -70,6 +70,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 
 - [x] Add durable, accepted-member-only activity chat history and send operation; hosted harness covers anonymous denial, host/participant exchange, and block filtering
 - [x] Add initial accepted-member chat UI with validated messages and explicit refetch
+- [x] Align sent-message receipt with the validated chat-history projection
 - [x] Add managed realtime subscription as a refresh signal with polling fallback
 - [x] Add private report/block foundations and a signed-in report-activity action
 - [x] Add operator-only report lifecycle and review RPCs; hosted denial proves non-operators cannot access the queue

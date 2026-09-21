@@ -93,3 +93,14 @@ network/package-resolution limitation, not evidence that the hosted migrations
 are out of sync; the previously recorded `db push` and hosted RPC runs remain
 the available deployment evidence. Re-run the CLI check from a networked
 terminal before the next hosted release.
+
+## 2026-09-21 chat migration deployment check
+
+The new `202609210001_fix_sent_activity_message_projection.sql` migration was
+validated by mobile lint, TypeScript, and unit checks, but its remote dry run
+did not authenticate. The linked CLI received PostgreSQL `28P01` for
+`supabase_admin`, which means the stored or supplied database password is no
+longer valid. This is a deployment-credential issue, not a migration result.
+The migration remains committed as pending until the project owner relinks with
+the current database password and runs `npx supabase db push`; only then may the
+hosted chat harness claim the updated write receipt is live.

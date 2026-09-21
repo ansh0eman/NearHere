@@ -2581,3 +2581,18 @@ underlying result now makes future metrics and support tracing possible. This
 is an incremental migration pattern: add a compatible contract, prove it with a
 unit test, then apply it operation by operation rather than changing every
 screen in one risky commit.
+
+## Lesson 24 — Read and write projections must agree
+
+The chat screen validates one `ActivityMessage` contract whether a message
+comes from history or from the send operation. During the contract audit, the
+history RPC returned `author_display_name`, while `send_activity_message` did
+not. The database write could succeed but the mobile parser would reject its
+receipt, leaving the user with a confusing apparent send failure.
+
+The fix is a new migration rather than editing old database history. The new
+function inserts the message and joins the sender profile before returning a
+write receipt with the same fields as the history projection. The hosted chat
+harness now asserts this field explicitly. This is a useful systems lesson:
+runtime validation catches mismatched boundaries that TypeScript alone cannot
+see, because TypeScript types do not change what PostgreSQL actually returns.
