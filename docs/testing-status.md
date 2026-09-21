@@ -17,6 +17,38 @@ same as a physical-device usability check.
 | Hosted database/RPC | `supabase/tests/hosted/*.mjs` | Prior A/B/C/D matrices passed; rerun requires the configured fictional test OTPs |
 | Physical iPhone | Manual acceptance matrix | Still pending |
 
+## 2026-09-21 — Hosted identity recovery and rerun
+
+The development test-OTP mapping had expired on September 16. The narrow
+Supabase Auth configuration update kept Phone authentication enabled and
+preserved the existing four fictional mappings, but extended their validity to
+December 31, 2026. It did not add a production SMS provider, alter real users,
+or change application source.
+
+The two-actor `profiles-rls.mjs` matrix then passed against the resumed hosted
+project: trigger creation, anonymous denial, self-only reads and updates,
+protected-column/insert/delete denial, database constraints, and client-writable
+profile cleanup. The immediately following participation run stopped at the
+Auth challenge with HTTP 429. That is an Auth rate-limit signal caused by the
+intentional consecutive harnesses, not evidence of a participation regression;
+it must be retried after the Auth window resets.
+
+### Successful paced rerun
+
+After the bounded Auth cooldown, every hosted harness passed using the four
+fictional development actors. The participation A/B/C/D suite proved open and
+approval joins, rejection, idempotency, location privacy, participant removal,
+concurrent final-place serialization, waitlisting, and FIFO promotion. The
+detail/cancellation suite proved anonymous and non-member redaction, pending
+redaction, accepted release, and atomic cancellation revocation. The chat suite
+proved anonymous denial, accepted-member delivery, and block filtering. The
+safety suite proved report/block idempotency plus non-operator denial of the
+review queue and immutable audit events.
+
+These are hosted authorization and transaction proofs. They do not substitute
+for rendered native interaction, screen-reader, physical-device, or release
+distribution acceptance.
+
 ## Chat freshness behavior
 
 Activity Detail subscribes to Supabase Realtime for new message events. The
