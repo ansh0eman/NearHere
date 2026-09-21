@@ -2672,3 +2672,26 @@ for analytics and retry UI, while the current screen can safely render the
 human-readable message. This is an incremental migration pattern: introduce a
 small contract at a high-risk boundary, verify it, then adopt it operation by
 operation rather than rewriting every repository result at once.
+
+## Lesson 30 — End-to-end proof has layers
+
+NearHere’s hosted harnesses are not mock tests. They use the same publishable
+key and public RPC surface as the mobile app, sign in four fictional users, and
+assert what each caller can observe. That is why they can prove difficult
+properties such as FIFO waitlist promotion, row-lock serialization of the last
+place, exact-location redaction, and non-operator denial. A green UI alone
+cannot prove any of those database guarantees.
+
+The native Simulator then proves a different thing: the application turns an
+authorized server projection into a usable screen. In this acceptance run, a
+host and accepted participant completed phone OTP, saw their own Plans, opened
+Activity Detail, saw the correct role-specific controls, and handed off a
+private accepted coordinate to Apple Maps. The app never decided who deserved a
+coordinate; it rendered the coordinate only when the server supplied it.
+
+The first consecutive harness attempt hit HTTP 429 from Auth. That was useful
+operational evidence: authentication is an external service with its own rate
+limit. We recorded the failed attempt, waited for the cooldown, and ran the
+matrices in a paced sequence. A professional test report distinguishes that
+temporary dependency limit from an application defect and records both the
+failure and the successful rerun.

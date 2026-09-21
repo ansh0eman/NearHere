@@ -30,8 +30,10 @@ Exit: every baseline result is recorded with its evidence and scope.
 
 ## 2. Participation and privacy acceptance
 
-Status: source and hosted database tests are complete; authenticated Simulator
-proof remains.
+Status: source, hosted database tests, anonymous Simulator behavior, and the
+core host/accepted-participant Simulator journey are complete. Native
+screenshot coverage for every terminal state and physical-device evidence
+remain.
 
 1. Re-run profile, participation, detail/cancellation, chat, and safety hosted
    harnesses using fictional development actors only.
@@ -102,4 +104,3 @@ The following require the product owner or account holder: fictional test actor
 credentials/Simulator sign-in, physical devices, Apple and Android developer
 accounts, a crash/analytics provider, real SMS delivery, legal/privacy review,
 and beta participant recruitment. Everything else proceeds autonomously.
-

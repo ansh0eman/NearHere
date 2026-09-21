@@ -64,6 +64,28 @@ evidence for anonymous usability and map/list parity. It does not test
 authenticated screen states because entering even fictional phone OTPs into a
 native UI is treated as a separate credential-handling action.
 
+### Authenticated native acceptance
+
+With explicit authorization to use the fictional development credentials, the
+Simulator verified the complete phone challenge and verification flow for a
+host and a participant account. The host’s Plans screen rendered caller-scoped
+Upcoming/Past sections and directions actions only for active plans holding an
+authorized exact coordinate. Its Activity Detail screen displayed the host role,
+private location, activity chat, and host cancellation control.
+
+The participant account received only its caller-scoped plans. Its accepted
+approval-mode Activity Detail displayed “You are going,” the exact private
+meeting point, walking directions, Leave, Report, Block host, and the
+accepted-member chat composer. Pressing directions opened the iOS Apple Maps
+route interface; returning through the native back link restored NearHere’s
+detail screen. This is concrete Simulator evidence that the server’s accepted
+membership projection is rendered correctly, not merely parsed in a test.
+
+Pending, waitlisted, rejected, cancellation, and participant-removal state
+transitions remain fully proven in the hosted A/B/C/D suites. A separate native
+state-fixture run may be added later for screenshot coverage, but is not needed
+to establish the database authorization or transaction behavior.
+
 ## Chat freshness behavior
 
 Activity Detail subscribes to Supabase Realtime for new message events. The
