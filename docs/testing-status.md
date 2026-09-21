@@ -49,6 +49,21 @@ These are hosted authorization and transaction proofs. They do not substitute
 for rendered native interaction, screen-reader, physical-device, or release
 distribution acceptance.
 
+### Native anonymous smoke rerun
+
+On the iPhone 17 Pro Simulator, the signed-out Plans screen rendered the
+browse-first explanation. “Sign in to see plans” opened the phone-auth sheet,
+which exposed an E.164-aware phone field and an explicit Close control; closing
+it returned to Plans without retaining the protected navigation intent.
+
+Nearby rendered its location control, area selector, category filters, empty
+state, Host entry point, and loading affordance. The Map/List control changed
+its accessible label from “Show activities on a map” to “Show activities as a
+list” and displayed the equivalent empty state. This is native interaction
+evidence for anonymous usability and map/list parity. It does not test
+authenticated screen states because entering even fictional phone OTPs into a
+native UI is treated as a separate credential-handling action.
+
 ## Chat freshness behavior
 
 Activity Detail subscribes to Supabase Realtime for new message events. The
