@@ -1,7 +1,7 @@
 import type { OperatorSafetyReport, SafetyReviewReceipt, SafetyReportStatus } from '@/types/safety';
 
 const STATUSES: SafetyReportStatus[] = ['open', 'reviewing', 'resolved', 'dismissed'];
-const DECISIONS: SafetyReviewReceipt['status'][] = ['reviewing', 'resolved', 'dismissed'];
+const DECISIONS: SafetyReviewReceipt['status'][] = ['open', 'reviewing', 'resolved', 'dismissed'];
 function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function stringValue(row: Record<string, unknown>, key: string, nullable = false): string | null {
   const value = row[key];

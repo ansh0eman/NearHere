@@ -2611,3 +2611,18 @@ block changes, because merging an old local list into a newly authorized server
 projection could retain a message the caller should no longer see. The rule is:
 deduplicate optimistic local receipts, but let an authorized server read define
 the complete visible set.
+
+## Lesson 26 — Safety operations need recovery, not just closure
+
+A report can be resolved or dismissed with the information available today, then
+need attention again tomorrow. Hiding terminal reports from the only operator
+screen creates a practical dead end: the database preserves history, but the
+operator cannot recover the work item.
+
+The new `review_safety_report` transition explicitly allows `open` as a reopen
+decision. It records the reviewing operator and timestamp, clears stale
+resolution text, and activates the existing database audit trigger. The native
+operator console can now filter every durable status and exposes Reopen only
+for resolved or dismissed reports. This is not a client-only toggle. The
+operator allowlist, state transition, and immutable audit event remain enforced
+inside PostgreSQL.

@@ -10,7 +10,7 @@ same as a physical-device usability check.
 | --- | --- | --- |
 | Static quality | `npm run lint` from `apps/mobile` | Pass |
 | Type safety | `npx tsc --noEmit` from `apps/mobile` | Pass |
-| Domain/parser behavior | `npm run test:unit` | 42 passed |
+| Domain/parser behavior | `npm run test:unit` | 43 passed |
 | Production JavaScript bundle | `npx expo export --platform ios` | Pass |
 | Native iOS build | `npx expo run:ios --device "iPhone 17 Pro"` | Build succeeded, 0 errors |
 | Simulator accessibility smoke | Map/List toggle and empty state | Verified live |
@@ -125,6 +125,15 @@ reported the remote database up to date. On the iPhone 17 Pro Simulator, the
 Nearby retry action then recovered from the prior error into the real empty
 discovery state. This accepts the unavailable-to-retry-to-empty recovery path;
 authenticated activity flows still require the fictional test actors.
+
+## Operator review recovery
+
+`202609210002_operator_review_recovery.sql` adds an explicit, audited reopen
+transition for resolved and dismissed safety reports. The mobile operator screen
+now filters the four durable report states and renders the stored resolution.
+The parser test accepts the `open` receipt. Deployment and an operator-account
+hosted test remain pending because the application intentionally has no default
+operator identity.
 
 ### Anonymous native acceptance
 

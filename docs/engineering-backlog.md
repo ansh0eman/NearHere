@@ -79,7 +79,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Define block policy for Join and exact-location privacy without silently deleting existing memberships; hosted harness covers the blocked relationship
 - [x] Add immutable safety audit events and operator-only operational logs
 - [x] Add database-enforced rate limits for sensitive writes and bounded rate-limit observability
-- [ ] Add immutable operator review recovery paths and tune limits with beta evidence
+- [x] Add immutable operator review recovery paths; tune rate limits with beta evidence later
 - [x] Add reduced-motion preference hook and accessibility-aware safety/chat controls
 - [ ] Complete full VoiceOver/TalkBack, dynamic-type, contrast, and physical-device accessibility audit
 - [x] Add client request correlation IDs for sensitive operations and bounded operator observability

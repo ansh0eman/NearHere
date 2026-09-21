@@ -193,7 +193,7 @@ export async function getOperatorSafetyReports(status = 'open'): Promise<Operato
   catch { return { ok: false, message: 'NearHere received an invalid safety queue response.' }; }
 }
 
-export async function reviewSafetyReport(reportId: string, decision: 'reviewing' | 'resolved' | 'dismissed', resolution = ''): Promise<SafetyReviewResult> {
+export async function reviewSafetyReport(reportId: string, decision: 'open' | 'reviewing' | 'resolved' | 'dismissed', resolution = ''): Promise<SafetyReviewResult> {
   if (!supabase) return { ok: false, message: 'Safety operations are unavailable. Check the Supabase configuration.' };
   const { data, error } = await supabase.rpc('review_safety_report', { p_report_id: reportId, p_decision: decision, p_resolution: resolution || null });
   if (error) return { ok: false, message: error.code === '42501' ? 'Operator access is required.' : 'NearHere could not review this report.' };

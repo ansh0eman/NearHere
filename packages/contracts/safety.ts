@@ -16,6 +16,6 @@ export interface OperatorSafetyReport {
 
 export interface SafetyReviewReceipt {
   reportId: string;
-  status: Extract<SafetyReportStatus, 'reviewing' | 'resolved' | 'dismissed'>;
+  status: SafetyReportStatus;
   reviewedAt: string;
 }
