@@ -16,3 +16,10 @@ test('appFailure exposes safe stable failure metadata', () => {
     },
   });
 });
+
+test('appFailure supports a non-retryable permission failure', () => {
+  const result = appFailure('forbidden', 'Sign in to report an activity.', false, 'report-abc');
+  assert.equal(result.error.code, 'forbidden');
+  assert.equal(result.error.retryable, false);
+  assert.equal(result.message, 'Sign in to report an activity.');
+});

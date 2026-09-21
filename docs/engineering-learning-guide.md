@@ -2657,3 +2657,18 @@ platform without launching Maps. The Plans card renders the action only when
 uses the same helper. This is defence in depth for UX, not the security boundary:
 the server remains responsible for withholding the exact location from people
 who are pending, waitlisted, removed, or viewing a finished activity.
+
+## Lesson 29 — Sensitive failures need safe observability
+
+A report can contain sensitive free text, so an error path must never log the
+report body, coordinates, phone numbers, or provider error object. The report
+repository now creates a short request ID before it calls the RPC and logs only
+that ID, an operation name, and an outcome in development. The UI receives a
+stable `AppError` instead of an unfiltered database message.
+
+The error code separates an actionable rate limit from a temporary network
+failure and a non-retryable permission failure. That distinction matters later
+for analytics and retry UI, while the current screen can safely render the
+human-readable message. This is an incremental migration pattern: introduce a
+small contract at a high-risk boundary, verify it, then adopt it operation by
+operation rather than rewriting every repository result at once.

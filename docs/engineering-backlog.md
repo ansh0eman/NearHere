@@ -70,6 +70,8 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 
 ## Coordination, safety, and beta quality
 
+- [x] Add structured, correlation-ID-backed failures to report submission
+
 - [x] Add durable, accepted-member-only activity chat history and send operation; hosted harness covers anonymous denial, host/participant exchange, and block filtering
 - [x] Add initial accepted-member chat UI with validated messages and explicit refetch
 - [x] Align sent-message receipt with the validated chat-history projection
