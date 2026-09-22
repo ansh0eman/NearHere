@@ -112,6 +112,20 @@ screen-level physical usability: that still needs someone looking at and using
 the iPhone for GPS permission, touch layout, network behavior, and accessibility
 on actual hardware.
 
+### Debug-bundle connectivity repair
+
+The first physical Debug build did not load the JavaScript application because
+its generated `ip.txt` embedded a stale Metro address (`192.168.1.2`). The Mac
+had moved to `192.168.1.10`, so the phone could launch the native shell but not
+find the development bundle. The repair was deliberately small: start Metro in
+LAN mode, confirm the new address serves the iOS bundle with HTTP 200, perform
+a clean physical-device rebuild so React Native regenerates `ip.txt`, then
+reinstall and relaunch. The repaired bundle embeds `192.168.1.10`.
+
+This is a Debug-development-server dependency, not a production release-build
+requirement. Keep Metro running while testing this build. A release archive
+would embed its JavaScript bundle and would not depend on the Mac being online.
+
 ## Chat freshness behavior
 
 Activity Detail subscribes to Supabase Realtime for new message events. The

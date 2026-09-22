@@ -2695,3 +2695,23 @@ limit. We recorded the failed attempt, waited for the cooldown, and ran the
 matrices in a paced sequence. A professional test report distinguishes that
 temporary dependency limit from an application defect and records both the
 failure and the successful rerun.
+
+## Lesson 31 — Why a Debug iPhone app needs Metro
+
+The native iOS project contains Objective-C/Swift code, but most NearHere UI
+and product behavior is JavaScript/TypeScript. In a Debug physical-device build,
+React Native loads that JavaScript from Metro, the development server running on
+the Mac. During the native build, React Native writes the Mac’s LAN address into
+the app’s generated `ip.txt` file. The iPhone reads it to find Metro.
+
+When the Mac changed network address, the installed build still contained the
+old address. The app could be installed, trusted, and launched, yet appear not
+to start because its native shell could not fetch the JavaScript bundle. We
+proved the diagnosis by comparing the generated `ip.txt` with the current LAN
+address and checking Metro’s iOS bundle endpoint. A clean rebuild regenerated
+the file; the reinstalled app then pointed to the live server.
+
+This illustrates a practical distinction interviewers care about: build,
+install, launch, and application readiness are separate states. Debug builds
+need developer infrastructure. Release builds package the JavaScript bundle,
+so TestFlight users do not need your Mac or Metro.
