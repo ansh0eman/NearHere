@@ -76,7 +76,9 @@ success states that remain understandable without color or map interaction.
 
 ## 5. Device and distribution readiness
 
-1. Test critical flows on a physical iPhone and an Android device.
+1. Test critical flows on a physical iPhone and an Android device. A signed
+   Debug build is already installed on the paired iPhone; its first launch is
+   awaiting the device owner’s explicit Development-profile trust.
 2. Configure release environments, crash reporting, privacy text, and store
 metadata.
 3. Set up TestFlight and Android internal testing.

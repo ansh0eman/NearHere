@@ -86,6 +86,22 @@ transitions remain fully proven in the hosted A/B/C/D suites. A separate native
 state-fixture run may be added later for screenshot coverage, but is not needed
 to establish the database authorization or transaction behavior.
 
+## 2026-09-22 — Physical iPhone build and install
+
+The paired iPhone 13 Pro (`bob the builder`, iOS 26.6.2) was reachable over its
+connected local-network developer tunnel with Developer Mode enabled. Xcode
+successfully produced the signed `Debug-iphoneos` NearHere bundle with bundle
+identifier `com.nearhere.app`; `devicectl` installed it successfully on the
+device.
+
+iOS denied the first launch because the Apple Development profile has not yet
+been explicitly trusted on that device. This is an expected device-security
+boundary, not a compile, bundle, provisioning, or installation failure. The
+only remaining action is on the iPhone: open **Settings → General → VPN & Device
+Management**, select the Apple Development profile, and trust it. After that,
+the already installed bundle can be launched and physical-device acceptance can
+continue without another build.
+
 ## Chat freshness behavior
 
 Activity Detail subscribes to Supabase Realtime for new message events. The
