@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +17,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { createActivity } from '@/lib/activity-repository';
+import { clearMeetingPointDraft, readMeetingPointDraft } from '@/lib/meeting-point-storage';
+import { formatActivityStart, isFutureStart, QUICK_START_OPTIONS, quickStartDate } from '@/lib/activity-time';
+import type { MeetingPointDraft } from '@/types/meeting-point';
 import type { ActivityKind, JoinMode } from '@/types/activity';
 
 const KIND_OPTIONS: { kind: ActivityKind; label: string; emoji: string }[] = [
@@ -26,31 +31,54 @@ const KIND_OPTIONS: { kind: ActivityKind; label: string; emoji: string }[] = [
   { kind: 'creative', label: 'Create', emoji: '🎨' },
 ];
 
-const START_OPTIONS = [
-  { label: '30 min', minutes: 30 },
-  { label: '1 hour', minutes: 60 },
-  { label: 'Tomorrow', minutes: 24 * 60 },
-];
-
 export default function CreateActivityScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
-  const latitude = Number(params.latitude);
-  const longitude = Number(params.longitude);
-  const hasValidLocation = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const initialLatitude = Number(params.latitude);
+  const initialLongitude = Number(params.longitude);
+  const hasInitialLocation = Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude);
   const [kind, setKind] = useState<ActivityKind>('walk');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startsInMinutes, setStartsInMinutes] = useState(60);
+  const [startsAt, setStartsAt] = useState(() => quickStartDate(60));
+  const [selectedQuickStart, setSelectedQuickStart] = useState<string | null>('1h');
+  const [meetingPoint, setMeetingPoint] = useState<MeetingPointDraft | null>(() => hasInitialLocation ? {
+    latitude: initialLatitude,
+    longitude: initialLongitude,
+    label: 'Current discovery area',
+  } : null);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
   const [capacity, setCapacity] = useState(8);
   const [joinMode, setJoinMode] = useState<JoinMode>('open');
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const coordinateLabel = useMemo(
-    () => hasValidLocation ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : 'No meeting point selected',
-    [hasValidLocation, latitude, longitude],
-  );
+  const coordinateLabel = useMemo(() => meetingPoint ? `${meetingPoint.latitude.toFixed(4)}, ${meetingPoint.longitude.toFixed(4)}` : 'No meeting point selected', [meetingPoint]);
+
+  useFocusEffect(useCallback(() => {
+    let isActive = true;
+    async function restorePinnedPoint() {
+      const draft = await readMeetingPointDraft();
+      if (!isActive || !draft) return;
+      setMeetingPoint(draft);
+      await clearMeetingPointDraft();
+    }
+    void restorePinnedPoint();
+    return () => { isActive = false; };
+  }, []));
+
+  function selectQuickStart(id: string, minutes: number) {
+    setStartsAt(quickStartDate(minutes));
+    setSelectedQuickStart(id);
+  }
+
+  function updateStart(event: DateTimePickerEvent, nextValue?: Date) {
+    if (Platform.OS === 'android') setDatePickerVisible(false);
+    if (event.type === 'dismissed' || !nextValue) return;
+    setStartsAt(nextValue);
+    setSelectedQuickStart(null);
+  }
 
   async function publishActivity() {
     setErrorMessage(null);
@@ -63,12 +91,15 @@ export default function CreateActivityScreen() {
       setErrorMessage('Keep the description under 1,000 characters.');
       return;
     }
-    if (!hasValidLocation) {
-      setErrorMessage('Return to the map and choose a valid meeting area.');
+    if (!meetingPoint) {
+      setErrorMessage('Choose an exact private meeting point before publishing.');
+      return;
+    }
+    if (!isFutureStart(startsAt)) {
+      setErrorMessage('Choose a start time in the future.');
       return;
     }
 
-    const startsAt = new Date(Date.now() + startsInMinutes * 60_000);
     const endsAt = new Date(startsAt.getTime() + 60 * 60_000);
     setIsSaving(true);
     const result = await createActivity({
@@ -77,8 +108,8 @@ export default function CreateActivityScreen() {
       description: description.trim(),
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
-      privateLatitude: latitude,
-      privateLongitude: longitude,
+      privateLatitude: meetingPoint.latitude,
+      privateLongitude: meetingPoint.longitude,
       privacyRadiusM: 350,
       capacity,
       joinMode,
@@ -89,6 +120,7 @@ export default function CreateActivityScreen() {
       setErrorMessage(result.message);
       return;
     }
+    await clearMeetingPointDraft();
     router.dismissAll();
     router.replace('/');
   }
@@ -104,7 +136,7 @@ export default function CreateActivityScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={styles.content} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
           <Text style={styles.eyebrow}>ACTIVITY TYPE</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
             {KIND_OPTIONS.map((option) => (
@@ -144,23 +176,30 @@ export default function CreateActivityScreen() {
             value={description}
           />
 
-          <Text style={styles.label}>STARTS IN</Text>
+          <Text style={styles.label}>START TIME</Text>
           <View style={styles.segmentRow}>
-            {START_OPTIONS.map((option) => (
-              <Pressable key={option.minutes} onPress={() => setStartsInMinutes(option.minutes)} style={[styles.segment, startsInMinutes === option.minutes && styles.segmentSelected]}>
-                <Text style={[styles.segmentText, startsInMinutes === option.minutes && styles.segmentTextSelected]}>{option.label}</Text>
+            {QUICK_START_OPTIONS.map((option) => (
+              <Pressable key={option.id} onPress={() => selectQuickStart(option.id, option.minutes)} style={[styles.segment, selectedQuickStart === option.id && styles.segmentSelected]}>
+                <Text style={[styles.segmentText, selectedQuickStart === option.id && styles.segmentTextSelected]}>{option.label}</Text>
               </Pressable>
             ))}
           </View>
 
-          <View style={styles.locationCard}>
+          <Pressable accessibilityHint="Opens a date and time selector" accessibilityLabel="Choose a custom start date and time" accessibilityRole="button" onPress={() => setDatePickerVisible(true)} style={styles.timePickerRow}>
+            <View style={styles.locationIcon}><Ionicons name="calendar-outline" size={19} color="#FF6B4A" /></View>
+            <View style={styles.locationCopy}><Text style={styles.locationTitle}>Custom date & time</Text><Text style={styles.locationCoordinate}>{formatActivityStart(startsAt)}</Text></View>
+            <Ionicons color="#66717D" name="chevron-forward" size={18} />
+          </Pressable>
+
+          <Pressable accessibilityHint="Opens a map where you can search or move a pin" accessibilityLabel="Choose a private meeting point" accessibilityRole="button" onPress={() => router.push({ pathname: '/host/meeting-point', params: { latitude: String(meetingPoint?.latitude ?? initialLatitude), longitude: String(meetingPoint?.longitude ?? initialLongitude) } })} style={styles.locationCard}>
             <View style={styles.locationIcon}><Ionicons name="location" size={19} color="#FF6B4A" /></View>
             <View style={styles.locationCopy}>
               <Text style={styles.locationTitle}>Private meeting point</Text>
-              <Text style={styles.locationCoordinate}>{coordinateLabel}</Text>
-              <Text style={styles.locationPrivacy}>Discovery receives a separately generated approximate marker within 350 m.</Text>
+              <Text style={styles.locationCoordinate}>{meetingPoint?.label ?? coordinateLabel}</Text>
+              <Text style={styles.locationPrivacy}>Search or drop a pin. Discovery receives a separately generated approximate marker within 350 m.</Text>
             </View>
-          </View>
+            <Ionicons color="#66717D" name="chevron-forward" size={18} />
+          </Pressable>
 
           <View style={styles.twoColumnRow}>
             <View style={styles.halfField}>
@@ -185,6 +224,16 @@ export default function CreateActivityScreen() {
         <Pressable accessibilityRole="button" disabled={isSaving} onPress={() => void publishActivity()} style={[styles.publishButton, isSaving && styles.disabled]}>
           {isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.publishText}>Publish activity</Text>}
         </Pressable>
+
+        <Modal animationType="slide" onRequestClose={() => setDatePickerVisible(false)} transparent visible={isDatePickerVisible}>
+          <Pressable accessibilityLabel="Close date and time selector" onPress={() => setDatePickerVisible(false)} style={styles.modalBackdrop}>
+            <Pressable onPress={(event) => event.stopPropagation()} style={styles.timeSheet}>
+              <View style={styles.timeSheetHeader}><Text style={styles.timeSheetTitle}>Choose when it starts</Text><Pressable accessibilityLabel="Close date and time selector" onPress={() => setDatePickerVisible(false)} style={styles.doneButton}><Text style={styles.doneText}>Done</Text></Pressable></View>
+              <View style={styles.pickerTabs}><Pressable onPress={() => setPickerMode('date')} style={[styles.pickerTab, pickerMode === 'date' && styles.pickerTabActive]}><Text style={[styles.pickerTabText, pickerMode === 'date' && styles.pickerTabTextActive]}>Date</Text></Pressable><Pressable onPress={() => setPickerMode('time')} style={[styles.pickerTab, pickerMode === 'time' && styles.pickerTabActive]}><Text style={[styles.pickerTabText, pickerMode === 'time' && styles.pickerTabTextActive]}>Time</Text></Pressable></View>
+              <DateTimePicker display={Platform.OS === 'ios' ? 'spinner' : 'default'} minimumDate={new Date()} mode={pickerMode} onChange={updateStart} value={startsAt} />
+            </Pressable>
+          </Pressable>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -212,6 +261,7 @@ const styles = StyleSheet.create({
   kindRow: { gap: 8, paddingVertical: 10 },
   label: { color: '#66717D', fontSize: 10, fontWeight: '900', letterSpacing: 1.1, marginTop: 22 },
   locationCard: { backgroundColor: '#FFF4EF', borderRadius: 18, flexDirection: 'row', gap: 12, marginTop: 24, padding: 15 },
+  timePickerRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 10, padding: 14 },
   locationCoordinate: { color: '#66717D', fontSize: 11, marginTop: 3 },
   locationCopy: { flex: 1 },
   locationIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
@@ -222,6 +272,11 @@ const styles = StyleSheet.create({
   publishButton: { alignItems: 'center', backgroundColor: '#FF6B4A', borderRadius: 999, justifyContent: 'center', marginBottom: 12, marginHorizontal: 20, minHeight: 54 },
   publishText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   screen: { backgroundColor: '#F7F4EE', flex: 1 },
+  modalBackdrop: { backgroundColor: 'rgba(22,32,42,0.42)', flex: 1, justifyContent: 'flex-end' },
+  timeSheet: { backgroundColor: '#F7F4EE', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 },
+  timeSheetHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  timeSheetTitle: { color: '#16202A', fontSize: 18, fontWeight: '900' }, doneButton: { backgroundColor: '#16202A', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 }, doneText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  pickerTabs: { backgroundColor: '#EAE6DE', borderRadius: 12, flexDirection: 'row', marginTop: 18, padding: 3 }, pickerTab: { alignItems: 'center', borderRadius: 9, flex: 1, paddingVertical: 9 }, pickerTabActive: { backgroundColor: '#FFFFFF' }, pickerTabText: { color: '#66717D', fontSize: 12, fontWeight: '800' }, pickerTabTextActive: { color: '#16202A' },
   segment: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 999, borderWidth: 1, flex: 1, paddingHorizontal: 8, paddingVertical: 11 },
   segmentRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   segmentSelected: { backgroundColor: '#16202A', borderColor: '#16202A' },

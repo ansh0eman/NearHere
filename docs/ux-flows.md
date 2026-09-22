@@ -79,7 +79,7 @@ flowchart TD
     RECOVER --> PREVIEW
 ```
 
-The first Host form and transactional creation operation now exist. The current form uses the selected discovery coordinate as the private meeting point and offers bounded start presets; richer place/time editing and the public-area preview remain planned. The diagram describes the intended complete UX, while the backlog records which steps are accepted end to end.
+The Host form now has two ways to choose a start: quick presets (30 minutes, one hour, and tomorrow) and a native date/time sheet for a specific future date and time. It also starts from the current discovery area but lets the host search for a landmark or drag a map pin to choose the exact private meeting point. The selected exact pin is written only through `create_activity`; the database creates a separately displaced public marker for discovery. A future public-area preview remains planned.
 
 ## 4. Approval and waitlist
 

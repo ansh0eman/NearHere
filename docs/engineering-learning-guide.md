@@ -2715,3 +2715,55 @@ This illustrates a practical distinction interviewers care about: build,
 install, launch, and application readiness are separate states. Debug builds
 need developer infrastructure. Release builds package the JavaScript bundle,
 so TestFlight users do not need your Mac or Metro.
+
+## Lesson 32 — A usable control is more than a visible control
+
+The host form previously stored `startsInMinutes = 60` and converted it into a
+timestamp only when the user pressed Publish. That works for shortcuts, but it
+cannot express “Friday at 6:30 PM.” The new screen keeps one canonical
+`startsAt: Date`. The three shortcuts and the native custom picker both update
+that same state. At publish, the app rejects a past time and sends ISO
+timestamps to the existing transactional `create_activity` RPC.
+
+```
+quick shortcut ─┐
+                ├──> startsAt: Date ──> future check ──> ISO string ──> RPC
+native picker ──┘
+```
+
+This is a state-design principle: multiple controls should converge on one
+value instead of having separate publishing branches. The pure
+`activity-time.ts` helper contains clock arithmetic; its unit test supplies a
+fixed `now`, making “30 minutes from now” deterministic without rendering
+native UI.
+
+The meeting-point screen shows a map where the host can search a place or move
+the map under a fixed pin. A small local `MeetingPointDraft` bridges the picker
+modal back to the create form. It is not the product database and is cleared as
+soon as the form consumes it. Publish sends the coordinate to the existing
+database transaction, which keeps exact and public locations separate:
+
+```
+host chooses exact pin
+        │ short-lived local draft
+        ▼
+Create form ──> create_activity transaction
+                       ├── private.activity_locations: exact pin
+                       └── public.activities: displaced safe marker
+```
+
+The sign-in issue is why mobile UI must be tested as interaction, not merely
+compiled. Numeric keyboards often lack a Return key. The screen listens for
+keyboard height and places an explicit floating Done button immediately above
+the keyboard; `KeyboardAvoidingView` lifts content; and a scroll view with
+`keyboardDismissMode="interactive"` lets a user drag the keyboard down. These
+are complementary: explicit action, layout avoidance, and natural gesture.
+Simulator and physical-device checks must still prove their real dimensions and
+touch behavior.
+
+Finally, the discovery list no longer repeats a large selected-map card over
+the rows it is meant to help users compare. List mode reserves space for the
+fixed header/filter controls and lets the list remain the primary information
+surface; map mode retains a shorter card because map pins otherwise lack useful
+context. This is not just visual polish—it makes the core task, finding and
+joining an activity, possible on a small screen.

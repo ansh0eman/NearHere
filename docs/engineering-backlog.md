@@ -31,6 +31,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Implement and verify anonymous-safe `nearby_activities` discovery RPC
 - [x] Replace map fixtures with explicit loading/empty/success/error server state
 - [x] Build the first native Host form and profile gate
+- [x] Let hosts choose quick or custom future start time and search or pin an exact private meeting point
 - [x] Complete one authenticated Host write and rediscover only the public-safe projection in Simulator
 - [x] Measure exact/public displacement through a protected operational test without exposing the exact point publicly
 - [x] Implement the caller-scoped activity-detail RPC, runtime parser, native route, map/Plans navigation, and protected Join return path
@@ -89,6 +90,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add client request correlation IDs for sensitive operations and bounded operator observability
 - [ ] Add shared structured error envelopes, server request IDs, metrics, traces, and crash reporting
 - [ ] Add physical-device, TestFlight, and Android internal-test workflows
+- [ ] Accept keyboard avoidance, numeric-keypad Done controls, custom schedule selection, and private-pin selection on Simulator and physical iPhone
 
 ## Deferred until evidence
 

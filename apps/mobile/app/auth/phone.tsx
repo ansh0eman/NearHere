@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,8 +23,17 @@ export default function PhoneScreen() {
   const { isConfigured, requestOtp, setPendingIntent, status } = useAuth();
   const [phone, setPhone] = useState('+91 ');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const normalizedPhone = normalizePhoneNumber(phone);
   const isSending = status === 'sendingCode';
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(showEvent, (event) => setKeyboardHeight(event.endCoordinates.height));
+    const hideSubscription = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => { showSubscription.remove(); hideSubscription.remove(); };
+  }, []);
 
   async function sendCode() {
     setErrorMessage(null);
@@ -50,6 +61,11 @@ export default function PhoneScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
         <Pressable
           accessibilityLabel="Close phone sign in"
           accessibilityRole="button"
@@ -112,6 +128,8 @@ export default function PhoneScreen() {
             </>
           )}
         </Pressable>
+        </ScrollView>
+        {keyboardHeight > 0 ? <Pressable accessibilityLabel="Dismiss keyboard" accessibilityRole="button" onPress={Keyboard.dismiss} style={[styles.keyboardDismissButton, { bottom: keyboardHeight + 10 }]}><Text style={styles.doneKeyboardText}>Done</Text></Pressable> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -119,7 +137,8 @@ export default function PhoneScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: '#F7F4EE', flex: 1 },
-  content: { flex: 1, paddingHorizontal: 24 },
+  content: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 24 },
   closeButton: { alignItems: 'center', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 22, borderWidth: 1, height: 44, justifyContent: 'center', marginTop: 8, width: 44 },
   hero: { marginTop: 42 },
   iconWrap: { alignItems: 'center', backgroundColor: '#FFE7DE', borderRadius: 28, height: 56, justifyContent: 'center', marginBottom: 22, width: 56 },
@@ -135,7 +154,9 @@ const styles = StyleSheet.create({
   input: { borderBottomColor: '#16202A', borderBottomWidth: 2, color: '#16202A', fontSize: 26, fontWeight: '800', letterSpacing: 0.5, paddingHorizontal: 0, paddingVertical: 13 },
   helper: { color: '#7A838D', fontSize: 11, lineHeight: 16, marginTop: 9 },
   error: { color: '#B63B2B', fontSize: 12, fontWeight: '700', lineHeight: 17, marginTop: 10 },
-  primaryButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 999, flexDirection: 'row', gap: 9, justifyContent: 'center', marginTop: 'auto', marginBottom: 18, minHeight: 54, paddingHorizontal: 20 },
+  primaryButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 999, flexDirection: 'row', gap: 9, justifyContent: 'center', marginBottom: 18, marginTop: 'auto', minHeight: 54, paddingHorizontal: 20 },
   primaryButtonDisabled: { opacity: 0.65 },
   primaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  keyboardDismissButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 999, elevation: 5, paddingHorizontal: 17, paddingVertical: 10, position: 'absolute', right: 24, shadowColor: '#16202A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  doneKeyboardText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
 });

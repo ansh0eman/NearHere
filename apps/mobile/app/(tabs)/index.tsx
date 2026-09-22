@@ -363,7 +363,8 @@ export default function NearbyScreen() {
         </View>
       )}
 
-      <View style={styles.bottomArea}>
+      <View style={[styles.bottomArea, viewMode === 'list' && styles.listBottomArea]}>
+        {viewMode === 'map' ? <>
         <View style={styles.prototypeLabel}>
           <View style={styles.liveDot} />
           <Text style={styles.prototypeText}>LIVE ACTIVITIES</Text>
@@ -397,7 +398,7 @@ export default function NearbyScreen() {
                 <Text style={styles.startsIn}>{formatStartsAt(selected.startsAt)}</Text>
               </View>
               <Text style={styles.activityTitle}>{selected.title}</Text>
-              <Text style={styles.activityDescription}>{selected.description}</Text>
+              <Text numberOfLines={1} style={styles.activityDescription}>{selected.description}</Text>
               <View style={styles.detailRow}>
                 <View style={styles.detailItem}>
                   <Ionicons name="walk-outline" size={17} color="#66717D" />
@@ -410,11 +411,10 @@ export default function NearbyScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.hostText}>Hosted by {selected.hostDisplayName}</Text>
             </Pressable>
             <View style={styles.cardActions}>
               <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.detailsButton}>
-                <Text style={styles.detailsButtonText}>View details</Text>
+                <Text style={styles.detailsButtonText}>Details</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -438,12 +438,13 @@ export default function NearbyScreen() {
             <Text style={styles.activityDescription}>Be the first to host something in this area.</Text>
           </View>
         )}
+        </> : null}
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Host an activity"
           onPress={requireAuthenticationForHosting}
-          style={styles.hostButton}>
+          style={[styles.hostButton, viewMode === 'list' && styles.hostButtonList]}>
           <Ionicons name="add" size={23} color="#FFFFFF" />
         </Pressable>
       </View>
@@ -473,10 +474,10 @@ function FilterPill({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#DCEBDC' },
-  listSurface: { backgroundColor: '#F7F4EE', flex: 1, paddingHorizontal: 18, paddingTop: 112 },
+  listSurface: { backgroundColor: '#F7F4EE', flex: 1, paddingHorizontal: 18, paddingTop: 176 },
   listHeading: { color: '#16202A', fontSize: 30, fontWeight: '900', letterSpacing: -0.8 },
   listSubheading: { color: '#66717D', fontSize: 13, marginTop: 5 },
-  listContent: { gap: 10, paddingBottom: 120, paddingTop: 22 },
+  listContent: { gap: 10, paddingBottom: 120, paddingTop: 18 },
   listRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 13 },
   listIcon: { alignItems: 'center', borderRadius: 21, height: 42, justifyContent: 'center', width: 42 },
   listEmoji: { fontSize: 20 },
@@ -603,6 +604,7 @@ const styles = StyleSheet.create({
   changeButton: { padding: 8 },
   changeButtonText: { color: '#DB4C2F', fontSize: 12, fontWeight: '900' },
   bottomArea: { bottom: 12, left: 12, position: 'absolute', right: 12 },
+  listBottomArea: { bottom: 88 },
   prototypeLabel: {
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -621,7 +623,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(22,32,42,0.1)',
     borderRadius: 26,
     borderWidth: 1,
-    padding: 19,
+    padding: 16,
     shadowColor: '#16202A',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.16,
@@ -632,14 +634,14 @@ const styles = StyleSheet.create({
   activityMetaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   activityKind: { fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
   startsIn: { color: '#3E8E68', fontSize: 12, fontWeight: '800' },
-  activityTitle: { color: '#16202A', fontSize: 22, fontWeight: '900', letterSpacing: -0.7, marginTop: 15 },
-  activityDescription: { color: '#66717D', fontSize: 13, lineHeight: 19, marginTop: 5 },
+  activityTitle: { color: '#16202A', fontSize: 20, fontWeight: '900', letterSpacing: -0.7, marginTop: 9 },
+  activityDescription: { color: '#66717D', fontSize: 13, lineHeight: 18, marginTop: 4 },
   emptyTitle: { color: '#16202A', fontSize: 15, fontWeight: '900', marginTop: 12, textAlign: 'center' },
-  detailRow: { flexDirection: 'row', gap: 16, marginTop: 14 },
+  detailRow: { flexDirection: 'row', gap: 16, marginTop: 11 },
   detailItem: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   detailText: { color: '#66717D', fontSize: 12, fontWeight: '700' },
   hostText: { color: '#89919A', fontSize: 11, fontWeight: '700', marginTop: 10 },
-  cardActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+  cardActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   detailsButton: { paddingHorizontal: 3, paddingVertical: 11 },
   detailsButtonText: { color: '#4D5A66', fontSize: 12, fontWeight: '900' },
   avatarStack: { alignItems: 'center', flexDirection: 'row' },
@@ -681,6 +683,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  hostButtonList: { right: 16, top: -54 },
   emptyCard: { backgroundColor: '#F7F4EE', borderRadius: 26, padding: 20 },
   retryButton: { alignSelf: 'flex-start', backgroundColor: '#16202A', borderRadius: 999, marginTop: 14, paddingHorizontal: 16, paddingVertical: 10 },
   retryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },

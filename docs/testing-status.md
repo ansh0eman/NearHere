@@ -186,6 +186,50 @@ Actors C and D when those branches need to be re-proven.
 4. Capture screenshots and record device/OS/build details in
    [`visual-evidence.md`](visual-evidence.md).
 
+## 2026-09-22 host controls and discovery hierarchy — source gate
+
+User testing identified three usability failures in the mobile UI: numeric
+keyboards obscured the phone/code call-to-action with no obvious dismissal
+route; a host could only inherit the discovery coordinate rather than select
+the actual meeting point; and the selected-map card was duplicated over the
+list, hiding activity rows and competing with the navigation bar.
+
+The corrective source change adds a keyboard-height-aware floating **Done**
+control for the phone and six-digit numeric pads, `KeyboardAvoidingView` plus
+an interactive scroll-dismiss gesture, a native custom date/time sheet alongside
+the 30-minute/one-hour/tomorrow shortcuts, and a dedicated private-pin map
+route with search. The pin is held briefly in local draft storage only to
+return from the picker to the host form; it is cleared when consumed or after
+publishing. The server remains the privacy boundary: `create_activity` sends
+that coordinate to the private schema and creates the public approximate marker
+inside the same transaction.
+
+The discovery list now reserves vertical space for the fixed header and filter
+row and does not render the selected map card in list mode. Map mode keeps a
+shorter selection card with one-line description and direct Join/Details
+actions. This is a layout correction, not a change to activity data or
+authorization.
+
+`npm run lint`, `npx tsc --noEmit`, `npm run test:unit` (49 passing tests),
+and `npx expo export --platform ios` passed. The date picker is a native iOS
+module, so these checks do not yet establish rendered keyboard, picker, pin,
+or touch behavior. The next required evidence is an iPhone 17 Pro Simulator
+build and the corresponding physical-device check.
+
+### Simulator interaction result
+
+The iPhone 17 Pro Simulator rebuilt successfully after adding the native date
+picker. The Map/List control showed a list with the fixed header and four
+activity rows but no duplicate selected-card overlay. The Host screen exposed
+all three quick start options, opened the custom date/time sheet, opened the
+private map pin screen, and returned to the form after “Use this meeting
+point.” With the simulator software numeric keypad shown, a visible **Done**
+button appeared above the keypad and the Send-code CTA remained recoverable
+after dismissing it. The same button rendered on the OTP Verify screen; the
+fictional test account completed verification and returned to its existing
+profile. This accepts the rendered Simulator path. Physical-iPhone keyboard
+geometry remains a separate acceptance item.
+
 ## 2026-09-09 acceptance attempt
 
 The rebuilt Simulator is healthy and the signed-out Me surface is reachable.
