@@ -102,6 +102,16 @@ Management**, select the Apple Development profile, and trust it. After that,
 the already installed bundle can be launched and physical-device acceptance can
 continue without another build.
 
+### Launch confirmation
+
+After the device owner trusted the Apple Development profile, `devicectl`
+launched `com.nearhere.app` successfully. A fresh device application inventory
+confirmed **NearHere 1.0.0 (bundle version 1)** is installed. This accepts the
+physical build, signing, install, trust, and launch chain. It does not claim
+screen-level physical usability: that still needs someone looking at and using
+the iPhone for GPS permission, touch layout, network behavior, and accessibility
+on actual hardware.
+
 ## Chat freshness behavior
 
 Activity Detail subscribes to Supabase Realtime for new message events. The
