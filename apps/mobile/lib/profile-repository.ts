@@ -1,6 +1,7 @@
 import { parseProfileRow, validateDisplayName } from '@/lib/profile-validation';
 import { supabase } from '@/lib/supabase';
 import type { ProfileOperationResult, UserProfile } from '@/types/profile';
+import type { AvatarCatalogId } from '../../../packages/contracts/avatar';
 
 const PROFILE_COLUMNS =
   'id,display_name,onboarding_status,avatar_config,interests,created_at,updated_at';
@@ -40,17 +41,26 @@ export async function getMyProfile(userId: string): Promise<ProfileOperationResu
 export async function completeMyProfile(
   userId: string,
   displayName: string,
+  avatarId: AvatarCatalogId,
+  existingAvatarConfig: UserProfile['avatarConfig'],
 ): Promise<ProfileOperationResult> {
   if (!supabase) return unavailableResult();
 
   const validation = validateDisplayName(displayName);
   if (!validation.ok) return validation;
 
+  const avatarConfig = {
+    ...(existingAvatarConfig.version === 1 ? existingAvatarConfig : {}),
+    version: 1,
+    avatarId,
+  };
+
   const { data, error } = await supabase
     .from('profiles')
     .update({
       display_name: validation.value,
       onboarding_status: 'complete',
+      avatar_config: avatarConfig,
     })
     .eq('id', userId)
     .select(PROFILE_COLUMNS)

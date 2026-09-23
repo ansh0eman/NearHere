@@ -78,3 +78,28 @@ test('profile parser accepts a new profile that still needs onboarding', () => {
   assert.equal(profile.displayName, null);
   assert.equal(profile.onboardingStatus, 'needs_profile');
 });
+
+test('profile parser keeps only a valid seed and catalog character ID', () => {
+  const profile = parseProfileRow({
+    ...validRow,
+    avatar_config: {
+      version: 1,
+      seed: '12345678-abcd-1234-abcd-123456789012',
+      avatarId: 'v1-04',
+      privateNote: 'must not enter the app profile contract',
+    },
+  });
+  assert.deepEqual(profile.avatarConfig, {
+    version: 1,
+    seed: '12345678-abcd-1234-abcd-123456789012',
+    avatarId: 'v1-04',
+  });
+});
+
+test('profile parser omits an unknown catalog ID and malformed seed', () => {
+  const profile = parseProfileRow({
+    ...validRow,
+    avatar_config: { version: 1, seed: 'not-a-uuid', avatarId: 'not-in-catalog' },
+  });
+  assert.deepEqual(profile.avatarConfig, { version: 1 });
+});

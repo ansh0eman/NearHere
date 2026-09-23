@@ -1,10 +1,10 @@
 # NearHere Documentation Map
 
-## Current design direction — 23 September 2026
+## Current design direction — 24 September 2026
 
-**Start here for the next implementation:** [Night Arcade handoff status](handoffs/night-arcade-status.md), then the [step-by-step execution playbook](handoffs/night-arcade-execution.md) and [research/visual specification](design-concepts/design-review.md). The user rejected the mixed light/violet/cream appearance. Night Arcade is the working charcoal/lime direction, with simplified full-body character assets. It is planned, not yet shipped.
+**Start here for the next implementation:** [Night Arcade handoff status](handoffs/night-arcade-status.md), then the [step-by-step execution playbook](handoffs/night-arcade-execution.md) and [research/visual specification](design-concepts/design-review.md). The NearHere-authored MapLibre style, 6-character preset editor, attribution affordance and map-first Browse flow are implemented. V15–V23 capture recent Simulator evidence, including manual search, current-location recenter and selected-avatar sizing. Next gates: marker/cluster hit-testing on the new style, profile save/relaunch, custom date selection, physical-iPhone location recovery and full role/state acceptance. Do not claim physical-device acceptance from these Simulator checks.
 
-[Map-first design](map-first-design.md) records the earlier minimal-discovery implementation. Its violet palette and procedural faces are historical, not the new visual target.
+[Map-first design](map-first-design.md) explains the current map-first hierarchy, tile-vs-style-vs-renderer distinction, avatars, clusters, and prototype-provider limitations.
 
 This directory is the living engineering record for NearHere. It is written for a computer-science graduate learning how a production product is designed, built, tested, and scaled. Every important decision should record the requirement, alternatives, tradeoff, implementation status, failure modes, and verification evidence.
 
@@ -59,7 +59,7 @@ flowchart TD
 - Anyone may browse activities without an account. Joining or hosting requires phone OTP authentication.
 - The app asks for foreground location permission. Denial leads to searchable manual location and map-pin selection.
 - Public activity locations are approximate. The exact meeting point is released through the caller-scoped Plans read model only for an accepted member while the activity is published and not ended.
-- The custom avatar experience is important differentiation, but its builder is deferred until the discovery, identity, and activity core is correct.
+- A six-preset character picker is implemented; a custom avatar builder/wardrobe remains deferred. The character is decorative identity and never implies verification or live location.
 - Supabase provides hosted phone authentication and PostgreSQL. PostGIS provides geospatial querying.
 - A modular monolith is the initial application architecture. Redis, custom WebSockets, payments, direct messages, recurring-event administration, and complex recommendations are deferred until requirements and measurements justify them.
 
@@ -69,9 +69,9 @@ This table prevents an architectural design from being confused with deployed ev
 
 | Capability | Current state | Remaining proof/work |
 | --- | --- | --- |
-| Native map and location | Implemented in the Expo development build | Physical-device and accessibility matrix |
+| Native map and location | Custom map style renders; manual area and meeting-point searches return results in Simulator | Authored-style marker/cluster hit tests, reported GPS-unavailable recovery, physical-device and accessibility matrix |
 | Phone identity | Hosted fixed development OTP and session restoration verified | Real SMS provider, rate limits, production compliance |
-| Profile | Migration, trigger, owner repository, runtime parser, onboarding, and full two-actor hosted RLS matrix verified | Real SMS provider, abuse controls, and production monitoring |
+| Profile | Migration, trigger, owner repository, runtime parser, onboarding and six-preset editor implemented; editor visually inspected in V19 | Editor save/reload/map consistency in Simulator; real SMS provider, abuse controls, and production monitoring |
 | Activity discovery | PostGIS migration/RPC deployed; anonymous empty result and denial paths verified | Representative rows, query-plan measurement, pagination |
 | Activity hosting | Transaction and native form accepted in Simulator; real activity rediscovered | Re-run the hosted participation harness with the new exact/public displacement assertion |
 | Activity detail/cancellation | Native detail route, caller-scoped read model, runtime parser, directions, and host cancellation | Migration `202609040001` deployed; hosted privacy/cancellation harness passed; accept in Simulator |

@@ -1,4 +1,5 @@
 import type { UserProfile } from '@/types/profile';
+import { isAvatarCatalogId } from './avatar-identity.ts';
 
 const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 40;
@@ -53,11 +54,22 @@ export function parseProfileRow(value: unknown): UserProfile {
     throw new Error('Profile response has invalid interests.');
   }
 
+  const avatarConfig = value.avatar_config;
+  const hasValidSeed = typeof avatarConfig.seed === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(avatarConfig.seed);
+  const safeAvatarConfig = avatarConfig.version === 1
+    ? {
+      version: 1 as const,
+      ...(hasValidSeed ? { seed: avatarConfig.seed as string } : {}),
+      ...(isAvatarCatalogId(avatarConfig.avatarId) ? { avatarId: avatarConfig.avatarId } : {}),
+    }
+    : {};
+
   return {
     id: requireString(value, 'id'),
     displayName: displayNameValue,
     onboardingStatus,
-    avatarConfig: value.avatar_config,
+    avatarConfig: safeAvatarConfig,
     interests: value.interests,
     createdAt: requireString(value, 'created_at'),
     updatedAt: requireString(value, 'updated_at'),

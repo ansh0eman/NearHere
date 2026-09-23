@@ -1,5 +1,92 @@
 # NearHere testing status
 
+## 24 September 2026 — NearHere-authored map style
+
+Replaced the stock OpenFreeMap `dark` style URL in Nearby with
+`apps/mobile/assets/maps/nearhere-night-arcade-v1.json`: a local, 13-layer
+MapLibre v8 style. It uses the OpenMapTiles vector schema and OpenFreeMap's
+TileJSON/font resources, while NearHere owns the land/water/road/park colors and
+label hierarchy. OpenFreeMap, OpenMapTiles and OpenStreetMap attribution remains
+embedded and the MapLibre attribution control stays enabled. The style schema
+validator returned **zero errors**; its regression test checks the vector source,
+credit, required layer IDs, unique IDs and source references.
+
+Latest combined local gate: **62 unit tests passed, 0 failed; TypeScript passed;
+Expo lint passed; iOS JavaScript bundle export passed (5,111,500 bytes); style
+validator passed; `git diff --check` passed.** V15 proved the authored style
+renders. In the subsequent live iPhone 17 Pro Simulator session, the app-owned
+credit button was visible in the fresh V16 capture and its tap opened MapLibre
+Native's attribution panel, saved separately in V17. The accessibility tree
+showed OpenFreeMap, OpenMapTiles and OpenStreetMap. So the style has rendered
+evidence and the attribution control has interaction evidence. MapLibre
+marker/cluster views are not exposed in Simulator's accessibility tree, and coordinate tap attempts
+returned `noWindowsAvailable`; marker selection/cluster zoom on the authored
+style remain open. The screenshot still showed the existing activity fixtures
+(12 in Browse, multiple map clusters); no fixtures or hosted records were
+changed. Browse, profile, Plans privacy, Activity Detail, host draft/date-time,
+location search and meeting-point search have now received partial live review;
+see below for their exact boundaries. Remaining: reliable authored-style map
+marker/cluster hit tests, saving/reloading a profile choice, confirming a custom
+date/time, GPS recovery, host publish and complete role/state acceptance. V16
+through V21 are development Simulator captures, not signed-build,
+physical-device or release acceptance.
+
+One product iteration followed that review: `apps/mobile/app/(tabs)/index.tsx`
+now renders ordinary character symbols at MapLibre size `0.11` and the selected
+character at `0.15`, with the existing selection halo. Selecting “Demo · Chai
+after work” from Browse rendered the larger marker and preview after fast
+refresh; V23 records that state. This is a modest hierarchy, not a new avatar
+system. The 62-test suite, TypeScript, lint and Expo iOS export were rerun after
+the code change. Map-style/schema regression passed within the unit suite.
+
+## 23 September 2026 — Night Arcade secondary-screen token pass
+
+Extended the Night Arcade semantic palette through Plans, Host creation,
+Activity Detail, location search, and private meeting-point picking. These were
+presentation-only changes: no participation, chat, exact-location, host
+authorization, map-search, or publish behavior was intentionally changed. The
+picker controls now match Night Arcade, but their underlying native map tiles
+still use the platform map provider. Nearby now uses a separate NearHere-authored
+vector style over hosted tiles, covered by the newer checkpoint above.
+
+Latest local checks after these screen changes: **61 unit tests passed, 0
+failed; TypeScript passed; Expo lint passed; iOS JavaScript bundle export passed
+at 5.11 MB; `git diff --check` passed.** The Mac was locked, so no newly styled
+screen has fresh Simulator visual evidence. These results establish build and
+parser integrity, not visual acceptance. The existing 13 development activities
+were preserved. The next acceptance action is to unlock the Mac and visually
+inspect the profile editor, Plans, Host creation, Activity Detail, location
+search and private meeting-point picker in the booted iPhone 17 Pro Simulator.
+
+## 23 September 2026 - Night Arcade and profile editor iteration
+
+The current profile slice adds a six-character preset selector, live preview,
+display-name editing and a Save action. Existing profiles reach it through Me →
+Edit profile; incomplete profiles see the same selector during onboarding. The
+original database-assigned random UUID seed remains unchanged, while the
+selected catalog ID is saved separately. The public RPC allowlist migration
+`202609230004_selected_avatar_projection.sql` is deployed; local and hosted
+migration ledgers match through 230004. Anonymous hosted smoke returned 13
+activities with 13 safe avatar configurations and no private/account fields.
+None of those 13 profiles had a selected `avatarId`, so actual selected-ID
+projection still needs an authenticated editor save.
+
+Local unit tests: **61 passed, 0 failed**. `npx tsc --noEmit` passed. Lint was
+rerun after cleaning duplicate imports and passed. These checks validate the
+catalog/parser and compile-time contracts, not visual usability or a signed-in
+write. Simulator UI automation is currently unavailable because the Mac is
+locked. The existing V14 populated-map screenshot and earlier pin/cluster taps
+remain valid; do not claim the new profile editor was visually or interactively
+accepted yet. No demo activities were modified. The next gate is unlock Mac,
+open Me, edit/pick/save, return to Nearby, verify the marker uses the same art,
+then force-close/relaunch and confirm the choice persists.
+
+The Expo native project already has MapLibre linked and its earlier Simulator
+native build passed. A new build is not required for this JS-only profile slice,
+but the edited JS still needs `expo export` and a real Simulator run. Physical
+iPhone, Android, VoiceOver, font scaling and production SMS/provider checks
+remain separate acceptance gates.
+
 ## 23 September 2026 — design handoff and foundations
 
 New location/avatar unit tests: total **56 passed, 0 failed**. Installed mobile
@@ -33,7 +120,7 @@ same as a physical-device usability check.
 | --- | --- | --- |
 | Static quality | `npm run lint` from `apps/mobile` | Pass |
 | Type safety | `npx tsc --noEmit` from `apps/mobile` | Pass |
-| Domain/parser behavior | `npm run test:unit` | 47 passed |
+| Domain/parser behavior | `npm run test:unit` | 61 passed in latest profile/avatar slice |
 | Production JavaScript bundle | `npx expo export --platform ios` | Pass |
 | Native iOS build | `npx expo run:ios --device "iPhone 17 Pro"` | Build succeeded, 0 errors |
 | Simulator accessibility smoke | Map/List toggle and empty state | Verified live |
@@ -333,3 +420,35 @@ has an exact meeting location and the activity is not ended or cancelled.
 `npx expo export --platform ios` all passed on 2026-09-21. This proves source
 correctness and iOS bundle generation. It does not yet prove an external Maps
 app handoff on a signed-in physical device; that remains device acceptance work.
+V16/V17 are saved as visual evidence: V16 shows the populated custom map and
+visible credits; V17 captures the native attribution panel after the credit
+button was tapped. No map or activity data was changed by this check.
+
+The same Simulator session also checked Browse and profile navigation without
+mutating the account or fixtures. Browse loaded 12 demo rows; selecting Coffee
+returned two, and selecting a row centered the matching character/activity on
+the map before View activity opened its detail. Profile edit showed all six
+character presets and the existing selection; Cancel discarded the draft. V18
+and V19 record the Coffee list and editor. Plans showed a pending request with
+the exact point locked and an activity hosted by the current test actor with
+the point available, consistent with the intended role boundary. A screenshot
+of Plans/Detail was deliberately not saved because accepted-state test data
+displayed an exact meeting-point coordinate. These checks do not prove profile
+save/relaunch persistence, pending/accepted/waitlist/cancel coverage for every
+actor, or production authorization.
+
+Manual area search and private meeting-point search were also exercised with
+the non-sensitive query “Bellandur Lake.” Both returned an attributed OpenStreetMap
+result. In the private picker, selecting the result recentered the draft map;
+we closed without pressing “Use this meeting point.” In manual location search,
+we closed without pressing “Use this area.” Thus neither durable area selection
+nor activity publication changed. The activity form and custom date/time sheet
+were visually inspected: all three quick choices and the separate custom entry
+were present, and the sheet offered Date and Time tabs. The native wheel/tab
+coordinate input path currently errors, so actually changing and confirming a
+custom time remains unverified. GPS/current-location permission and recovery
+were then checked with the “Center map on my location” control: in this
+Simulator it recentered and showed the blue location dot without an error
+(V22). That is evidence for the current granted/mock location path only. The
+earlier physical-iPhone “location unavailable” report, permission-denied path,
+Settings recovery, accuracy and real GPS remain open.

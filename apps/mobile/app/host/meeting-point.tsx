@@ -14,6 +14,7 @@ import MapView, { Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DEFAULT_MAP_REGION } from '@/hooks/use-nearby-location';
+import { colors, radii, spacing } from '@/constants/design-tokens';
 import { saveMeetingPointDraft } from '@/lib/meeting-point-storage';
 import { searchPlaces } from '@/lib/place-search';
 import type { PlaceSearchResult } from '@/types/place-search';
@@ -103,7 +104,7 @@ export default function MeetingPointScreen() {
       <SafeAreaView edges={['top']} pointerEvents="box-none" style={styles.topArea}>
         <View style={styles.header}>
           <Pressable accessibilityLabel="Close meeting point picker" accessibilityRole="button" onPress={() => router.back()} style={styles.iconButton}>
-            <Ionicons color="#16202A" name="close" size={22} />
+            <Ionicons color={colors.text} name="close" size={22} />
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>PRIVATE MEETING POINT</Text>
@@ -111,7 +112,7 @@ export default function MeetingPointScreen() {
           </View>
         </View>
         <View style={styles.searchCard}>
-          <Ionicons color="#66717D" name="search" size={18} />
+          <Ionicons color={colors.mutedText} name="search" size={18} />
           <TextInput
             accessibilityLabel="Search for a private meeting point"
             autoCapitalize="words"
@@ -120,26 +121,26 @@ export default function MeetingPointScreen() {
             onChangeText={(value) => { setQuery(value); setSearchError(null); }}
             onSubmitEditing={() => void submitSearch()}
             placeholder="Search a café, park, landmark…"
-            placeholderTextColor="#8B949D"
+            placeholderTextColor={colors.subtleText}
             returnKeyType="search"
             style={styles.searchInput}
             value={query}
           />
           <Pressable accessibilityLabel="Search meeting point" accessibilityRole="button" disabled={isSearching || query.trim().length < 2} onPress={() => void submitSearch()} style={[styles.searchButton, (isSearching || query.trim().length < 2) && styles.disabled]}>
-            {isSearching ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons color="#FFFFFF" name="arrow-forward" size={17} />}
+            {isSearching ? <ActivityIndicator color={colors.onAccent} size="small" /> : <Ionicons color={colors.onAccent} name="arrow-forward" size={17} />}
           </Pressable>
         </View>
         {searchError ? <Text style={styles.searchError}>{searchError}</Text> : null}
         {results.length ? <View style={styles.results}>
           {results.map((result) => <Pressable accessibilityRole="button" key={result.id} onPress={() => chooseResult(result)} style={styles.result}>
-            <Ionicons color="#FF6B4A" name="location-outline" size={18} />
+            <Ionicons color={colors.accent} name="location-outline" size={18} />
             <Text numberOfLines={2} style={styles.resultLabel}>{result.label}</Text>
           </Pressable>)}
         </View> : null}
       </SafeAreaView>
 
       <View pointerEvents="none" style={styles.pinWrap}>
-        <View style={styles.pin}><Ionicons color="#FFFFFF" name="location" size={21} /></View>
+        <View style={styles.pin}><Ionicons color={colors.onAccent} name="location" size={21} /></View>
         <View style={styles.pinShadow} />
       </View>
 
@@ -148,7 +149,7 @@ export default function MeetingPointScreen() {
           <Text style={styles.sheetTitle}>Pin the exact meeting point</Text>
           <Text style={styles.sheetBody}>Only you and accepted participants can see this exact pin. Nearby discovery gets a separate approximate marker.</Text>
           <Pressable accessibilityRole="button" disabled={isSaving} onPress={() => void confirmPoint()} style={[styles.confirmButton, isSaving && styles.disabled]}>
-            {isSaving ? <ActivityIndicator color="#FFFFFF" /> : <><Text style={styles.confirmText}>Use this meeting point</Text><Ionicons color="#FFFFFF" name="checkmark" size={18} /></>}
+            {isSaving ? <ActivityIndicator color={colors.onAccent} /> : <><Text style={styles.confirmText}>Use this meeting point</Text><Ionicons color={colors.onAccent} name="checkmark" size={18} /></>}
           </Pressable>
         </View>
       </SafeAreaView>
@@ -157,16 +158,16 @@ export default function MeetingPointScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#DCEBDC', flex: 1 }, topArea: { left: 0, position: 'absolute', right: 0, top: 0 },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 8 },
-  iconButton: { alignItems: 'center', backgroundColor: '#F7F4EE', borderRadius: 22, height: 44, justifyContent: 'center', shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12, width: 44 },
-  headerCopy: { backgroundColor: '#F7F4EE', borderRadius: 18, flex: 1, paddingHorizontal: 15, paddingVertical: 10, shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12 },
-  eyebrow: { color: '#FF6B4A', fontSize: 9, fontWeight: '900', letterSpacing: 1.1 }, title: { color: '#16202A', fontSize: 15, fontWeight: '900', marginTop: 3 },
-  searchCard: { alignItems: 'center', backgroundColor: '#F7F4EE', borderRadius: 19, flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 10, padding: 7, shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12 },
-  searchInput: { color: '#16202A', flex: 1, fontSize: 14, minHeight: 40 }, searchButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 17, height: 36, justifyContent: 'center', width: 36 }, disabled: { opacity: 0.5 },
-  searchError: { backgroundColor: '#F7F4EE', color: '#A23E2B', fontSize: 12, marginHorizontal: 16, paddingHorizontal: 13, paddingTop: 8 },
-  results: { backgroundColor: '#F7F4EE', borderRadius: 18, marginHorizontal: 16, marginTop: 7, padding: 8, shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12 },
-  result: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 44, paddingHorizontal: 6 }, resultLabel: { color: '#27313A', flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
-  pinWrap: { alignItems: 'center', left: '50%', marginLeft: -24, marginTop: -47, position: 'absolute', top: '50%', width: 48 }, pin: { alignItems: 'center', backgroundColor: '#FF6B4A', borderColor: '#FFFFFF', borderRadius: 24, borderWidth: 4, height: 48, justifyContent: 'center', width: 48 }, pinShadow: { backgroundColor: 'rgba(22,32,42,0.22)', borderRadius: 10, height: 7, marginTop: 5, width: 22 },
-  bottomArea: { bottom: 0, left: 0, padding: 12, position: 'absolute', right: 0 }, sheet: { backgroundColor: '#F7F4EE', borderRadius: 26, padding: 20, shadowColor: '#16202A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20 }, sheetTitle: { color: '#16202A', fontSize: 19, fontWeight: '900', letterSpacing: -0.5 }, sheetBody: { color: '#66717D', fontSize: 12, lineHeight: 18, marginTop: 5 }, confirmButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 999, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 16, minHeight: 50, paddingHorizontal: 18 }, confirmText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  screen: { backgroundColor: colors.canvas, flex: 1 }, topArea: { left: 0, position: 'absolute', right: 0, top: 0 },
+  header: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  iconButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  headerCopy: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, flex: 1, paddingHorizontal: 15, paddingVertical: 10 },
+  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.1 }, title: { color: colors.text, fontSize: 15, fontWeight: '800', marginTop: 3 },
+  searchCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, flexDirection: 'row', gap: 8, marginHorizontal: spacing.lg, marginTop: 10, padding: 7 },
+  searchInput: { color: colors.text, flex: 1, fontSize: 14, minHeight: 40 }, searchButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.control, height: 36, justifyContent: 'center', width: 36 }, disabled: { opacity: 0.5 },
+  searchError: { backgroundColor: colors.surface, color: colors.danger, fontSize: 12, marginHorizontal: spacing.lg, paddingHorizontal: 13, paddingTop: 8 },
+  results: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, marginHorizontal: spacing.lg, marginTop: 7, padding: 8 },
+  result: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 44, paddingHorizontal: 6 }, resultLabel: { color: colors.text, flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
+  pinWrap: { alignItems: 'center', left: '50%', marginLeft: -24, marginTop: -47, position: 'absolute', top: '50%', width: 48 }, pin: { alignItems: 'center', backgroundColor: colors.accent, borderColor: colors.text, borderRadius: radii.pill, borderWidth: 3, height: 48, justifyContent: 'center', width: 48 }, pinShadow: { backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, height: 7, marginTop: 5, width: 22 },
+  bottomArea: { bottom: 0, left: 0, padding: spacing.md, position: 'absolute', right: 0 }, sheet: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.sheet, borderWidth: 1, padding: spacing.lg }, sheetTitle: { color: colors.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.5 }, sheetBody: { color: colors.mutedText, fontSize: 12, lineHeight: 18, marginTop: 5 }, confirmButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.pill, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 16, minHeight: 50, paddingHorizontal: 18 }, confirmText: { color: colors.onAccent, fontSize: 14, fontWeight: '800' },
 });

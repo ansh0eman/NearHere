@@ -52,11 +52,11 @@ flowchart TD
 
 - `apps/mobile/package.json`: Expo ~54.0.35, React 19.1, RN 0.81.5,
   `react-native-maps` 1.20.1, `expo-image` ~3.0.11 already installed.
-- `apps/mobile/app.json`: new architecture true; current global style light;
+- `apps/mobile/app.json`: new architecture true; global style dark;
   scheme `nearhere`, bundle `com.nearhere.app`; existing location/date picker plugins.
 - No root package.json. Run mobile tools **inside apps/mobile**.
 - `app/(tabs)/index.tsx`: map, selection, Browse modal, filters, join/auth intent.
-- `app/(tabs)/me.tsx`: currently rudimentary account profile, no full editor.
+- `app/(tabs)/me.tsx`: account identity, persisted character, Edit profile action.
 - `app/(tabs)/plans.tsx`: personal plans and host actions; preserve all states.
 - `app/activity/[id].tsx`: detail, privacy, chat, participation and safety actions.
 - `app/host/create.tsx`: kind/title/description/time/capacity/join mode/publish.
@@ -72,7 +72,7 @@ flowchart TD
 - `lib/activity-repository.ts`: existing domain operations; reuse them.
 - `lib/activity-validation.ts`: runtime boundary for untrusted backend rows.
 - `packages/contracts/{activity,user}.ts`: shared TypeScript contracts.
-- `components/host-avatar.tsx`: old procedural face, not target artwork.
+- `components/host-avatar.tsx`: bundled catalog renderer for map, Browse and Me.
 - `lib/avatar-identity.ts`: reads the persisted v1 seed; legacy fallback.
 - `supabase/migrations/202609090004_block_aware_consumers.sql`: current discovery
   function and its symmetric block checks. Read this before adding projections.
@@ -246,60 +246,67 @@ public clients cannot retrieve private profile fields or exact meeting points.
 
 ## Ticket 4 — Real profile, editable identity
 
-Design: large character hero, display name, Edit profile / Change avatar, own
-upcoming plans, account actions. No fabricated @handle, neighbourhood/bio/counts
-unless a real schema + authorised read/write path is deliberately added.
+Design: large character preview, display name, six fixed character options, and
+account actions. No fabricated @handle, neighbourhood/bio/counts unless a real
+schema + authorised read/write path is deliberately added. Current implementation
+is in `app/onboarding/profile.tsx`; existing profiles use Me → Edit profile.
 
 1. `me.tsx` should scroll at small size/large text; keep sign-out reachable.
-2. Add an edit route with local draft state. Opening editor does not save.
+2. Use local draft state. Opening editor does not save; Back cancels the draft.
 3. Name validation already lives in `profile-validation.ts`. Reuse its bounds;
    preserve name and seed on cancelled edit. Do not turn an incomplete profile
    complete unless the initial onboarding requirements are satisfied.
 4. Character picker selects one of six fixed catalog IDs. Save only allowlisted
-   v1 config (keep original seed for backward compatibility). Database validation
-   must reject unsupported IDs/version/oversized payloads, not only client TS.
-   Existing arbitrary legacy JSON requires an explicit compatibility strategy;
-   don't add a constraint that rejects historical rows without auditing them.
-5. Add `updateMyProfile` repository operation and provider refresh/stale-request
-   protection. Own-row RLS applies; changing signed-in account during save must
-   not overwrite the new account's UI with the old response.
+   `avatarId` and preserve the server seed. Migration 230004 reconstructs public
+   JSON from hard-coded catalog IDs. Existing arbitrary legacy JSON remains
+   tolerated by the column; app parsing strips it. No broad JSON constraint was
+   added, avoiding a breaking migration for old rows.
+5. `completeMyProfile` repository update and provider request-generation guard
+   protect the account UI against a late response after account switch. Existing
+   own-row RLS remains the authorization boundary.
 6. Confirm new account random assignment uses the DB default from the auth trigger;
    renderer merely reads it. Do not perform random reassignment during onboarding.
 7. Use `getMyPlans` for a small real upcoming list, with loading/empty/error states.
    If querying only the first 50 plans, don't label their length lifetime totals.
 8. Keep the user's phone private. No avatar uploads/storage bucket required.
 
-Pass: new profile assigned; existing seed retained; edit/save/cancel/relaunch;
-same character across surfaces; failure preserves draft; cross-user update denied.
+Code and unit/parser gates pass at 61 tests. Simulator acceptance remains:
+new profile assigned; existing seed retained; edit/save/cancel/relaunch; same
+character across map and Me; failure preserves draft; cross-user update denied.
 
 ## Ticket 5 — Custom map proof before migration
 
-The app currently renders Apple Maps with `react-native-maps`. A palette on
-buttons does not restyle Apple base geography. MapLibre is proposed, not installed.
+Nearby has moved from Apple Maps (`react-native-maps`) to native MapLibre. The
+iOS Simulator native build, tile rendering, avatar pins and cluster interaction
+have passed a first smoke; full coverage remains. A palette on buttons alone
+never restyles base geography.
 
-1. Inspect installed RN/Expo/new-architecture versions and current official
-   MapLibre release docs/package metadata. Pin an exact compatible release and
-   record why. Do not paste old `MapView`/`Camera` APIs without checking exports,
-   types and examples for that exact release. Current docs are not a lockfile.
-2. Create a tiny development-only map screen with real current-version imports.
-   Add required plugin, rebuild native app. Do not run prebuild `--clean` over
-   uninspected native changes. Preserve current renderer until proof passes.
-3. Test panning, camera initial position, selection hit targets, imagery and legal
-   attribution in Simulator. Rebuild physical app later; Metro cannot add modules.
-4. Renderer, style and tiles are different things: renderer draws; style chooses
-   layer paints/labels; tile source supplies geography. A saved PNG is none of
-   these and must never become a fake pannable map.
-5. Development demo tiles prove rendering only; check street-level Bengaluru
-   coverage. If demo tiles lack it, don't invent streets or promise street detail.
-   Production provider requires explicit user-approved account/terms/billing.
-6. Define local style JSON against **actual source-layer IDs** from chosen tile
-   schema. Inspect the style metadata. Quiet roads/buildings, moss parks, blue-grey
-   water, readable labels; no guessed `source-layer: parks` strings.
-7. Keep attribution/logo requirements visible above overlays. Do not hide credits
-   to match the mockup. Network failure shows a truthful retry/fallback state.
+1. Verified runtime and official metadata: Expo `~54.0.35`, RN `0.81.5`, React
+   `19.1.0`, New Architecture enabled. Installed `@maplibre/maplibre-react-native`
+   `11.4.0`, whose peers require Expo >=54, RN >=0.80, React >=19.1.
+2. Expo plugin was added to app config. Build is in progress/needs recovery;
+   do not run a parallel `expo run:ios` until checking PIDs and build products.
+   Avoid `prebuild --clean`; it can remove generated native customizations.
+3. Prototype uses OpenFreeMap `https://tiles.openfreemap.org/styles/dark`. Official
+   site says no key/registration and free, but current terms say as-is, no
+   availability warranty, possible discontinuation, and Cloudflare CDN processing.
+   Keep MapLibre attribution/logo visible; this is not a production SLA selection.
+4. The actual source uses MapLibre v11 names `Map`, `Camera`, `GeoJSONSource`,
+   and `Layer`. v11 migrated ShapeSource to GeoJSONSource and renamed old
+   PointAnnotation to ViewAnnotation. Don't copy old examples.
+5. Nearby is now authored with native cluster layers, stable locally-bundled avatar
+   sprites, selection halo and own-device-only location point. Prove pan/zoom,
+   tap/cluster expansion, 12+ fixtures, road imagery/labels, tile failure and
+   attribution in Simulator before calling the vertical slice accepted.
+6. Renderer, style and tiles are distinct. This currently uses a public dark
+   style—not a custom NearHere style JSON. Next, inspect its actual style-layer
+   IDs before writing any source-layer customization.
+7. External tile request includes client network metadata and the requested
+   approximate map viewport; never put exact meeting coordinates in tile URLs.
 
-Pass: exact-version native proof, real geography/credits, style loads, marker
-interaction works. Document tile coverage, credential/cost boundary and fallback.
+Pass: exact-version native proof, real geography/credits, style loads, cluster
+and selection interactions work. Document tile coverage, limits, cost boundary
+and network fallback; production map SLA remains a separate future decision.
 
 ## Ticket 6 — Map-first integration and collision handling
 

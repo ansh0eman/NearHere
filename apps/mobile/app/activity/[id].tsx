@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors, radii } from '@/constants/design-tokens';
 import { useActivityDetail } from '@/hooks/use-activity-detail';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { appendActivityMessage } from '@/lib/activity-message-utils';
@@ -390,7 +391,7 @@ export default function ActivityDetailScreen() {
   if (!activity && state.status === 'loading') {
     return (
       <SafeAreaView style={styles.centerState}>
-        <ActivityIndicator color="#FF6B4A" />
+        <ActivityIndicator color={colors.accent} />
         <Text style={styles.centerBody}>Loading activity…</Text>
       </SafeAreaView>
     );
@@ -399,7 +400,7 @@ export default function ActivityDetailScreen() {
   if (!activity) {
     return (
       <SafeAreaView style={styles.centerState}>
-        <Ionicons color="#B63B2B" name="cloud-offline-outline" size={30} />
+        <Ionicons color={colors.danger} name="cloud-offline-outline" size={30} />
         <Text style={styles.centerTitle}>Activity unavailable</Text>
         <Text style={styles.centerBody}>{state.status === 'error' ? state.message : 'Try again.'}</Text>
         <Pressable accessibilityRole="button" onPress={() => void refresh()} style={styles.primaryButton}>
@@ -419,7 +420,7 @@ export default function ActivityDetailScreen() {
     <SafeAreaView edges={['top']} style={styles.screen}>
       <View style={styles.navRow}>
         <Pressable accessibilityLabel="Back" accessibilityRole="button" onPress={() => router.back()} style={styles.iconButton}>
-          <Ionicons color="#16202A" name="arrow-back" size={22} />
+          <Ionicons color={colors.text} name="arrow-back" size={22} />
         </Pressable>
         <Text style={styles.navTitle}>Activity</Text>
         <View style={styles.iconButtonPlaceholder} />
@@ -434,7 +435,7 @@ export default function ActivityDetailScreen() {
         {membershipLabel && (
           <View style={[styles.membershipBanner, isInactive && styles.membershipBannerInactive]}>
             <Ionicons
-              color={isInactive ? '#8A929A' : '#3E8E68'}
+              color={isInactive ? colors.subtleText : colors.success}
               name={isInactive ? 'alert-circle-outline' : 'checkmark-circle-outline'}
               size={19}
             />
@@ -506,7 +507,7 @@ export default function ActivityDetailScreen() {
                   multiline
                   onChangeText={setMessageDraft}
                   placeholder="Write to the activity…"
-                  placeholderTextColor="#8A929A"
+                  placeholderTextColor={colors.subtleText}
                   style={styles.chatInput}
                   value={messageDraft}
                 />
@@ -517,7 +518,7 @@ export default function ActivityDetailScreen() {
                   onPress={() => void submitMessage()}
                   style={[styles.sendButton, (chatSending || !messageDraft.trim()) && styles.disabledButton]}
                 >
-                  {chatSending ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons color="#FFFFFF" name="arrow-up" size={18} />}
+                  {chatSending ? <ActivityIndicator color={colors.onAccent} size="small" /> : <Ionicons color={colors.onAccent} name="arrow-up" size={18} />}
                 </Pressable>
               </View>
             </View>
@@ -527,7 +528,7 @@ export default function ActivityDetailScreen() {
         <Text style={styles.sectionLabel}>LOCATION & PRIVACY</Text>
         <View style={styles.locationCard}>
           <View style={styles.locationIcon}>
-            <Ionicons color="#FF6B4A" name="map-outline" size={23} />
+            <Ionicons color={colors.accent} name="map-outline" size={23} />
           </View>
           <View style={styles.locationCopy}>
             <Text style={styles.locationTitle}>Approximate area</Text>
@@ -540,7 +541,7 @@ export default function ActivityDetailScreen() {
 
         <View style={[styles.locationCard, !exactPoint && styles.privateCardLocked]}>
           <View style={[styles.locationIcon, exactPoint && styles.privateIconUnlocked]}>
-            <Ionicons color={exactPoint ? '#3E8E68' : '#8A929A'} name={exactPoint ? 'location' : 'lock-closed-outline'} size={23} />
+            <Ionicons color={exactPoint ? colors.success : colors.subtleText} name={exactPoint ? 'location' : 'lock-closed-outline'} size={23} />
           </View>
           <View style={styles.locationCopy}>
             <Text style={styles.locationTitle}>
@@ -559,7 +560,7 @@ export default function ActivityDetailScreen() {
             </Text>
             {exactPoint && (
               <Pressable accessibilityRole="button" onPress={() => void openDirections()} style={styles.mapsButton}>
-                <Ionicons color="#FFFFFF" name="navigate-outline" size={17} />
+                <Ionicons color={colors.onAccent} name="navigate-outline" size={17} />
                 <Text style={styles.mapsButtonText}>Open walking directions</Text>
               </Pressable>
             )}
@@ -589,7 +590,7 @@ export default function ActivityDetailScreen() {
             onPress={canLeave ? confirmLeave : beginJoin}
             style={[styles.primaryButton, canLeave && styles.leaveButton, action !== null && styles.disabledButton]}>
             {action === 'join' || action === 'leave' ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={styles.primaryButtonText}>{actionLabel(activity)}</Text>
             )}
@@ -602,7 +603,7 @@ export default function ActivityDetailScreen() {
             disabled={action !== null}
             onPress={confirmCancel}
             style={[styles.cancelButton, action !== null && styles.disabledButton]}>
-            {action === 'cancel' ? <ActivityIndicator color="#9D3E2B" /> : <Text style={styles.cancelButtonText}>Cancel activity</Text>}
+            {action === 'cancel' ? <ActivityIndicator color={colors.danger} /> : <Text style={styles.cancelButtonText}>Cancel activity</Text>}
           </Pressable>
         )}
 
@@ -624,75 +625,75 @@ export default function ActivityDetailScreen() {
 function InfoRow({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
     <View style={styles.infoRow}>
-      <Ionicons color="#66717D" name={icon} size={18} />
+      <Ionicons color={colors.mutedText} name={icon} size={18} />
       <Text style={styles.infoText}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#F7F4EE', flex: 1 },
+  screen: { backgroundColor: colors.canvas, flex: 1 },
   navRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 10 },
-  navTitle: { color: '#16202A', fontSize: 15, fontWeight: '900' },
-  iconButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.1)', borderRadius: 22, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  navTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
+  iconButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 22, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
   iconButtonPlaceholder: { height: 44, width: 44 },
   content: { paddingBottom: 42, paddingHorizontal: 22 },
-  heroMark: { alignItems: 'center', backgroundColor: '#FBE4DF', borderRadius: 31, height: 62, justifyContent: 'center', marginTop: 20, width: 62 },
+  heroMark: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 31, height: 62, justifyContent: 'center', marginTop: 20, width: 62 },
   heroEmoji: { fontSize: 29 },
-  eyebrow: { color: '#FF6B4A', fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginTop: 25 },
-  title: { color: '#16202A', fontSize: 38, fontWeight: '900', letterSpacing: -1.5, lineHeight: 42, marginTop: 7 },
-  description: { color: '#5F6B76', fontSize: 15, lineHeight: 23, marginTop: 12 },
-  membershipBanner: { alignItems: 'center', backgroundColor: '#E1F2E9', borderRadius: 14, flexDirection: 'row', gap: 9, marginTop: 22, padding: 14 },
-  membershipBannerInactive: { backgroundColor: '#E9E7E2' },
-  membershipText: { color: '#2E7554', flex: 1, fontSize: 13, fontWeight: '800' },
-  membershipTextInactive: { color: '#747C84' },
-  infoCard: { backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 20, borderWidth: 1, gap: 15, marginTop: 18, padding: 18 },
+  eyebrow: { color: colors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginTop: 25 },
+  title: { color: colors.text, fontSize: 38, fontWeight: '900', letterSpacing: -1.5, lineHeight: 42, marginTop: 7 },
+  description: { color: colors.mutedText, fontSize: 15, lineHeight: 23, marginTop: 12 },
+  membershipBanner: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 14, flexDirection: 'row', gap: 9, marginTop: 22, padding: 14 },
+  membershipBannerInactive: { backgroundColor: colors.surface },
+  membershipText: { color: colors.success, flex: 1, fontSize: 13, fontWeight: '800' },
+  membershipTextInactive: { color: colors.mutedText },
+  infoCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, gap: 15, marginTop: 18, padding: 18 },
   infoRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
-  infoText: { color: '#394652', flex: 1, fontSize: 13, lineHeight: 19 },
-  sectionLabel: { color: '#66717D', fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginTop: 28 },
-  locationCard: { alignItems: 'flex-start', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 20, borderWidth: 1, flexDirection: 'row', gap: 14, marginTop: 10, padding: 17 },
-  privateCardLocked: { backgroundColor: '#EFEEE9' },
-  locationIcon: { alignItems: 'center', backgroundColor: '#FBE4DF', borderRadius: 21, height: 42, justifyContent: 'center', width: 42 },
-  privateIconUnlocked: { backgroundColor: '#E1F2E9' },
+  infoText: { color: colors.text, flex: 1, fontSize: 13, lineHeight: 19 },
+  sectionLabel: { color: colors.mutedText, fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginTop: 28 },
+  locationCard: { alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, flexDirection: 'row', gap: 14, marginTop: 10, padding: 17 },
+  privateCardLocked: { backgroundColor: colors.raised },
+  locationIcon: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 21, height: 42, justifyContent: 'center', width: 42 },
+  privateIconUnlocked: { backgroundColor: colors.surface },
   locationCopy: { flex: 1 },
-  locationTitle: { color: '#16202A', fontSize: 14, fontWeight: '900' },
-  locationBody: { color: '#66717D', fontSize: 12, lineHeight: 18, marginTop: 5 },
-  mapsButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#3E8E68', borderRadius: 999, flexDirection: 'row', gap: 7, marginTop: 14, paddingHorizontal: 15, paddingVertical: 10 },
-  mapsButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
-  participantRow: { alignItems: 'center', borderBottomColor: 'rgba(22,32,42,0.08)', borderBottomWidth: 1, flexDirection: 'row', gap: 12, paddingVertical: 9 },
+  locationTitle: { color: colors.text, fontSize: 14, fontWeight: '900' },
+  locationBody: { color: colors.mutedText, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  mapsButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.accent, borderRadius: radii.pill, flexDirection: 'row', gap: 7, marginTop: 14, paddingHorizontal: 15, paddingVertical: 10 },
+  mapsButtonText: { color: colors.onAccent, fontSize: 12, fontWeight: '900' },
+  participantRow: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 12, paddingVertical: 9 },
   participantCopy: { flex: 1 },
-  participantName: { color: '#16202A', fontSize: 14, fontWeight: '800' },
-  participantStatus: { color: '#66717D', fontSize: 12, marginTop: 3 },
-  chatCard: { backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 20, borderWidth: 1, gap: 10, marginTop: 10, padding: 14 },
-  chatEmpty: { color: '#66717D', fontSize: 13, lineHeight: 19, paddingVertical: 6 },
-  chatStatus: { color: '#8A929A', fontSize: 11, lineHeight: 16, paddingTop: 2 },
-  messageBubble: { backgroundColor: '#F7F4EE', borderRadius: 14, padding: 11 },
+  participantName: { color: colors.text, fontSize: 14, fontWeight: '800' },
+  participantStatus: { color: colors.mutedText, fontSize: 12, marginTop: 3 },
+  chatCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, gap: 10, marginTop: 10, padding: 14 },
+  chatEmpty: { color: colors.mutedText, fontSize: 13, lineHeight: 19, paddingVertical: 6 },
+  chatStatus: { color: colors.subtleText, fontSize: 11, lineHeight: 16, paddingTop: 2 },
+  messageBubble: { backgroundColor: colors.raised, borderRadius: 14, padding: 11 },
   messageHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  messageAuthor: { color: '#16202A', fontSize: 12, fontWeight: '900' },
-  messageTime: { color: '#8A929A', fontSize: 10 },
-  messageBody: { color: '#394652', fontSize: 13, lineHeight: 19, marginTop: 4 },
+  messageAuthor: { color: colors.text, fontSize: 12, fontWeight: '900' },
+  messageTime: { color: colors.subtleText, fontSize: 10 },
+  messageBody: { color: colors.text, fontSize: 13, lineHeight: 19, marginTop: 4 },
   chatInputRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, marginTop: 4 },
-  chatInput: { backgroundColor: '#F7F4EE', borderColor: 'rgba(22,32,42,0.1)', borderRadius: 14, borderWidth: 1, color: '#16202A', flex: 1, fontSize: 13, maxHeight: 90, minHeight: 44, paddingHorizontal: 12, paddingVertical: 11 },
-  sendButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
-  removeParticipantButton: { borderColor: 'rgba(157,62,43,0.25)', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  removeParticipantText: { color: '#9D3E2B', fontSize: 11, fontWeight: '900' },
-  feedback: { backgroundColor: '#FBE4DF', borderRadius: 14, marginTop: 18, padding: 13 },
-  feedbackSuccess: { backgroundColor: '#E1F2E9' },
-  feedbackErrorText: { color: '#9D3E2B', fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  feedbackSuccessText: { color: '#2E7554', fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  unavailableCopy: { color: '#66717D', fontSize: 13, lineHeight: 20, marginTop: 18, textAlign: 'center' },
-  primaryButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 999, justifyContent: 'center', marginTop: 24, minHeight: 54, paddingHorizontal: 20 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
-  leaveButton: { backgroundColor: '#9D3E2B' },
-  cancelButton: { alignItems: 'center', borderColor: 'rgba(157,62,43,0.25)', borderRadius: 999, borderWidth: 1, justifyContent: 'center', marginTop: 12, minHeight: 52, paddingHorizontal: 20 },
-  cancelButtonText: { color: '#9D3E2B', fontSize: 14, fontWeight: '900' },
+  chatInput: { backgroundColor: colors.raised, borderColor: colors.border, borderRadius: 14, borderWidth: 1, color: colors.text, flex: 1, fontSize: 13, maxHeight: 90, minHeight: 44, paddingHorizontal: 12, paddingVertical: 11 },
+  sendButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
+  removeParticipantButton: { borderColor: colors.danger, borderRadius: radii.pill, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  removeParticipantText: { color: colors.danger, fontSize: 11, fontWeight: '900' },
+  feedback: { backgroundColor: colors.warningSurface, borderRadius: 14, marginTop: 18, padding: 13 },
+  feedbackSuccess: { backgroundColor: colors.raised },
+  feedbackErrorText: { color: colors.danger, fontSize: 12, fontWeight: '700', lineHeight: 18 },
+  feedbackSuccessText: { color: colors.success, fontSize: 12, fontWeight: '700', lineHeight: 18 },
+  unavailableCopy: { color: colors.mutedText, fontSize: 13, lineHeight: 20, marginTop: 18, textAlign: 'center' },
+  primaryButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.pill, justifyContent: 'center', marginTop: 24, minHeight: 54, paddingHorizontal: 20 },
+  primaryButtonText: { color: colors.onAccent, fontSize: 14, fontWeight: '900' },
+  leaveButton: { backgroundColor: colors.danger },
+  cancelButton: { alignItems: 'center', borderColor: colors.danger, borderRadius: radii.pill, borderWidth: 1, justifyContent: 'center', marginTop: 12, minHeight: 52, paddingHorizontal: 20 },
+  cancelButtonText: { color: colors.danger, fontSize: 14, fontWeight: '900' },
   reportButton: { alignItems: 'center', marginTop: 18, padding: 10 },
-  reportButtonText: { color: '#66717D', fontSize: 12, fontWeight: '800' },
+  reportButtonText: { color: colors.mutedText, fontSize: 12, fontWeight: '800' },
   safetyActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 12 },
   disabledButton: { opacity: 0.5 },
-  centerState: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
-  centerTitle: { color: '#16202A', fontSize: 25, fontWeight: '900', letterSpacing: -0.8, marginTop: 16, textAlign: 'center' },
-  centerBody: { color: '#66717D', fontSize: 14, lineHeight: 21, marginTop: 10, textAlign: 'center' },
+  centerState: { alignItems: 'center', backgroundColor: colors.canvas, flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
+  centerTitle: { color: colors.text, fontSize: 25, fontWeight: '900', letterSpacing: -0.8, marginTop: 16, textAlign: 'center' },
+  centerBody: { color: colors.mutedText, fontSize: 14, lineHeight: 21, marginTop: 10, textAlign: 'center' },
   textButton: { marginTop: 17, padding: 10 },
-  textButtonText: { color: '#66717D', fontSize: 13, fontWeight: '800' },
+  textButtonText: { color: colors.mutedText, fontSize: 13, fontWeight: '800' },
 });

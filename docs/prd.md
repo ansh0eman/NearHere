@@ -22,7 +22,10 @@ Ship a trustworthy beta in one deliberately seeded launch neighborhood where a p
 - Ask for foreground location. If unavailable/denied, provide search and map-pin selection.
 - No email magic link in the selected flow.
 - No direct messages, payments, recurring-event administration, or complex recommendations in beta.
-- The custom avatar builder is deferred. Use a safe placeholder/generated representation until the core loop works.
+- A six-preset character picker is implemented as the first avatar slice. A
+  wardrobe/custom-builder, uploads and generation remain deferred until the
+  core loop is accepted. The character is not a verification or live-location
+  indicator.
 
 ## 4. Functional requirements
 
@@ -42,7 +45,9 @@ Ship a trustworthy beta in one deliberately seeded launch neighborhood where a p
 - After successful authentication, load the application profile; require minimum display-name onboarding when incomplete, then resume the protected Join or Host intent.
 - Create an application profile row automatically for every authenticated identity; expose only deliberate host/participant projections through product APIs.
 - Store phone identity inside the protected Supabase Auth schema, not in a public application table.
-- Allow a display name and optional interests; defer the custom avatar builder.
+- Allow a display name and optional interests. Assign a stable random bundled
+  character on account creation and let the owner choose among six presets;
+  defer custom avatar construction.
 
 ### 4.3 Map and discovery
 
