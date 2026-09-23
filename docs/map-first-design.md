@@ -1,5 +1,10 @@
 # NearHere: a neighbourhood playground
 
+> Superseded visual target, 23 September 2026: the user rejected this iteration's
+> palette and simple faces. Follow [Night Arcade](design-concepts/design-review.md)
+> and its [execution playbook](handoffs/night-arcade-execution.md). This document
+> remains an implementation/history record, not the current visual specification.
+
 Design revision: 23 September 2026. This records the new direction, the first
 implemented slice, and the remaining work. It supersedes the cream/orange
 discovery layout described in older design notes.

@@ -1,5 +1,15 @@
 # NearHere API Specification
 
+## Redesign contract boundary — 23 September 2026
+
+Current discovery remains `nearby_activities`; it does **not** return a host
+avatar configuration. Own profile reads include the persisted `avatar_config`.
+The proposed `nearby_activities_with_avatars` wrapper in
+[ticket 3](handoffs/night-arcade-execution.md) is **not implemented/deployed**.
+Do not call it until its migration, bounded projection and hosted privacy tests
+exist. The profile editor's update operation/catalog validation is likewise
+planned. Existing participation/chat/detail RPCs remain authoritative.
+
 Status: **design contract** for the modular API. Supabase Auth endpoints are provider-owned and are not reimplemented as `/v1/auth/*` routes.
 
 ## 1. Protocol conventions

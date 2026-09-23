@@ -1,5 +1,57 @@
 # NearHere Engineering Learning Guide
 
+## Lesson 34 — Separate appearance, identity, and evidence
+
+The same host should look the same after changing their name. A random choice in
+a React render would change appearance on rerenders; a display-name hash changes
+on rename. Instead PostgreSQL assigns a random UUID **once** in the profile's
+`avatar_config` default. A seed is an input to a deterministic selection rule:
+same seed + same catalog version = same artwork. The image itself need not be
+stored in each database row. A later bundled catalog makes that identity visible.
+
+```mermaid
+flowchart LR
+  Signup[Auth user inserted] --> Trigger[Existing profile trigger]
+  Trigger --> Default[DB default assigns random seed]
+  Default --> Config[(Saved avatar config)]
+  Config --> Parser[Validate version and seed]
+  Parser --> Catalog[Planned stable artwork catalog]
+  Catalog --> UI[Map and profile use same character]
+```
+
+Current implementation: `202609230001_assigned_avatars.sql`,
+`lib/avatar-identity.ts`, its unit test, and own-profile render calls. Public host
+projection and the artwork catalog are **planned**, not implied by this diagram.
+The migration backfills only empty JSON so existing customisation isn't erased.
+A rollback-only database test exercised the auth trigger and rename stability.
+
+Location taught a second boundary: “permission granted” means the app may ask;
+it does not mean GPS has produced coordinates. `lib/device-location.ts` accepts
+an injected provider (a set of functions). Unit tests can therefore simulate a
+denial, missing fix or cached result without calling actual phone hardware. Its
+union result has `ok:true` with a point, or `ok:false` with a reason. TypeScript
+narrows these branches so the UI cannot blindly read coordinates on failure.
+The hook keeps the selected area on failure. A recent cached fix is labelled
+honestly. Remaining lifecycle/storage races require the next ticket's tests.
+
+The command-output lesson matters too: the test summariser reported 56 passing
+tests but the combined command exited nonzero. Inspection found the compiler was
+invoked from the wrong directory. Run the installed mobile compiler, not an
+unrelated executable resolved from the repository root. A summary is a convenience,
+not stronger evidence than the real exit status and exact diagnostics.
+
+Finally, demo activities expire because discovery filters by time. A repeatable
+seeder creates missing live slots while preserving history. This is **idempotency**:
+repeating the operation should not multiply equivalent live fixtures. The current
+single-run test passes, but its discovery-based lookup has blocking/pagination
+limits documented in ticket 0; don't overstate it as concurrency-safe.
+
+Learner exercise: trace a services-disabled result from resolver to hook to the
+Nearby notice. Then explain why changing the user's display name must not call
+the random-seed generator. Interview framing: “I separated persistent identity,
+presentation, and location failure states, and tested their boundaries.” Do not
+claim a finished custom-map renderer or a production avatar editor yet.
+
 ## Lesson 33 — Designing around a map
 
 A map-first interface needs more than a map background. In the previous screen, a card was selected automatically, filter chips were always visible, and a tab bar occupied the bottom. These independent elements competed for the same space. The new screen stores a nullable `selectedId`: null is a valid resting state with no card. A marker or Browse row selects it; tapping the map clears it. The selected object is derived from current nearby rows so a vanished activity does not keep a stale preview.

@@ -1,5 +1,14 @@
 # NearHere Visual Evidence and Screenshot Log
 
+## 23 September 2026 — concepts are not acceptance evidence
+
+Three generated map/profile proposals are in `design-concepts/`. They establish
+art direction only; invented dates, totals, names and geographic detail are not
+runtime evidence. See [the concept review](design-concepts/design-review.md).
+No populated-map screenshot or Night Arcade implementation acceptance has yet
+been captured for this handoff. The execution agent must record real device/build
+captures using [ticket 8](handoffs/night-arcade-execution.md), separately from art.
+
 Screenshots are part of the engineering record. They prove what a user sees;
 hosted tests prove what the backend permits. Neither replaces the other.
 

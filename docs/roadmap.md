@@ -1,5 +1,15 @@
 # NearHere Roadmap
 
+## Active priority — Night Arcade
+
+Ordered next: baseline/location and durable demos → shared dark theme → six
+original character assets → safe avatar projections → profile editor → custom
+map proof → map integration → all remaining screens → regression/accessibility/
+physical acceptance. See [the implementation playbook](handoffs/night-arcade-execution.md)
+for dependencies and pass criteria, and [status](handoffs/night-arcade-status.md)
+for actual progress. This updates earlier avatar/map deferrals; no release date
+or production readiness is implied.
+
 The roadmap is dependency-ordered rather than date-promised. Dates become meaningful after effort, external setup, and validation are understood.
 
 ```mermaid

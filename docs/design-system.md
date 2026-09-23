@@ -1,5 +1,13 @@
 # NearHere Design System Direction
 
+## Current target — Night Arcade
+
+The user rejected the earlier mixed cream/orange/violet design. The current
+working target is [Night Arcade: palette, hierarchy, avatars and research](design-concepts/design-review.md).
+Those tokens are a specification, not a completed app-wide migration. Follow
+[the implementation tickets](handoffs/night-arcade-execution.md) and preserve
+privacy/participation behaviour. The earlier sections below remain historical.
+
 ## Map-first revision — 23 September 2026
 
 Discovery now uses violet `#6B4FA6`, plum `#302842`, white/lilac surfaces, and mint accents. The map has an area selector, profile access, recenter, and a compact Browse/Host dock. Categories live in Browse; an activity card appears only after selection. Nearby hides the tab bar; Plans and Me retain it. Native starter mascots replace the old activity-count pills. See [the design research and implementation guide](map-first-design.md). Older visual rules below remain historical where they conflict; other screens have not all migrated yet.

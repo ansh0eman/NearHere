@@ -1,5 +1,12 @@
 # NearHere Engineering Backlog
 
+## Active backlog — premium redesign
+
+The [Night Arcade ticket ledger](handoffs/night-arcade-status.md) is the current
+priority order. Its [implementation playbook](handoffs/night-arcade-execution.md)
+contains file ownership, contracts, failure modes and verification. Do not execute
+the earlier violet/mascot follow-through as if the user accepted that appearance.
+
 ## Map-first design follow-through — 23 September 2026
 
 - [x] Implement a map-first opening screen with progressive disclosure of filters/list.

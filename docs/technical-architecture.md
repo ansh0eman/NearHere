@@ -1,5 +1,15 @@
 # NearHere Technical Architecture
 
+## Redesign architecture checkpoint — 23 September 2026
+
+Current native map: `react-native-maps` 1.20.1 on Expo 54 / RN 0.81.5, using Apple
+Maps on iOS. MapLibre is proposed but not installed, configured or built. Confirm
+the exact compatible version before adding it; current documentation and old
+examples use different APIs. `expo-image` is already available for planned local
+character assets. No 3D runtime or remote avatar-generation API is needed in the
+shipping client. Provider/style coverage and production terms remain unresolved.
+Follow [tickets 2 and 5](handoffs/night-arcade-execution.md), not guessed imports.
+
 This document records concrete technologies and responsibility boundaries. See [`system-design.md`](system-design.md) for the requirement-first explanation.
 
 ## 1. Technology stack

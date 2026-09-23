@@ -1,5 +1,21 @@
 # NearHere testing status
 
+## 23 September 2026 — design handoff and foundations
+
+New location/avatar unit tests: total **56 passed, 0 failed**. Installed mobile
+TypeScript compiler and Expo lint passed. Initial root compiler invocation was
+wrong; its nonzero exit was investigated rather than treating the compressed
+test summary as full success. Avatar-default migration deployed; rollback-only
+new-user trigger/name-change check passed. Four existing profiles have seeds.
+Persistent demo seeder created 12 activities across four users; repeat run created
+zero and retained 12. No deletion or cancellation.
+
+**Not yet accepted:** new location controls in Simulator, populated markers,
+current iOS export/native build, full hosted regression, physical-device behaviour,
+or Night Arcade visuals. The concept images are not screenshots. See the
+[precise checkpoint](handoffs/night-arcade-status.md) and
+[required acceptance matrix](handoffs/night-arcade-execution.md#5-verification-recipes-and-acceptance-matrix).
+
 ## 23 September 2026 — map-first design acceptance
 
 TypeScript, lint (no warnings), and iOS production bundle export passed after

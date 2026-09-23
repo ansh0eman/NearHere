@@ -1,5 +1,15 @@
 # NearHere End-to-End System Design
 
+## Active extension: map presentation and persistent identity
+
+The [Night Arcade playbook](handoffs/night-arcade-execution.md) adds a planned
+renderer/tiles/style boundary and stable bundled character catalog. Only random
+profile-seed assignment is deployed so far. A map renderer draws geography; the
+tile provider supplies it; style rules choose its appearance. None replaces the
+Postgres privacy/participation rules. Public avatar data must travel through a
+bounded, block-aware server projection. See the playbook's architecture diagram
+and ticket 3 for that trust boundary. No live people-tracking system is planned.
+
 Status: **living design**. Implemented pieces are called out explicitly; the rest is an evolution plan, not a production claim.
 
 ## 1. Start with requirements, not technology

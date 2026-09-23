@@ -2,7 +2,9 @@
 
 ## Current design direction — 23 September 2026
 
-Read [Map-first design](map-first-design.md) for the researched neighbourhood-playground direction, the implemented minimal discovery screen, original starter mascots, and the staged custom vector-map/ avatar-editor work. This supersedes older orange-and-cream discovery mockups.
+**Start here for the next implementation:** [Night Arcade handoff status](handoffs/night-arcade-status.md), then the [step-by-step execution playbook](handoffs/night-arcade-execution.md) and [research/visual specification](design-concepts/design-review.md). The user rejected the mixed light/violet/cream appearance. Night Arcade is the working charcoal/lime direction, with simplified full-body character assets. It is planned, not yet shipped.
+
+[Map-first design](map-first-design.md) records the earlier minimal-discovery implementation. Its violet palette and procedural faces are historical, not the new visual target.
 
 This directory is the living engineering record for NearHere. It is written for a computer-science graduate learning how a production product is designed, built, tested, and scaled. Every important decision should record the requirement, alternatives, tradeoff, implementation status, failure modes, and verification evidence.
 
