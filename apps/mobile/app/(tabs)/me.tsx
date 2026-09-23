@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HostAvatar } from '@/components/host-avatar';
+import { avatarSeed } from '@/lib/avatar-identity';
 
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
@@ -35,7 +36,7 @@ export default function MeScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.avatar}>
-        <HostAvatar seed={profileState.profile?.displayName ?? 'nearhere'} size={88} />
+        <HostAvatar seed={avatarSeed(profileState.profile?.avatarConfig, session?.user.id ?? 'nearhere')} size={88} />
       </View>
 
       {session ? (

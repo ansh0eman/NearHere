@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   Modal,
   Platform,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { HostAvatar } from '@/components/host-avatar';
+import { avatarSeed } from '@/lib/avatar-identity';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNearbyActivities } from '@/hooks/use-nearby-activities';
@@ -52,7 +54,7 @@ export default function NearbyScreen() {
   const mapRef = useRef<MapView>(null);
   const { pendingIntent, session, setPendingIntent } = useAuth();
   const { state: profileState } = useProfile();
-  const { label, refreshManualLocation, region, requestDeviceLocation, source, status: locationStatus } =
+  const { failure, failureMessage, label, refreshManualLocation, region, requestDeviceLocation, source, status: locationStatus } =
     useNearbyLocation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
@@ -292,7 +294,7 @@ export default function NearbyScreen() {
             <Ionicons name="chevron-down" size={15} color="#665E76" />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Open my profile" onPress={() => router.push('/me')} style={styles.profileButton}>
-            <HostAvatar seed={profileState.profile?.displayName ?? 'nearhere'} size={38} />
+            <HostAvatar seed={avatarSeed(profileState.profile?.avatarConfig, session?.user.id ?? 'nearhere')} size={38} />
           </Pressable>
         </View>
       </SafeAreaView>
@@ -305,10 +307,18 @@ export default function NearbyScreen() {
           </Pressable>
         </View>
 
-        {locationStatus === 'denied' || locationStatus === 'error' ? (
-          <Pressable accessibilityRole="button" onPress={openLocationPicker} style={styles.notice}>
-            <Text style={styles.noticeText}>Choose an area to explore. Location is unavailable.</Text>
-          </Pressable>
+        {failureMessage ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{failureMessage}</Text>
+            <View style={{ flexDirection: 'row', gap: 20 }}>
+              <Pressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => {
+                if (failure === 'permissionDenied' || failure === 'servicesDisabled') {
+                  void Linking.openSettings().catch(() => Alert.alert('Open Settings', 'Open iPhone Settings and check NearHere location access.'));
+                } else void requestDeviceLocation();
+              }}><Text style={styles.noticeText}>{failure === 'fixUnavailable' ? 'Try again' : 'Open Settings'}</Text></Pressable>
+              <Pressable accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }} onPress={openLocationPicker}><Text style={styles.noticeText}>Choose area</Text></Pressable>
+            </View>
+          </View>
         ) : null}
 
         {activityState.status === 'error' ? (
