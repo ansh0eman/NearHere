@@ -16,6 +16,7 @@ import MapView, { Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DEFAULT_MAP_REGION } from '@/hooks/use-nearby-location';
+import { colors, radii, spacing } from '@/constants/design-tokens';
 import { saveManualLocation } from '@/lib/location-storage';
 import { searchPlaces } from '@/lib/place-search';
 import { PlaceSearchResult } from '@/types/place-search';
@@ -118,7 +119,7 @@ export default function LocationPickerScreen() {
             accessibilityLabel="Close location picker"
             onPress={() => router.back()}
             style={styles.iconButton}>
-            <Ionicons name="close" size={23} color="#16202A" />
+            <Ionicons name="close" size={23} color={colors.text} />
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>MANUAL LOCATION</Text>
@@ -128,7 +129,7 @@ export default function LocationPickerScreen() {
 
         <View style={styles.searchCard}>
           <View style={styles.searchRow}>
-            <Ionicons name="search" size={18} color="#66717D" />
+            <Ionicons name="search" size={18} color={colors.mutedText} />
             <TextInput
               accessibilityLabel="Search for an area"
               autoCapitalize="words"
@@ -140,7 +141,7 @@ export default function LocationPickerScreen() {
               }}
               onSubmitEditing={() => void submitSearch()}
               placeholder="Search neighborhood, landmark, or city"
-              placeholderTextColor="#8B949D"
+              placeholderTextColor={colors.subtleText}
               returnKeyType="search"
               style={styles.searchInput}
               value={query}
@@ -156,9 +157,9 @@ export default function LocationPickerScreen() {
                 pressed && styles.searchButtonPressed,
               ]}>
               {isSearching ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color={colors.onAccent} size="small" />
               ) : (
-                <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={17} color={colors.onAccent} />
               )}
             </Pressable>
           </View>
@@ -173,7 +174,7 @@ export default function LocationPickerScreen() {
                   key={result.id}
                   onPress={() => selectSearchResult(result)}
                   style={[styles.resultRow, index > 0 && styles.resultRowBorder]}>
-                  <Ionicons name="location-outline" size={18} color="#FF6B4A" />
+                  <Ionicons name="location-outline" size={18} color={colors.accent} />
                   <Text numberOfLines={2} style={styles.resultLabel}>
                     {result.label}
                   </Text>
@@ -191,7 +192,7 @@ export default function LocationPickerScreen() {
 
       <View pointerEvents="none" style={styles.pinWrap}>
         <View style={styles.pin}>
-          <Ionicons name="sparkles" size={19} color="#FFFFFF" />
+          <Ionicons name="sparkles" size={19} color={colors.onAccent} />
         </View>
         <View style={styles.pinShadow} />
       </View>
@@ -208,11 +209,11 @@ export default function LocationPickerScreen() {
             onPress={() => void confirmLocation()}
             style={[styles.confirmButton, isSaving && styles.confirmButtonDisabled]}>
             {isSaving ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <>
                 <Text style={styles.confirmText}>Use this area</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={18} color={colors.onAccent} />
               </>
             )}
           </Pressable>
@@ -223,33 +224,33 @@ export default function LocationPickerScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#DCEBDC', flex: 1 },
+  screen: { backgroundColor: colors.canvas, flex: 1 },
   headerArea: { left: 0, position: 'absolute', right: 0, top: 0 },
   header: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 8 },
-  iconButton: { alignItems: 'center', backgroundColor: '#F7F4EE', borderRadius: 22, height: 44, justifyContent: 'center', shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12, width: 44 },
-  headerCopy: { backgroundColor: '#F7F4EE', borderRadius: 18, flex: 1, paddingHorizontal: 16, paddingVertical: 11, shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12 },
-  eyebrow: { color: '#FF6B4A', fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
-  title: { color: '#16202A', fontSize: 15, fontWeight: '900', letterSpacing: -0.3, marginTop: 3 },
-  searchCard: { backgroundColor: '#F7F4EE', borderRadius: 20, marginHorizontal: 16, marginTop: 10, padding: 8, shadowColor: '#16202A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.13, shadowRadius: 12 },
+  iconButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  headerCopy: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, flex: 1, paddingHorizontal: 16, paddingVertical: 11 },
+  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.1 },
+  title: { color: colors.text, fontSize: 15, fontWeight: '800', letterSpacing: -0.3, marginTop: 3 },
+  searchCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, marginHorizontal: 16, marginTop: 10, padding: 8 },
   searchRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  searchInput: { color: '#16202A', flex: 1, fontSize: 14, minHeight: 42, paddingVertical: 8 },
-  searchButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 18, height: 38, justifyContent: 'center', width: 38 },
+  searchInput: { color: colors.text, flex: 1, fontSize: 14, minHeight: 42, paddingVertical: 8 },
+  searchButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.control, height: 38, justifyContent: 'center', width: 38 },
   searchButtonDisabled: { opacity: 0.4 },
   searchButtonPressed: { transform: [{ scale: 0.96 }] },
-  searchError: { color: '#A23E2B', fontSize: 12, lineHeight: 17, paddingHorizontal: 4, paddingVertical: 7 },
-  results: { borderTopColor: '#E0DDD6', borderTopWidth: StyleSheet.hairlineWidth, marginTop: 6, paddingTop: 2 },
+  searchError: { color: colors.danger, fontSize: 12, lineHeight: 17, paddingHorizontal: 4, paddingVertical: 7 },
+  results: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 6, paddingTop: 2 },
   resultRow: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 48, paddingHorizontal: 5, paddingVertical: 7 },
-  resultRowBorder: { borderTopColor: '#E7E3DC', borderTopWidth: StyleSheet.hairlineWidth },
-  resultLabel: { color: '#27313A', flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
-  attribution: { color: '#66717D', fontSize: 10, paddingBottom: 4, paddingHorizontal: 5, paddingTop: 3, textAlign: 'right', textDecorationLine: 'underline' },
+  resultRowBorder: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  resultLabel: { color: colors.text, flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
+  attribution: { color: colors.mutedText, fontSize: 10, paddingBottom: 4, paddingHorizontal: 5, paddingTop: 3, textAlign: 'right', textDecorationLine: 'underline' },
   pinWrap: { alignItems: 'center', left: '50%', marginLeft: -24, marginTop: -47, position: 'absolute', top: '50%', width: 48 },
-  pin: { alignItems: 'center', backgroundColor: '#FF6B4A', borderColor: '#FFFFFF', borderRadius: 24, borderWidth: 4, height: 48, justifyContent: 'center', width: 48 },
-  pinShadow: { backgroundColor: 'rgba(22,32,42,0.22)', borderRadius: 10, height: 7, marginTop: 5, width: 22 },
-  bottomArea: { bottom: 0, left: 0, padding: 12, position: 'absolute', right: 0 },
-  sheet: { backgroundColor: '#F7F4EE', borderRadius: 26, padding: 20, shadowColor: '#16202A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20 },
-  sheetTitle: { color: '#16202A', fontSize: 21, fontWeight: '900', letterSpacing: -0.6 },
-  sheetBody: { color: '#66717D', fontSize: 13, lineHeight: 19, marginTop: 5 },
-  confirmButton: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 999, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 17, minHeight: 50, paddingHorizontal: 18 },
+  pin: { alignItems: 'center', backgroundColor: colors.accent, borderColor: colors.text, borderRadius: radii.pill, borderWidth: 3, height: 48, justifyContent: 'center', width: 48 },
+  pinShadow: { backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, height: 7, marginTop: 5, width: 22 },
+  bottomArea: { bottom: 0, left: 0, padding: spacing.md, position: 'absolute', right: 0 },
+  sheet: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.sheet, borderWidth: 1, padding: spacing.lg },
+  sheetTitle: { color: colors.text, fontSize: 21, fontWeight: '800', letterSpacing: -0.6 },
+  sheetBody: { color: colors.mutedText, fontSize: 13, lineHeight: 19, marginTop: 5 },
+  confirmButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.pill, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 17, minHeight: 50, paddingHorizontal: 18 },
   confirmButtonDisabled: { opacity: 0.65 },
-  confirmText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  confirmText: { color: colors.onAccent, fontSize: 14, fontWeight: '800' },
 });

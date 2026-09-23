@@ -12,9 +12,10 @@ import {
 import { completeMyProfile, getMyProfile } from '@/lib/profile-repository';
 import { useAuth } from '@/providers/auth-provider';
 import type { ProfileOperationResult, ProfileState } from '@/types/profile';
+import type { AvatarCatalogId } from '../../../packages/contracts/avatar';
 
 type ProfileContextValue = {
-  completeProfile: (displayName: string) => Promise<ProfileOperationResult>;
+  completeProfile: (displayName: string, avatarId: AvatarCatalogId) => Promise<ProfileOperationResult>;
   refresh: () => Promise<void>;
   state: ProfileState;
 };
@@ -65,7 +66,7 @@ export function ProfileProvider({ children }: PropsWithChildren) {
   }, [loadProfile, userId]);
 
   const completeProfile = useCallback(
-    async (displayName: string): Promise<ProfileOperationResult> => {
+    async (displayName: string, avatarId: AvatarCatalogId): Promise<ProfileOperationResult> => {
       if (!userId) return { ok: false, message: 'Sign in before completing your profile.' };
 
       const previousProfile = state.profile;
@@ -73,7 +74,7 @@ export function ProfileProvider({ children }: PropsWithChildren) {
 
       const activeRequest = ++requestId.current;
       setState({ status: 'saving', profile: previousProfile });
-      const result = await completeMyProfile(userId, displayName);
+      const result = await completeMyProfile(userId, displayName, avatarId, previousProfile.avatarConfig);
       if (activeRequest !== requestId.current) {
         return { ok: false, message: 'The signed-in account changed before the profile was saved.' };
       }

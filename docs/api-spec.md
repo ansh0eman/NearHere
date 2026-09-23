@@ -1,5 +1,16 @@
 # NearHere API Specification
 
+## Redesign contract boundary — 23 September 2026
+
+Current discovery calls the block-aware `nearby_activities_with_avatars`
+wrapper. Migration 230004 bounds the public avatar projection to `version`, a
+valid UUID `seed`, and one of six known `avatarId` values. Anonymous hosted smoke
+returned 13 rows with no private/account fields. Own profile reads include
+`avatar_config`, which the mobile parser reduces to the same allowlisted shape.
+The six-option profile editor is implemented, but its authenticated save/reload
+and map consistency still require Simulator acceptance. Existing participation,
+chat and detail RPCs remain authoritative.
+
 Status: **design contract** for the modular API. Supabase Auth endpoints are provider-owned and are not reimplemented as `/v1/auth/*` routes.
 
 ## 1. Protocol conventions
@@ -79,11 +90,16 @@ Example request:
 ```json
 {
   "displayName": "Anshu",
+  "avatarId": "v1-04",
   "interests": ["walk", "coffee"]
 }
 ```
 
-The server trims/validates values, updates only the authenticated actor's row, and returns the canonical profile.
+The server trims/validates values, updates only the authenticated actor's row,
+and returns the canonical profile. `avatarId` is optional and, when supplied,
+must be one of the six bundled IDs. The current app saves directly through the
+Supabase Data API under own-row RLS; this `/me` shape is the future modular API
+contract.
 
 ## 5. Discovery and activities
 

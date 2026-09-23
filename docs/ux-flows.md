@@ -44,7 +44,7 @@ flowchart TD
     OTP --> VERIFY{"Server verifies?"}
     VERIFY -->|"No"| OTP
     VERIFY -->|"Yes"| PROFILE{"Profile complete?"}
-    PROFILE -->|"No"| ONBOARD["Choose display name"]
+    PROFILE -->|"No"| ONBOARD["Choose display name and character"]
     ONBOARD -->|"Save succeeds"| RESUME["Resume saved join intent"]
     ONBOARD -->|"Save fails"| ONBOARD
     PROFILE -->|"Yes"| RESUME
@@ -70,7 +70,7 @@ flowchart TD
     SESSION -->|"No"| AUTH["Save host intent and complete phone OTP"]
     AUTH --> PROFILE{"Profile complete?"}
     SESSION -->|"Yes"| PROFILE
-    PROFILE -->|"No"| ONBOARD["Choose display name"]
+    PROFILE -->|"No"| ONBOARD["Choose display name and character"]
     ONBOARD --> BASICS
     PROFILE -->|"Yes"| BASICS["Choose activity type and title"]
     BASICS --> TIME["Select start and end time"]
@@ -158,4 +158,24 @@ Every asynchronous control must prevent accidental duplicate submission while st
 - Announce important status changes to assistive technology.
 - Respect reduced-motion preferences.
 - Never show a success state until the authoritative system confirms success.
+
+## 9. Profile and avatar choice
+
+```mermaid
+flowchart LR
+  ACCOUNT["Me tab"] --> EDIT["Edit profile"]
+  EDIT --> DRAFT["Name + one of six bundled characters"]
+  DRAFT --> SAVE{"Save succeeds?"}
+  SAVE -->|"Yes"| PROFILE["Updated profile state"]
+  SAVE -->|"No"| ERROR["Keep draft and explain error"]
+  PROFILE --> MAP["Same character in Nearby markers"]
+  EDIT -->|"Cancel"| ACCOUNT
+```
+
+New profiles see the editor as part of onboarding. Existing users reach it from
+Me. Choosing a character is local draft state until Save, so Back cancels the
+change. The write preserves the database-generated seed and stores a separate
+allowlisted ID (`v1-01` to `v1-06`). The same stable avatar component renders Me,
+Browse and map markers. Simulator save/reload and cross-surface acceptance is
+still required before claiming this flow works end-to-end.
 - Provide a safe route back from permission, authentication, and network failures.

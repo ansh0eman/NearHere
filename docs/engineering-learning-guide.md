@@ -1,12 +1,66 @@
 # NearHere Engineering Learning Guide
 
+## Lesson 34 — Separate appearance, identity, and evidence
+
+The same host should look the same after changing their name. A random choice in
+a React render would change appearance on rerenders; a display-name hash changes
+on rename. Instead PostgreSQL assigns a random UUID **once** in the profile's
+`avatar_config` default. A seed is an input to a deterministic selection rule:
+same seed + same catalog version = same artwork. The image itself need not be
+stored in each database row. A later bundled catalog makes that identity visible.
+
+```mermaid
+flowchart LR
+  Signup[Auth user inserted] --> Trigger[Existing profile trigger]
+  Trigger --> Default[DB default assigns random seed]
+  Default --> Config[(Saved avatar config)]
+  Config --> Parser[Validate version and seed]
+  Parser --> Catalog[Planned stable artwork catalog]
+  Catalog --> UI[Map and profile use same character]
+```
+
+Current implementation: `202609230001_assigned_avatars.sql`,
+`202609230002`/`003`/`004` public discovery projections, the six-image catalog,
+the preset editor and own-profile render calls. Migration 230001 backfills only
+empty JSON so existing customisation isn't erased. The later migration safely
+allowlists the seed and optional character ID for discovery.
+A rollback-only database test exercised the auth trigger and rename stability.
+
+Location taught a second boundary: “permission granted” means the app may ask;
+it does not mean GPS has produced coordinates. `lib/device-location.ts` accepts
+an injected provider (a set of functions). Unit tests can therefore simulate a
+denial, missing fix or cached result without calling actual phone hardware. Its
+union result has `ok:true` with a point, or `ok:false` with a reason. TypeScript
+narrows these branches so the UI cannot blindly read coordinates on failure.
+The hook keeps the selected area on failure. A recent cached fix is labelled
+honestly. Remaining lifecycle/storage races require the next ticket's tests.
+
+The command-output lesson matters too: the test summariser reported 56 passing
+tests but the combined command exited nonzero. Inspection found the compiler was
+invoked from the wrong directory. Run the installed mobile compiler, not an
+unrelated executable resolved from the repository root. A summary is a convenience,
+not stronger evidence than the real exit status and exact diagnostics.
+
+Finally, demo activities expire because discovery filters by time. A repeatable
+seeder creates missing live slots while preserving history. This is **idempotency**:
+repeating the operation should not multiply equivalent live fixtures. The current
+single-run test passes, but its discovery-based lookup has blocking/pagination
+limits documented in ticket 0; don't overstate it as concurrency-safe.
+
+Learner exercise: trace a services-disabled result from resolver to hook to the
+Nearby notice. Then explain why changing the user's display name must not call
+the random-seed generator. Interview framing: “I separated persistent identity,
+presentation, and location failure states, and tested their boundaries.” The
+six-preset profile editor is implemented; a custom builder and its Simulator
+save/reload acceptance remain separate.
+
 ## Lesson 33 — Designing around a map
 
 A map-first interface needs more than a map background. In the previous screen, a card was selected automatically, filter chips were always visible, and a tab bar occupied the bottom. These independent elements competed for the same space. The new screen stores a nullable `selectedId`: null is a valid resting state with no card. A marker or Browse row selects it; tapping the map clears it. The selected object is derived from current nearby rows so a vanished activity does not keep a stale preview.
 
 Browse is a modal, meaning an explicit temporary surface above the map. It owns filter/list presentation but shares the map's `filter` and nearby-data hook. The privacy contract therefore remains in the existing repository/RPC. UI minimalism must preserve recovery and navigation: the modal still has loading, empty, retry, close, and Your plans actions.
 
-`HostAvatar` is a reusable native component. A deterministic hash of a display name picks a pastel mascot colour. This gives consistent visual fallbacks with no external image requests, but it is not unique identity and not user customisation. A later versioned avatar config must travel through an explicit public host projection. The deeper distinction between a map renderer, vector tiles, and style JSON—and the exact limits of this implementation—is taught in [Map-first design](map-first-design.md).
+`HostAvatar` is a reusable native component. The current catalog contains six locally bundled full-body characters. A deterministic hash maps an account's versioned seed to a stable catalog index. The seed is visual configuration only; it never authorizes a request. Public discovery obtains a minimal avatar config from a dedicated RPC rather than fetching whole profiles. See the detailed flow in [Map-first design](map-first-design.md).
 
 This document explains NearHere from first principles. It is a living companion to the codebase: every meaningful product slice should add a lesson covering the problem, architecture, implementation, tradeoffs, verification, and interview language.
 
@@ -2064,15 +2118,15 @@ This chronological log collects cross-cutting challenges that are useful beyond 
 
 ## 2. Custom map identity versus Expo Go compatibility
 
-**Context:** Apple Maps works immediately on iOS but does not provide the desired depth of custom visual styling.
+**Context:** Apple Maps worked immediately on iOS but did not provide the desired depth of custom visual styling. The choice to defer renderer migration was an earlier checkpoint, not the current implementation.
 
 **Options considered:** retain native Apple/Google maps, configure styled Google Maps, use MapLibre, or build a custom illustrated canvas.
 
-**Decision:** keep `react-native-maps` while core behavior is changing; prefer MapLibre for the later custom-map renderer.
+**Decision (updated 24 Sep 2026):** use MapLibre Native for Nearby's map-first prototype, with NearHere's local Night Arcade v1 style over OpenFreeMap vector tiles and glyphs. The authored style now has a real iPhone Simulator render (V15), and the visible app-owned attribution button plus native attribution panel have fresh visual/tap evidence (V16). Marker/cluster taps on the authored style and other screens' redesign still need their own interaction/visual acceptance. Other screens continue using native UI/repository logic independently.
 
 **Reasoning:** changing the feature behavior and native rendering infrastructure in one slice would increase the number of possible causes for every defect.
 
-**Unresolved work:** MapLibre migration, custom style design, tile-source selection, attribution, offline policy, and development-build configuration remain future work.
+**Unresolved work:** visual acceptance and iteration of the authored base style, production tile SLA/provider review, offline behavior, physical-device/Android/performance acceptance and map-layer accessibility remain future work. OpenFreeMap is a prototype, not a production availability promise.
 
 ## 3. Dependency audit warnings in the generated Expo tree
 
@@ -2775,3 +2829,456 @@ fixed header/filter controls and lets the list remain the primary information
 surface; map mode retains a shorter card because map pins otherwise lack useful
 context. This is not just visual polish—it makes the core task, finding and
 joining an activity, possible on a small screen.
+
+## Lesson 34 — From Apple MapKit to clustered native vector maps
+
+The old Nearby screen used `react-native-maps`. On iOS its default provider
+draws Apple's basemap. That gives a useful map quickly but gives NearHere limited
+control over geography colors, labels, and built-in point-of-interest styling.
+The visual request—dark neighborhood geography with large people as activity
+markers—therefore changes the renderer, not just a React Native button color.
+
+The map has four independent inputs:
+
+```mermaid
+flowchart LR
+  Tiles[OpenFreeMap vector tiles] --> Renderer[MapLibre Native renderer]
+  Style[Map style JSON: layers and colors] --> Renderer
+  RPC[nearby_activities_with_avatars] --> Validated[Runtime-validated public activities]
+  Validated --> GeoJSON[GeoJSON FeatureCollection]
+  Catalog[Bundled v1 avatar catalog] --> Sprites[Symbol image registry]
+  GeoJSON --> Renderer
+  Sprites --> Renderer
+  Renderer --> Screen[Pan/zoom map + React Native selection card]
+```
+
+* **Renderer** is the native software that draws and interacts with the map. Here
+  it is MapLibre Native through its React Native package.
+* **Tiles** are chunked geography for the current viewport. Panning requests
+  different tile coordinates. The prototype uses OpenFreeMap.
+* **Style** instructs how to paint land, parks, roads, labels and water. Nearby
+  now imports NearHere's validated `assets/maps/nearhere-night-arcade-v1.json`;
+  its visual acceptance is still waiting for Simulator review.
+* **Overlay data** is NearHere's GeoJSON. It contains privacy-safe public
+  activity points; exact meeting coordinates do not belong in a map source.
+* **Sprite** is a bundled avatar image registered by `Images`, then selected by a
+  `SymbolLayer` from an allowlisted `avatarIcon` feature property.
+
+### Coordinate order: a practical source of map bugs
+
+The app's normal region shape is `{ latitude, longitude }`, which is readable and
+harder to mix up. GeoJSON uses `[longitude, latitude]`. Bellandur is roughly
+`[77.6739, 12.9283]`; reversing the pair puts the point far outside the intended
+neighborhood. The map feature builder performs the conversion once at the
+renderer boundary; domain/repository records keep named fields.
+
+### Why clusters solve the crowded screenshot
+
+Twelve full-body characters can overlap when their approximate areas are nearby.
+Randomly offsetting coordinates would lie about location and could imply
+precision the privacy radius does not support. Instead MapLibre's `GeoJSONSource`
+groups screen-near points at each zoom. A cluster is a derived visual aggregate,
+not a database row; it displays its count and asks the camera to zoom to the
+engine-computed expansion zoom. At close zoom, a `SymbolLayer` draws individual
+avatar images. Selecting a feature sets the existing `selectedId` state and
+opens the same React Native card/join flow.
+
+```text
+server summaries (public point + small host avatar config)
+       │ validate/parse once
+       ▼
+FeatureCollection (coordinates, activity ID, local sprite key)
+       │ GeoJSONSource + clusterRadius
+       ├── far zoom → cluster circle + count
+       └── close zoom → symbol sprite → selectedId → existing activity card
+```
+
+An accessibility caveat remains: native style-layer images are not ordinary
+React Native `Image` elements. The map layer needs accessible selection feedback;
+Browse must remain a full alternative with readable activity names. Verify
+VoiceOver rather than assuming visual symbols are accessible controls.
+
+### Typed assets and the TypeScript error we fixed
+
+`lib/avatar-catalog.ts` uses literal `require('../assets/avatars/v1/v1-01.png')`
+calls. Metro can statically discover these resources, package them into the app,
+and make them available offline. A dynamic string path is not a dependable Metro
+asset contract. Stable IDs and order are part of persisted presentation
+behavior.
+
+The first TypeScript compile failed when the catalog used broad React Native
+`ImageSourcePropType`. MapLibre `Images` accepts an image-asset require, not every
+possible URI/remote/packaged source variant. We narrowed the catalog to
+`ImageRequireSource`, matching its real invariant. We did not hide the mismatch
+with `any` or a cast. This is useful practical TypeScript: types describe which
+values truly occur, while library prop types document a runtime boundary.
+
+### Privacy and provider boundary
+
+The SQL wrapper starts from the existing block-aware `nearby_activities`
+result and joins only those activity IDs to profiles. Migration 230002 briefly
+returned the full `avatar_config`; review caught that over-broad field before it
+was treated as acceptable. Migration 230003 constrained it to `version` and
+UUID `seed`. Migration 230004 now also emits only one of six hard-coded avatar
+IDs. The deployed anonymous RPC smoke returned 13 rows and 13 allowlisted
+objects. Full actor/block filtering and a saved custom choice still need further
+acceptance.
+
+OpenFreeMap's official site advertises a no-key free public service. Its current
+terms are as-is, do not guarantee availability, can change, and mention possible
+Cloudflare CDN processing. This is useful for a prototype, not a production
+availability commitment. Tile requests reveal the viewport tiles needed plus
+ordinary network metadata. Never encode a private meeting point, phone number,
+auth token or identity in a tile URL. Keep provider attribution and show a
+truthful failure state if tiles cannot load.
+
+### Verification and remaining uncertainty
+
+After replacing the map source, 58 unit tests passed, including parser fallback
+for missing/malformed avatar config; TypeScript and lint passed; Expo config
+reported the MapLibre plugin and new architecture. A later native iOS build,
+install, real tile rendering, cluster expansion and marker selection passed in
+the iPhone 17 Pro Simulator. This distinguishes JavaScript compilation, native
+build, app launch, tile response, clustering, hosted RPC parity and
+physical-device acceptance.
+
+### Interview explanation
+
+> “I replaced the discovery basemap behind an Expo native boundary with MapLibre,
+> represented safe activity summaries as GeoJSON, added screen-space clustering
+> to avoid overlapping markers without falsifying coordinates, and mapped
+> persistent account avatar seeds to statically bundled sprites. I checked
+> coordinate ordering and kept joining/authorization in the existing repository
+> and database contract. I distinguished TypeScript/export success from the
+> native iOS and hosted acceptance still required.”
+
+Resume claims should wait until simulator and hosted proof are complete. Use
+measurable evidence rather than unsourced adjectives or performance claims.
+
+## Lesson 35 - A profile avatar picker without changing identity
+
+The account is the durable person record; the art is a presentation choice.
+NearHere therefore stores two distinct values:
+
+```text
+profiles.avatar_config
+  version   -> which interpretation/schema this JSON uses
+  seed      -> random UUID assigned by Postgres when profile is created
+  avatarId  -> one allowlisted visual preset chosen by the account owner
+```
+
+The seed is not a password, identity proof, or location. Initially it maps an
+account into the six-character catalog. The user can then choose another
+character by setting `avatarId`; the seed remains unchanged. The marker, Browse
+row and Me profile render through the same `HostAvatar` component and catalog,
+so a selection cannot drift into different art in different parts of the app.
+
+### Save and render data flow
+
+```mermaid
+sequenceDiagram
+  participant UI as Profile editor
+  participant State as ProfileProvider
+  participant Repo as Profile repository
+  participant DB as Supabase profiles
+  participant RPC as Nearby avatar RPC
+  UI->>State: save display name + catalog ID
+  State->>Repo: include current account ID and preserved seed
+  Repo->>DB: UPDATE own profile row
+  DB-->>Repo: updated private profile
+  Repo-->>State: validate and store profile
+  State-->>UI: show saved character
+  RPC->>DB: read host profiles for visible activities
+  DB-->>RPC: allowlist version, valid seed, valid catalog ID
+  RPC-->>UI: activity row + bounded avatar config
+```
+
+1. `app/onboarding/profile.tsx` loads the authenticated `UserProfile` from the
+   provider and derives a default catalog ID from the seed if no choice exists.
+2. The six `Pressable` controls expose radio semantics (`accessibilityRole`,
+   `accessibilityState.checked`). Selection is local screen state until Save.
+3. `validateDisplayName` enforces the existing 2-40 character boundary. The
+   selected value is typed as `AvatarCatalogId`, a union of six string literals.
+4. `ProfileProvider.completeProfile` binds the asynchronous save to the current
+   signed-in account and uses its request generation to ignore a stale response
+   after sign-out/account change.
+5. `completeMyProfile` preserves the existing seed and updates only the current
+   user's profile row. Supabase Row Level Security remains the server's owner
+   boundary; hiding a button is not authorization.
+6. The profile parser strips unknown JSON keys before data reaches application
+   state. The public discovery RPC separately reconstructs JSON from a strict
+   SQL allowlist. These are two independent validation boundaries.
+7. After updating the profile, the map refresh path must return the selected
+   `avatarId`; the `SymbolLayer` chooses a bundled local sprite using that ID.
+
+### One failed approach and the lesson
+
+The first implementation imported a runtime allowlist function from a shared
+TypeScript-only package. Expo/TypeScript could type-check it, but Node's native
+test runner could not resolve the extensionless `.ts` runtime module and three
+tests failed with `ERR_MODULE_NOT_FOUND`. The error was module resolution, not
+bad avatar validation. The runtime allowlist now lives in the mobile domain
+helper; shared contracts retain a type-only ID definition. Re-running the
+suite produced 61 passing tests, TypeScript passed, and lint was cleaned of
+duplicate imports. This is a useful reminder: a module can be valid for Metro
+and still be invalid in Node tests. Test the actual runtime that owns each file.
+
+### What is verified and what is not
+
+Migration 230004 is deployed and remote/local histories match. The anonymous
+RPC returns 13/13 existing demo rows with only `seed` and `version`; none of
+those dev accounts has saved an `avatarId` yet. Unit tests cover known and
+unknown IDs, seed preservation logic, and stripping arbitrary JSON keys. The
+profile editor has not yet been touched in Simulator because the Mac is locked
+at this checkpoint. Do not say that account save/reload or map consistency has
+passed until an authenticated Simulator run proves it.
+
+### Interview explanation
+
+> “I implemented preset avatar selection while preserving account identity. I
+> modeled the stable server-generated seed separately from the user-selected
+> catalog ID, validated that ID against a finite type and runtime allowlist,
+> kept the update behind own-row RLS, and reconstructed public RPC JSON rather
+> than exposing arbitrary profile JSON. I tested parser boundaries, typechecked
+> the app, and kept Simulator acceptance as a separate explicit gate.”
+
+## Lesson 36 - Carry a design system across real product states
+
+A dark palette is not “turn every white surface black.” Each color needs a
+semantic job. In `constants/design-tokens.ts`, `canvas` is the screen behind
+content, `surface` is a card or sheet, `raised` is an interactive field,
+`text` is the primary readable foreground, `mutedText` is secondary content,
+`accent` is the main focus/action, and `onAccent` is the text that must contrast
+with the lime button. A semantic name lets us change the design without hunting
+for the meaning of an arbitrary hex value in each screen.
+
+This slice applies those roles to Plans, Host creation, Activity Detail and the
+two map-picker overlays:
+
+```text
+design tokens
+   ├── Plans: upcoming/history, empty/loading/error, locked/unlocked point,
+   │          requester character, approve/reject/leave/directions
+   ├── Host: category, text fields, custom time picker, location summary,
+   │         capacity/join-mode controls, publish action
+   ├── Detail: membership, exact-location privacy, chat, safety and actions
+   └── Pickers: search, selected-area/pin state, errors and confirmation
+```
+
+The important product-engineering rule is that a visual refactor must preserve
+state meaning. For example, the locked exact-location panel is not just a gray
+box: it represents an authorization decision. The accepted point remains
+visible only if the existing Plans read model supplies it. Likewise, Approve
+and Decline still call the same host-authorized operation; changing a lime
+button does not move authorization into the client.
+
+In `app/(tabs)/plans.tsx`, `partitionPlans` still separates upcoming from history.
+Each `PlanCard` still derives `membershipLabel`, whether the activity is
+inactive, and whether `exactMeetingLocation` exists. The style change makes the
+same state distinctions legible on a charcoal surface. Host request cards now
+render the same bundled character family as the map. Their seed is derived from
+the host-only requester ID because that projection does not yet include the
+user-selected public avatar choice; do not mistake that fallback for persisted
+choice parity.
+
+In `app/host/create.tsx`, the quick start choices, native date/time modal,
+capacity control, open/approval toggle and meeting-point route are unchanged.
+The draft is still local until the user publishes. On publish, `createActivity`
+and the database transaction remain the authority for whether an activity
+exists. This is a useful separation of concerns: component styles own
+presentation; React state owns the local draft; the repository owns the
+request/response boundary; PostgreSQL owns durable invariants.
+
+The same boundary matters especially in `app/activity/[id].tsx`. Membership
+state, accepted-only exact meeting-point data, host cancellation and participant
+removal, and accepted-member chat are supplied or authorized by the existing
+repositories and server policies. The recolor changes the visual state roles,
+not the data needed to decide whether an action or coordinate is available.
+Success and error surfaces now use semantic success/danger tokens; the cancel,
+leave, report and block paths remain distinct actions with their original
+confirmation and request logic.
+
+`app/location-picker.tsx` and `app/host/meeting-point.tsx` receive the same
+canvas/surface/text/accent tokens for their controls and overlays. The base map
+is still `react-native-maps`, so this change does not claim that its provider's
+street tiles have become NearHere's custom vector art. That requires a separate
+map style/source decision and visual validation.
+
+Verification after the Activity Detail and picker overlay changes: **61 unit
+tests pass**, `npx tsc --noEmit` passes, Expo lint passes, and the iOS JavaScript
+bundle exports at 5.11 MB. `git diff --check` passes. These checks catch syntax,
+domain/parser regressions and bundle resolution problems. They cannot prove
+that a 390-point iPhone viewport has no clipped content, that the native date
+picker/map appearance is harmonious, or that contrast feels good in hand. The
+Mac lock prevented Simulator inspection, so treat these screens as implemented
+but not visually accepted. The precise next run is: unlock Mac, exercise Plans
+with accepted and pending/inactive actor state, open Host creation and test the
+keyboard/date picker, open Activity Detail and both map pickers, then capture
+screenshots without touching the 13 demo activities.
+
+### Interview explanation
+
+> “I migrated secondary native flows onto semantic design tokens without
+> changing their business behavior. I preserved the distinction between
+> screen-draft state, server-confirmed membership and meeting-point data, and
+> database-enforced permissions. Unit, type, lint and bundle checks passed; I
+> did not overstate them as visual or physical-device acceptance.”
+
+## Lesson 37 - Own the map's look without pretending to own its data
+
+A map on a phone is assembled from four distinct things. Keeping them separate
+is important both for design and for privacy:
+
+```text
+NearHere's Style JSON ── says how to draw features
+OpenFreeMap TileJSON ─── points to vector geography and font glyphs
+MapLibre Native ──────── renders layers and handles pan/zoom
+NearHere's GeoJSON ───── adds public-safe activity points and character sprites
+```
+
+The authored file is `apps/mobile/assets/maps/nearhere-night-arcade-v1.json`.
+It is a MapLibre Style Specification v8 document. Its `sources.openmaptiles`
+entry points at OpenFreeMap's vector TileJSON; the `glyphs` URL supplies the
+font shapes needed to paint map labels. Its ordered `layers` select source
+layers such as `water`, `landuse`, `transportation`, `building`, and `place`,
+then give them our colors, widths, label rules and filters. The feature's source
+is still OpenStreetMap-derived geography. A style changes how that geography
+looks; it does not create, own, or update the geography.
+
+The rendered sequence is useful to remember: background first; land cover and
+parks; water and waterways; buildings; roads; labels; then NearHere's activity
+clusters, selected-marker halo, avatar image and React Native detail sheet.
+That order is what lets the map stay quiet while user-created activities carry
+the brighter color and personality. The avatar markers are not tile labels:
+they come from the app's separate privacy-safe GeoJSON projection.
+
+`@maplibre/maplibre-gl-style-spec` validates the full JSON against the renderer's
+style schema. A small Node test also guards the source URL, attribution, required
+layer IDs, source references and uniqueness of layer IDs. The TS screen imports
+JSON, whose literal `version: 8` is widened by TypeScript to `number`, so it
+casts at the MapLibre component boundary after validation. That is a narrow,
+documented trust boundary; it is not a general practice of silencing type errors.
+
+Attribution is part of the product, not optional decoration. OpenMapTiles' style
+license requires visible OpenMapTiles and OpenStreetMap credit for a browsable
+map; the source attribution includes OpenFreeMap, OpenMapTiles and OSM, and the
+Nearby map keeps MapLibre's attribution control enabled. The style specification
+explains `sources` and ordered `layers` in its [official guide](https://maplibre.org/maplibre-style-spec/)
+and [layer reference](https://maplibre.org/maplibre-style-spec/layers/).
+OpenFreeMap currently says its public service is free but provided as-is, with
+no availability warranty and possible discontinuation in its [Terms of
+Service](https://openfreemap.org/tos/); OpenMapTiles explains the visual-style
+license and required credit in its [style license](https://github.com/hyperknot/openfreemap-styles/blob/main/styles/dark/LICENSE.md).
+Therefore, NearHere now owns the visual rules, but does not yet own tile uptime
+or the tile endpoint. Tile requests also reveal which map tiles a device views;
+that is different from sending the user's exact meeting-point coordinate, which
+does not enter this map style or its public activity source.
+
+**Evidence boundary:** the custom style validates and the iOS JavaScript bundle
+exports. The Simulator rendered it in [V15](screenshots/night-arcade-maplibre-authored-style-simulator-20260924.png);
+V14 depicts the earlier stock style. [V16](screenshots/night-arcade-maplibre-attribution-simulator-20260924.png)
+is the newer capture: the map-owned credit line is visible, and tapping it
+opened MapLibre Native's attribution panel. Its accessibility tree exposed
+OpenFreeMap, OpenMapTiles and OpenStreetMap. This teaches an important test
+distinction: a screenshot proves presentation; a successful button action plus
+the resulting accessible panel proves that one interaction. It still does not
+prove the separate, map-rendered avatar and cluster hit areas work on the new
+style. Simulator does not expose those overlay targets in its accessibility
+tree, and direct coordinate automation returned `noWindowsAvailable`; treat
+those map interactions as **not yet verified**, not as a product failure or a
+pass. Keep the 13 demo activities intact. Physical-device, Android, offline,
+style-load failure, performance and accessibility tests stay separate.
+
+#### Why the credit is both visible and tappable
+
+The map's data source carries attribution metadata, and MapLibre can expose a
+native attribution panel from that metadata. However, a correct credit hidden
+behind an unfamiliar vendor icon is hard for people to discover. NearHere now
+has a small visible line beside the privacy note and makes that affordance open
+the native panel. The duplicated roles are deliberate: persistent short-form
+credit provides immediate context; the native panel provides full provider
+details and links. In the live Simulator check, the accessibility tree listed
+MapLibre Native, OpenFreeMap, OpenMapTiles, “Data From,” and OpenStreetMap.
+
+This is a useful engineering pattern: keep source-of-truth metadata in the map
+style, then provide a clearly discoverable app control that invokes the
+renderer’s attribution UI rather than hand-building a second, potentially
+incomplete list. The regression test checks that required attribution remains
+in the style; Simulator evidence separately checks discoverability and runtime
+behavior. Neither test alone replaces the other.
+
+#### Make the selected character readable without turning the map into a pin field
+
+The map's GeoJSON source clusters points until the camera zoom passes its
+cluster threshold. Once an activity is rendered as an individual symbol, the
+avatar image remains the symbol rather than a native map pin. In
+`apps/mobile/app/(tabs)/index.tsx`, the `activity-avatars` layer now gives
+ordinary avatars icon-size `0.11` and the selected activity `0.15`; the
+selection halo remains a separate circle layer. The comparison in [V23](screenshots/night-arcade-selected-avatar-simulator-20260924.png)
+was inspected after Fast Refresh. Selecting through the Browse list shows that
+the size expression and halo render as expected, but does **not** test tapping
+the image itself; keep those acceptance claims distinct.
+
+In MapLibre, `icon-size` is a style expression, so it can depend on a feature
+property such as `activityId` and the current selected-id state. The equality
+expression selects one of two visual scales. This is a presentation-only state:
+it changes no coordinates, source feature, cluster threshold, or server data.
+The trade-off is map density—bigger symbols improve character recognition but
+can overlap nearby individual points. Keeping clustering at neighborhood zooms,
+preserving Browse as an accessible list, and testing at multiple zoom levels
+are the guardrails. V23 is only one selected-marker layout at one Simulator
+viewport; dense-area and physical-device overlap tests are still required.
+
+### Interview explanation
+
+> “I authored and schema-validated a local MapLibre vector style while keeping
+> the tile provider, renderer, and app overlay as separate system components.
+> The style changes presentation only; public-safe GeoJSON still contains the
+> approximate activity marker, not private meeting geometry. I preserved
+> required provider/data attribution and explicitly tracked external map uptime
+> and viewport-data exposure as production risks.”
+
+## Lesson 38 — A draft is not a write: trace UI state to persistence
+
+The Simulator walkthrough deliberately opened host creation, date/time, and
+meeting-point search, then cancelled before publishing. This illustrates a
+system boundary worth being able to explain in an interview:
+
+```text
+Tap a control
+   ↓
+React component state changes (draft title, time, selected point)
+   ↓
+User reviews the composed activity
+   ↓
+Explicit Publish action calls the repository/API
+   ↓
+Server validates permissions and invariants
+   ↓
+Database commits a durable activity row
+```
+
+Until the Publish request succeeds, the draft is local transient state—not an
+activity visible to other users. A search result similarly only proposes a
+place. “Use this meeting point” is a separate confirmation in the picker; we
+tested a Bellandur Lake result, saw the map recenter, then closed without using
+it. Manual-area search was tested the same way and closed without “Use this
+area.” This is why the 12 demonstration activities remained untouched.
+
+Do not confuse **input validation**, **request success**, and **durability**:
+
+- A date/time modal opening proves navigation/presentation, not that a custom
+  date was changed or accepted. The native wheel was not reachable through the
+  Simulator accessibility tree in this run.
+- A geocoder returning a result proves the search request path returned data,
+  not that the place has been stored as a user's discovery area or an activity's
+  exact point.
+- Seeing an activity in a remote-backed list after a successful create would
+  be stronger persistence evidence; refreshing or relaunching and seeing it
+  again would test durability across client lifetimes.
+
+This model applies throughout NearHere: filter chips change view state;
+selecting a Browse row drives the map's selected-activity state; accepting a
+join request is a repository/API operation; and PostgreSQL remains the durable
+authority. When a bug report says “it changed,” ask *which state changed, where
+does it live, and what evidence shows it survived a refresh?*

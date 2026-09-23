@@ -346,7 +346,7 @@ export async function getNearbyActivities(
     return { ok: false, message: 'Live activities are unavailable. Check the Supabase configuration.' };
   }
 
-  const { data, error } = await supabase.rpc('nearby_activities', {
+  const { data, error } = await supabase.rpc('nearby_activities_with_avatars', {
     p_latitude: query.latitude,
     p_longitude: query.longitude,
     p_radius_m: query.radiusM,

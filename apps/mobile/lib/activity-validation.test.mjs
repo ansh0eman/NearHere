@@ -42,6 +42,22 @@ test('nearby parser maps a database row into the mobile domain shape', () => {
   assert.equal(activity.publicLocation.latitude, 12.9352);
   assert.equal(activity.distanceM, 812.4);
   assert.equal(activity.participantCount, 1);
+  assert.equal(activity.hostAvatarConfig, null);
+});
+
+test('nearby parser accepts only a versioned UUID avatar seed projection', () => {
+  const config = { version: 1, seed: '64d823ee-0d7a-4e13-a5a1-8d1774cc876e' };
+  assert.deepEqual(parseNearbyActivityRow({ ...validRow, host_avatar_config: config }).hostAvatarConfig, config);
+  assert.equal(parseNearbyActivityRow({ ...validRow, host_avatar_config: { version: 2, seed: config.seed } }).hostAvatarConfig, null);
+  assert.equal(parseNearbyActivityRow({ ...validRow, host_avatar_config: { version: 1, seed: 'phone-number' } }).hostAvatarConfig, null);
+  assert.deepEqual(
+    parseNearbyActivityRow({ ...validRow, host_avatar_config: { version: 1, avatarId: 'v1-06' } }).hostAvatarConfig,
+    { version: 1, avatarId: 'v1-06' },
+  );
+  assert.deepEqual(
+    parseNearbyActivityRow({ ...validRow, host_avatar_config: { version: 1, seed: config.seed, avatarId: 'unknown' } }).hostAvatarConfig,
+    config,
+  );
 });
 
 test('activity message parser maps the private chat projection', () => {
@@ -90,6 +106,7 @@ test('activity parser maps every public contract field without leaking private f
       privacyRadiusM: 350,
     },
     hostDisplayName: 'Anshuman',
+    hostAvatarConfig: null,
     participantCount: 1,
     capacity: 8,
     joinMode: 'open',

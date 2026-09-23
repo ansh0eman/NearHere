@@ -1,8 +1,13 @@
 # NearHere: a neighbourhood playground
 
-Design revision: 23 September 2026. This records the new direction, the first
-implemented slice, and the remaining work. It supersedes the cream/orange
-discovery layout described in older design notes.
+> Visual target: Night Arcade (charcoal, warm grey, acid-lime and human character
+> art). This map-specific implementation guide follows the reviewed concept and
+> acceptance tickets in [design review](design-concepts/design-review.md) and the
+> [execution playbook](handoffs/night-arcade-execution.md).
+
+Design revision: 23 September 2026. This living note distinguishes code written
+from behavior actually observed. See the current handoff checkpoint before
+treating any development-build result as current.
 
 ## Product decision
 
@@ -14,6 +19,11 @@ Five actions remain on the map: change area, open profile, recenter, browse, and
 host. The bottom Browse surface also provides Your plans. Filters appear inside
 Browse. The full tab bar is hidden on Nearby, but remains available on Plans
 and Me so those screens have a clear route back to the map.
+
+The Night Arcade semantic palette now continues into Activity Detail, Plans,
+Host creation and the location-search/private-meeting-point overlays. Those
+two picker screens still use the native map provider beneath our controls; a
+NearHere-authored vector basemap is a separate design-and-provider project.
 
 ```text
 ┌─────────────────────────────────┐
@@ -61,36 +71,37 @@ improve retention. That hypothesis needs observation of real users.
 
 ## Visual direction
 
-The accent is violet `#6B4FA6`; text is plum `#302842`; surfaces are white or
-`#FAF9FD`; mint `#A7DCC7` adds warmth. The map should be quiet enough that hosts
-and activities carry the strongest colour. Avoid decorative compass buttons,
-permanent filter chips, redundant live badges, and several large bottom panels.
-No animation is added in this slice, preserving reduced-motion behaviour.
+The live semantic tokens are `canvas #111516`, `surface #1C2223`, `raised #272F30`,
+warm text `#F4F5EF`, muted text `#AEBAB6`, and acid-lime `#D4F76A` with dark text.
+The dark map recedes; people and their activities carry the colour. Avoid
+decorative compass buttons, permanent filter chips, redundant live badges, and
+several large bottom panels. A cluster count is useful map information, not
+decoration. Do not reward precision location or create fake online presence.
 
-This palette is applied to discovery, its Browse sheet, navigation tint, and
-the profile surface. Host, authentication, Plans, and activity detail still
-need a coordinated palette/spacing migration. Do not describe the entire app
-as restyled yet.
+The palette is applied to Nearby, Browse, navigation, Me/phone auth, profile
+editing, Plans, Host creation, Activity Detail, location search, and private
+meeting-point picking. This is a source implementation milestone, not an
+app-wide visual acceptance; Simulator layout/contrast review remains open.
 
 ## Avatar foundation and its limits
 
-`apps/mobile/components/host-avatar.tsx` draws an original mascot with native
-Views. There is no image service request, photo upload, or third-party avatar
-asset. A public display-name seed selects one of five colour variations. The
-same component renders on discovery markers, the Browse list, selection cards,
-and the profile surface. The small emoji badge represents activity type.
+`apps/mobile/assets/avatars/v1/` contains six original full-body transparent
+characters. `lib/avatar-catalog.ts` imports each file statically; IDs and order
+are frozen because `lib/avatar-identity.ts` maps a persistent random UUID seed
+to the initial catalog choice. Me includes a six-choice editor and persists the
+selected `avatarId` separately, so changing art never changes account seed.
+New profiles receive a seed from PostgreSQL; existing `{}` profiles can still
+use the account ID as a render-only fallback.
 
-This is a visual fallback, not a unique identity or an avatar builder. Two
-names may produce the same colour; two people may share a name. Renaming a
-profile may change its fallback. Never use this seed to authorize anything.
-
-Next, give users a versioned configuration with character, colour, expression,
-and accessory selections. The existing `profiles.avatar_config` column is an
-available persistence foundation. Public activity RPCs must explicitly return
-a bounded host avatar projection; fetching whole profiles from discovery would
-introduce unnecessary access and extra requests. Use stable host IDs for
-fallbacks once the public projection provides them. Validate unknown versions
-and values and retain the fallback for older clients.
+The images are bundled, so rendering needs no image-server request or profile
+photo upload. They are presets, not a custom avatar builder. Migration
+`202609230004_selected_avatar_projection.sql` is deployed and emits only the
+version, UUID seed (when valid), and a six-value allowlisted catalog choice.
+Anonymous hosted smoke returned 13 rows and 13 safe configs. No choice had yet
+been saved in that data, so selected-ID projection has not been observed from an
+actual account save. Authenticated UI save and public map consistency remain
+Simulator acceptance work. The projection must not expose profile IDs, phone,
+arbitrary JSON, or exact coordinates.
 
 ## How we make the map our own
 
@@ -112,27 +123,52 @@ renderers does not require changing who can read exact meeting points.
 
 Implementation sequence for the custom world:
 
-1. Select a vector tile source with Bengaluru street detail, appropriate usage
-   rights, attribution, quotas, and a clear budget. A renderer alone does not
-   provide production tiles. No paid account was created in this slice.
-2. Add MapLibre behind a small discovery-map component with the same coordinate,
-   marker-selection, and recenter callbacks. Keep the current renderer available
-   while testing the transition.
-3. Author a checked-in style: pale lavender water, mint parks, warm white roads,
-   muted building footprints, and fewer labels at low zoom. A visual style
-   editor such as Maputnik can edit compatible style JSON; verify the selected
-   tile schema before binding layer names.
-4. Add clustering: at a distance show a count; close up show host characters.
-   Do not randomly displace real geographic pins just to stop overlap.
-5. Add playful character poses by activity and gentle selection feedback.
+1. The prototype uses `@maplibre/maplibre-react-native@11.4.0`, compatible with
+   this project's Expo 54, React 19.1, RN 0.81.5, and New Architecture. It draws
+   maps, but does not supply geography or place search.
+2. The current authored style requests OpenFreeMap's vector TileJSON and font
+   glyph endpoints, not its premade `dark` style. OpenFreeMap describes its
+   service as free, but its current terms make the public service an
+   as-is/no-availability-promise prototype; revisit provider capacity, privacy,
+   caching and SLA before a broader launch. The OpenFreeMap/OpenMapTiles/OSM
+   attribution remains visible. [OpenFreeMap Terms](https://openfreemap.org/tos/)
+   and [style/data license and credit](https://github.com/hyperknot/openfreemap-styles/blob/main/styles/dark/LICENSE.md).
+3. Nearby constructs GeoJSON from privacy-safe activity summaries. GeoJSON uses
+   `[longitude, latitude]`, unlike the named latitude/longitude fields in the
+   app's region type. `GeoJSONSource` clusters; `SymbolLayer` shows bundled
+   characters at close zoom; `Camera` owns pan/zoom. The selection card is still
+   ordinary React Native UI.
+4. A selected avatar gets a quiet lime halo. A cluster shows a count and zooms
+   to reveal choices. Never jitter or persistently move points for neatness.
+5. `apps/mobile/assets/maps/nearhere-night-arcade-v1.json` is our first authored
+   MapLibre style. It uses the OpenMapTiles vector-layer schema and OpenFreeMap
+   TileJSON/font resources while NearHere controls colors, layer order and
+   labels. Renderer, style, and tile API are distinct parts: this is our own
+   cartographic configuration, not self-hosted geography. The style passes the
+   MapLibre Style Specification validator; it still needs a fresh Simulator
+   visual review before we call its color hierarchy accepted.
+6. Add poses only if legible at marker size, reduced-motion safe, and clearly
+   represent planned activity—not inferred movement or online status.
    Keep motion optional and labels readable. Avoid rewards for revealing more
    precise location or for meaningless repeated tapping.
-6. Verify source failure, attribution placement, accessibility through Browse,
+7. Verify source failure, attribution placement, accessibility through Browse,
    marker taps, battery use, frame rate, and physical iPhone/Android behaviour.
 
-The current slice uses Apple Maps muted-standard on iOS. It does **not** yet
-ship an illustrated MapLibre basemap, a public avatar editor, clusters,
-gamification rewards, or live friend locations.
+The current source uses MapLibre, the locally authored `nearhere-night-arcade-v1`
+vector style, native clusters and avatar sprites. The iPhone 17 Pro Simulator
+native build and core marker/cluster smoke passed on 23 September against the
+previous public dark style; see the [V14 evidence](screenshots/night-arcade-maplibre-simulator-20260923.png).
+The newly authored style passes MapLibre style validation and iOS bundle export,
+and a fresh Simulator capture [V15](screenshots/night-arcade-maplibre-authored-style-simulator-20260924.png)
+proves it renders. V16 shows the visible credit affordance; V17 captures the
+native attribution panel opened by tapping that control, verifying the map
+provider/data credits. Marker/cluster interaction still needs verification
+against this authored style because current Simulator automation cannot tap
+the native map overlay. This does not imply physical-device, Android,
+accessibility, tile-failure, load, or launch acceptance. The user-facing
+basemap design is ours; map geography and uptime still depend on the prototype
+tile provider. No live friend-location or reward system exists. The current
+avatar editor has six fixed presets only.
 
 ## Verification and teaching exercise
 

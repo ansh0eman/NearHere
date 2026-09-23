@@ -336,6 +336,7 @@ create function public.nearby_activities(
 returns table (
   id uuid,
   kind public.activity_kind,
+
   title text,
   description text,
   status public.activity_status,

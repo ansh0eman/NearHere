@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { ProfileProvider } from '@/providers/profile-provider';
+import { colors, radii, spacing, typeScale } from '@/constants/design-tokens';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -19,9 +20,9 @@ function AppNavigator() {
         <View style={styles.gateMark}>
           <Text style={styles.gateEmoji}>📍</Text>
         </View>
-        <ActivityIndicator color="#FF6B4A" size="small" />
+        <ActivityIndicator color={colors.accent} size="small" />
         <Text style={styles.gateText}>Restoring your NearHere session…</Text>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
       </View>
     );
   }
@@ -34,7 +35,7 @@ function AppNavigator() {
         <Pressable accessibilityRole="button" onPress={retrySessionRestore} style={styles.retryButton}>
           <Text style={styles.retryText}>Try again</Text>
         </Pressable>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
       </View>
     );
   }
@@ -73,7 +74,7 @@ function AppNavigator() {
           options={{ animation: 'slide_from_right', headerShown: false }}
         />
       </Stack>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
     </ProfileProvider>
   );
 }
@@ -87,11 +88,11 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  gate: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
+  gate: { alignItems: 'center', backgroundColor: colors.canvas, flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
   gateEmoji: { fontSize: 31 },
-  gateMark: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 28, height: 56, justifyContent: 'center', marginBottom: 24, width: 56 },
-  gateText: { color: '#66717D', fontSize: 14, lineHeight: 21, marginTop: 12, maxWidth: 300, textAlign: 'center' },
-  gateTitle: { color: '#16202A', fontSize: 25, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' },
-  retryButton: { backgroundColor: '#16202A', borderRadius: 999, marginTop: 24, paddingHorizontal: 24, paddingVertical: 14 },
-  retryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  gateMark: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 28, height: 56, justifyContent: 'center', marginBottom: 24, width: 56 },
+  gateText: { ...typeScale.secondary, color: colors.mutedText, marginTop: spacing.md, maxWidth: 300, textAlign: 'center' },
+  gateTitle: { ...typeScale.section, color: colors.text, textAlign: 'center' },
+  retryButton: { backgroundColor: colors.accent, borderRadius: radii.pill, marginTop: spacing.xl, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
+  retryText: { color: colors.onAccent, fontSize: 14, fontWeight: '700' },
 });

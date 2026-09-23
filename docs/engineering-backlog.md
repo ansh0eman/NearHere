@@ -1,14 +1,23 @@
 # NearHere Engineering Backlog
 
+## Active backlog — premium redesign
+
+The [Night Arcade ticket ledger](handoffs/night-arcade-status.md) is the current
+priority order. Its [implementation playbook](handoffs/night-arcade-execution.md)
+contains file ownership, contracts, failure modes and verification. Do not execute
+the earlier violet/mascot follow-through as if the user accepted that appearance.
+
 ## Map-first design follow-through — 23 September 2026
 
 - [x] Implement a map-first opening screen with progressive disclosure of filters/list.
-- [x] Add violet/mint discovery palette and original native starter host mascots.
+- [x] Add charcoal/lime Night Arcade palette and original full-body host characters.
 - [x] Verify empty map → Browse → filter → Plans navigation in Simulator.
-- [ ] Verify populated mascot markers and selection on Simulator and physical iPhone.
-- [ ] Add persistent versioned avatar choices and public-safe host-avatar RPC projection.
-- [ ] Select production vector tiles, integrate MapLibre, author illustrated map style, and verify attribution/performance.
-- [ ] Add zoom-based clustering and finish palette migration across other screens.
+- [x] Verify populated character markers, selection and cluster expansion in iPhone 17 Pro Simulator; physical iPhone still open.
+- [x] Add six-preset character choice and public-safe host-avatar RPC projection; authenticated save and cross-surface proof remain open.
+- [x] Integrate MapLibre and attribute OpenFreeMap/OpenMapTiles/OpenStreetMap.
+- [x] Author and MapLibre-validate `nearhere-night-arcade-v1.json`; V15-V17 provide Simulator rendering and attribution-control evidence. Authored-style marker/cluster interaction remains unverified; production tile-provider/SLA decision remains open.
+- [x] Add zoom-based clustering and apply Night Arcade tokens across Plans, Host, Activity Detail and location-picking overlays; Browse/profile/Plans/Host/location flows now have partial Simulator review (V18-V21), while remaining layouts and authored-style map hit testing stay open.
+- [x] Increase map avatar legibility with a small idle/selected icon-size hierarchy (0.11 / 0.15) and verify selected-state rendering in Simulator (V23); test dense-area overlap at more zoom levels before beta.
 
 Checkboxes record implementation, not aspiration. Items are ordered by dependency and user value.
 
@@ -97,6 +106,7 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add immutable operator review recovery paths; tune rate limits with beta evidence later
 - [x] Add reduced-motion preference hook and accessibility-aware safety/chat controls
 - [ ] Complete full VoiceOver/TalkBack, dynamic-type, contrast, and physical-device accessibility audit
+- [ ] Complete location matrix: current Simulator's Center-on-me control recentered and displayed the blue dot (V22), but the user's physical-iPhone “location unavailable” report, denial/Settings recovery, stale/low-accuracy fix and real GPS still need evidence. Area search works in Simulator and remains the fallback.
 - [x] Add client request correlation IDs for sensitive operations and bounded operator observability
 - [ ] Add shared structured error envelopes, server request IDs, metrics, traces, and crash reporting
 - [ ] Add physical-device, TestFlight, and Android internal-test workflows
@@ -105,7 +115,8 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 ## Deferred until evidence
 
 - [ ] Custom avatar builder
-- [ ] MapLibre custom visual map
+- [x] NearHere-authored first-pass MapLibre style over hosted vector tiles; render and attribution are Simulator-verified. Marker/cluster interaction and production provider decision remain open
+- [ ] Make rendered avatar/cluster features discoverable and operable with VoiceOver/TalkBack, or provide a documented accessible equivalent; current Simulator accessibility tree exposes nearby screen controls but not MapLibre rendered feature hit areas
 - [x] Add map/list toggle using the same privacy-safe nearby result projection
 - [ ] Redis caching/presence/rate-limit infrastructure
 - [ ] Custom WebSocket gateway

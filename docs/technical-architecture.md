@@ -1,5 +1,17 @@
 # NearHere Technical Architecture
 
+## Redesign architecture checkpoint — 23 September 2026
+
+Nearby uses `@maplibre/maplibre-react-native@11.4.0` on Expo 54 / RN 0.81.5 with
+New Architecture. The native Simulator build, tile rendering, marker selection
+and clusters passed a first iPhone 17 Pro smoke. `expo-image` renders six bundled
+original avatars; the profile has a six-preset editor, with authenticated
+save/reload acceptance still open. Nearby now points MapLibre at the local
+NearHere Night Arcade vector style, which consumes OpenFreeMap TileJSON/glyphs
+and visibly credits OpenFreeMap/OpenMapTiles/OpenStreetMap. The style passes
+schema validation; fresh Simulator visual acceptance and a production tile/SLA
+choice remain open. See [tickets 2, 5 and 6](handoffs/night-arcade-execution.md).
+
 This document records concrete technologies and responsibility boundaries. See [`system-design.md`](system-design.md) for the requirement-first explanation.
 
 ## 1. Technology stack
@@ -9,7 +21,7 @@ This document records concrete technologies and responsibility boundaries. See [
 | Mobile | Expo SDK 54 + React Native | iOS/Android UI and native capabilities | Shared TypeScript with native rendering and managed tooling |
 | Language | TypeScript | Compile-time application contracts | Makes domain/state mistakes visible during development |
 | Navigation | Expo Router | File-based stacks, tabs, and modal routes | Typed routes and React Navigation lifecycle |
-| Map | `react-native-maps` | Current native map rendering | Already integrated; supports product behavior before custom styling |
+| Map | `@maplibre/maplibre-react-native` 11.4.0 | Native vector map rendering, GeoJSON clustering and sprite layers | Custom map styling requires a separate style JSON and suitable tile source |
 | Location | Expo Location | Foreground permission/device coordinate | Version-compatible platform abstraction |
 | Local storage | AsyncStorage | Non-secret manual location and current Supabase session adapter | Simple persistent key/value boundary; security review remains for production tokens |
 | Authentication | Supabase Auth | Phone OTP identity and sessions | Hosted auth boundary with React Native SDK |
@@ -97,11 +109,31 @@ The Auth modal disables swipe-to-dismiss because an OS gesture cannot reliably r
 
 ## 6. Location and map providers
 
-The current iOS renderer uses Apple MapKit through `react-native-maps`. Manual search uses an explicit-submit Nominatim adapter for low-volume development, with runtime validation, attribution, a 1.1-second limiter, and a 20-query in-memory cache.
+The Nearby source uses MapLibre Native with NearHere's authored
+`nearhere-night-arcade-v1.json` style over OpenFreeMap's OpenMapTiles vector
+tiles and glyph CDN. MapLibre's Style Specification keeps visual-layer rules
+separate from the underlying source geography; this file owns our layer order,
+palette and label treatment, not the tile data or uptime. The style keeps
+OpenFreeMap, OpenMapTiles and OpenStreetMap attribution visible. Fresh Simulator
+visual acceptance and a production provider/SLA decision remain open. [MapLibre
+style specification](https://maplibre.org/maplibre-style-spec/), [OpenFreeMap
+style license and attribution](https://github.com/hyperknot/openfreemap-styles/blob/main/styles/dark/LICENSE.md).
+
+manual place search still uses explicit-submit Nominatim for low-volume
+development, with runtime validation, attribution, a 1.1-second limiter and a
+20-query in-memory cache. Exact-point privacy does not depend on either map
+provider: only the public displaced activity point enters the map data source.
 
 The public Nominatim service is not the production SLA. Production search should run behind a NearHere provider adapter with contracted quota, privacy terms, rate controls, shared cache, and observability.
 
-MapLibre remains the preferred path for a distinctive custom vector style. The native development-build foundation already exists, so migration is no longer blocked by Expo Go; it is deferred to avoid mixing renderer migration with core product correctness.
+OpenFreeMap has no registration/API key and says its public service is free, but
+its current terms are as-is, offer no availability warranty and allow request
+processing through Cloudflare CDN. It is useful for an unlaunched prototype; it
+does not establish production reliability or an offline guarantee. Map requests
+reveal the viewport tiles requested plus ordinary network metadata. Never encode
+private meeting coordinates in a tile URL. The app needs a truthful map failure
+state and visible attribution; a later provider decision needs usage, privacy,
+coverage, offline and SLA evidence.
 
 ## 7. Build and deployment boundaries
 

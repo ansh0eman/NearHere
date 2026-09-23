@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { createActivity } from '@/lib/activity-repository';
+import { colors, radii, spacing } from '@/constants/design-tokens';
 import { clearMeetingPointDraft, readMeetingPointDraft } from '@/lib/meeting-point-storage';
 import { formatActivityStart, isFutureStart, QUICK_START_OPTIONS, quickStartDate } from '@/lib/activity-time';
 import type { MeetingPointDraft } from '@/types/meeting-point';
@@ -130,7 +131,7 @@ export default function CreateActivityScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <View style={styles.header}>
           <Pressable accessibilityLabel="Close activity creation" accessibilityRole="button" onPress={() => router.back()} style={styles.closeButton}>
-            <Ionicons name="close" size={22} color="#16202A" />
+            <Ionicons name="close" size={22} color={colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Host something</Text>
           <View style={styles.headerSpacer} />
@@ -158,7 +159,7 @@ export default function CreateActivityScreen() {
             maxLength={80}
             onChangeText={(value) => { setTitle(value); setErrorMessage(null); }}
             placeholder="Golden hour lake walk"
-            placeholderTextColor="#A3A9AF"
+            placeholderTextColor={colors.subtleText}
             style={styles.input}
             value={title}
           />
@@ -170,7 +171,7 @@ export default function CreateActivityScreen() {
             multiline
             onChangeText={(value) => { setDescription(value); setErrorMessage(null); }}
             placeholder="What should people expect?"
-            placeholderTextColor="#A3A9AF"
+            placeholderTextColor={colors.subtleText}
             style={[styles.input, styles.descriptionInput]}
             textAlignVertical="top"
             value={description}
@@ -186,19 +187,19 @@ export default function CreateActivityScreen() {
           </View>
 
           <Pressable accessibilityHint="Opens a date and time selector" accessibilityLabel="Choose a custom start date and time" accessibilityRole="button" onPress={() => setDatePickerVisible(true)} style={styles.timePickerRow}>
-            <View style={styles.locationIcon}><Ionicons name="calendar-outline" size={19} color="#FF6B4A" /></View>
+            <View style={styles.locationIcon}><Ionicons name="calendar-outline" size={19} color={colors.accent} /></View>
             <View style={styles.locationCopy}><Text style={styles.locationTitle}>Custom date & time</Text><Text style={styles.locationCoordinate}>{formatActivityStart(startsAt)}</Text></View>
-            <Ionicons color="#66717D" name="chevron-forward" size={18} />
+            <Ionicons color={colors.mutedText} name="chevron-forward" size={18} />
           </Pressable>
 
           <Pressable accessibilityHint="Opens a map where you can search or move a pin" accessibilityLabel="Choose a private meeting point" accessibilityRole="button" onPress={() => router.push({ pathname: '/host/meeting-point', params: { latitude: String(meetingPoint?.latitude ?? initialLatitude), longitude: String(meetingPoint?.longitude ?? initialLongitude) } })} style={styles.locationCard}>
-            <View style={styles.locationIcon}><Ionicons name="location" size={19} color="#FF6B4A" /></View>
+            <View style={styles.locationIcon}><Ionicons name="location" size={19} color={colors.accent} /></View>
             <View style={styles.locationCopy}>
               <Text style={styles.locationTitle}>Private meeting point</Text>
               <Text style={styles.locationCoordinate}>{meetingPoint?.label ?? coordinateLabel}</Text>
               <Text style={styles.locationPrivacy}>Search or drop a pin. Discovery receives a separately generated approximate marker within 350 m.</Text>
             </View>
-            <Ionicons color="#66717D" name="chevron-forward" size={18} />
+            <Ionicons color={colors.mutedText} name="chevron-forward" size={18} />
           </Pressable>
 
           <View style={styles.twoColumnRow}>
@@ -222,7 +223,7 @@ export default function CreateActivityScreen() {
         </ScrollView>
 
         <Pressable accessibilityRole="button" disabled={isSaving} onPress={() => void publishActivity()} style={[styles.publishButton, isSaving && styles.disabled]}>
-          {isSaving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.publishText}>Publish activity</Text>}
+          {isSaving ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.publishText}>Publish activity</Text>}
         </Pressable>
 
         <Modal animationType="slide" onRequestClose={() => setDatePickerVisible(false)} transparent visible={isDatePickerVisible}>
@@ -240,50 +241,50 @@ export default function CreateActivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  capacityText: { color: '#16202A', fontSize: 16, fontWeight: '900', minWidth: 25, textAlign: 'center' },
-  closeButton: { alignItems: 'center', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 22, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-  content: { paddingBottom: 30, paddingHorizontal: 20 },
+  capacityText: { color: colors.text, fontSize: 16, fontWeight: '800', minWidth: 25, textAlign: 'center' },
+  closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  content: { paddingBottom: spacing.xl, paddingHorizontal: spacing.lg },
   descriptionInput: { minHeight: 105, paddingTop: 16 },
   disabled: { opacity: 0.5 },
-  error: { color: '#B63B2B', fontSize: 12, fontWeight: '700', lineHeight: 17, marginTop: 16 },
-  eyebrow: { color: '#FF6B4A', fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginTop: 20 },
+  error: { color: colors.danger, fontSize: 12, fontWeight: '700', lineHeight: 17, marginTop: spacing.lg },
+  eyebrow: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginTop: 20 },
   flex: { flex: 1 },
   halfField: { flex: 1 },
-  header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 8 },
+  header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   headerSpacer: { width: 44 },
-  headerTitle: { color: '#16202A', fontSize: 16, fontWeight: '900' },
-  input: { backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 15, borderWidth: 1, color: '#16202A', fontSize: 15, marginTop: 8, minHeight: 54, paddingHorizontal: 15 },
+  headerTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  input: { backgroundColor: colors.raised, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, color: colors.text, fontSize: 15, marginTop: spacing.sm, minHeight: 54, paddingHorizontal: spacing.md },
   kindEmoji: { fontSize: 19 },
-  kindLabel: { color: '#66717D', fontSize: 11, fontWeight: '800' },
-  kindLabelSelected: { color: '#FFFFFF' },
-  kindOption: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.1)', borderRadius: 16, borderWidth: 1, gap: 4, minWidth: 70, paddingHorizontal: 12, paddingVertical: 11 },
-  kindOptionSelected: { backgroundColor: '#16202A', borderColor: '#16202A' },
-  kindRow: { gap: 8, paddingVertical: 10 },
-  label: { color: '#66717D', fontSize: 10, fontWeight: '900', letterSpacing: 1.1, marginTop: 22 },
-  locationCard: { backgroundColor: '#FFF4EF', borderRadius: 18, flexDirection: 'row', gap: 12, marginTop: 24, padding: 15 },
-  timePickerRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 10, padding: 14 },
-  locationCoordinate: { color: '#66717D', fontSize: 11, marginTop: 3 },
+  kindLabel: { color: colors.mutedText, fontSize: 11, fontWeight: '700' },
+  kindLabelSelected: { color: colors.onAccent },
+  kindOption: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, gap: 4, minWidth: 70, paddingHorizontal: 12, paddingVertical: 11 },
+  kindOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  kindRow: { gap: spacing.sm, paddingVertical: spacing.md },
+  label: { color: colors.mutedText, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginTop: 22 },
+  locationCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl, padding: spacing.md },
+  timePickerRow: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm, padding: spacing.md },
+  locationCoordinate: { color: colors.mutedText, fontSize: 11, marginTop: 3 },
   locationCopy: { flex: 1 },
-  locationIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
-  locationPrivacy: { color: '#8A685C', fontSize: 11, lineHeight: 16, marginTop: 7 },
-  locationTitle: { color: '#16202A', fontSize: 13, fontWeight: '900' },
-  modeButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 14, borderWidth: 1, justifyContent: 'center', marginTop: 8, minHeight: 48 },
-  modeText: { color: '#16202A', fontSize: 12, fontWeight: '900' },
-  publishButton: { alignItems: 'center', backgroundColor: '#FF6B4A', borderRadius: 999, justifyContent: 'center', marginBottom: 12, marginHorizontal: 20, minHeight: 54 },
-  publishText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
-  screen: { backgroundColor: '#F7F4EE', flex: 1 },
-  modalBackdrop: { backgroundColor: 'rgba(22,32,42,0.42)', flex: 1, justifyContent: 'flex-end' },
-  timeSheet: { backgroundColor: '#F7F4EE', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 },
+  locationIcon: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: radii.control, height: 36, justifyContent: 'center', width: 36 },
+  locationPrivacy: { color: colors.subtleText, fontSize: 11, lineHeight: 16, marginTop: 7 },
+  locationTitle: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  modeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, justifyContent: 'center', marginTop: spacing.sm, minHeight: 48 },
+  modeText: { color: colors.text, fontSize: 12, fontWeight: '800' },
+  publishButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.pill, justifyContent: 'center', marginBottom: spacing.md, marginHorizontal: spacing.lg, minHeight: 54 },
+  publishText: { color: colors.onAccent, fontSize: 14, fontWeight: '800' },
+  screen: { backgroundColor: colors.canvas, flex: 1 },
+  modalBackdrop: { backgroundColor: 'rgba(0,0,0,0.62)', flex: 1, justifyContent: 'flex-end' },
+  timeSheet: { backgroundColor: colors.surface, borderColor: colors.border, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, borderWidth: 1, padding: spacing.xl },
   timeSheetHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  timeSheetTitle: { color: '#16202A', fontSize: 18, fontWeight: '900' }, doneButton: { backgroundColor: '#16202A', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 }, doneText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
-  pickerTabs: { backgroundColor: '#EAE6DE', borderRadius: 12, flexDirection: 'row', marginTop: 18, padding: 3 }, pickerTab: { alignItems: 'center', borderRadius: 9, flex: 1, paddingVertical: 9 }, pickerTabActive: { backgroundColor: '#FFFFFF' }, pickerTabText: { color: '#66717D', fontSize: 12, fontWeight: '800' }, pickerTabTextActive: { color: '#16202A' },
-  segment: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 999, borderWidth: 1, flex: 1, paddingHorizontal: 8, paddingVertical: 11 },
-  segmentRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  segmentSelected: { backgroundColor: '#16202A', borderColor: '#16202A' },
-  segmentText: { color: '#66717D', fontSize: 11, fontWeight: '800' },
-  segmentTextSelected: { color: '#FFFFFF' },
+  timeSheetTitle: { color: colors.text, fontSize: 18, fontWeight: '800' }, doneButton: { backgroundColor: colors.accent, borderRadius: radii.pill, paddingHorizontal: 14, paddingVertical: 8 }, doneText: { color: colors.onAccent, fontSize: 12, fontWeight: '800' },
+  pickerTabs: { backgroundColor: colors.raised, borderRadius: radii.control, flexDirection: 'row', marginTop: spacing.lg, padding: 3 }, pickerTab: { alignItems: 'center', borderRadius: 9, flex: 1, paddingVertical: 9 }, pickerTabActive: { backgroundColor: colors.accent }, pickerTabText: { color: colors.mutedText, fontSize: 12, fontWeight: '700' }, pickerTabTextActive: { color: colors.onAccent },
+  segment: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, flex: 1, paddingHorizontal: 8, paddingVertical: 11 },
+  segmentRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  segmentSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  segmentText: { color: colors.mutedText, fontSize: 11, fontWeight: '700' },
+  segmentTextSelected: { color: colors.onAccent },
   stepButton: { alignItems: 'center', height: 40, justifyContent: 'center', width: 38 },
-  stepText: { color: '#16202A', fontSize: 21, fontWeight: '700' },
-  stepper: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.12)', borderRadius: 14, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, minHeight: 48 },
-  twoColumnRow: { flexDirection: 'row', gap: 12 },
+  stepText: { color: colors.text, fontSize: 21, fontWeight: '700' },
+  stepper: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, minHeight: 48 },
+  twoColumnRow: { flexDirection: 'row', gap: spacing.md },
 });

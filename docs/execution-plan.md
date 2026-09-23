@@ -1,5 +1,14 @@
 # NearHere execution plan
 
+## Active sequence — 23 September 2026
+
+The user's current priority is the premium Night Arcade redesign and profile
+identity, planned before a lighter-model handoff. Follow the detailed
+[execution tickets](handoffs/night-arcade-execution.md) and
+[current checkpoint](handoffs/night-arcade-status.md). They supersede older
+deferrals of avatars/custom-map work below. They do not remove any beta safety,
+privacy, physical-device or release gate in this historical plan.
+
 This is the dependency-ordered plan from development MVP to a closed
 neighborhood beta. “Implemented” means source exists; “accepted” means the
 behavior has been observed through the stated evidence layer. The distinction

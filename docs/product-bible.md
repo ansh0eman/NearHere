@@ -52,7 +52,10 @@ Browsing is available without an account. Phone OTP is introduced at the moment 
 - Approximate public activity location and protected operational meeting point
 - Report, block, leave, and moderation foundations
 
-The custom avatar system is a major differentiator, but the custom builder is deliberately deferred until discovery, identity, and activity correctness are working. The first identity UI may use a generated placeholder avatar.
+The custom avatar system is a major differentiator, but the full builder is
+deliberately deferred. The first native version assigns every profile a stable
+random character from six bundled presets and lets the owner change that preset.
+This does not imply verification, a real likeness, or continuous location.
 
 ## Explicit non-goals for the first release
 

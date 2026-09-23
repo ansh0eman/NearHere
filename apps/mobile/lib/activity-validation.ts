@@ -17,6 +17,7 @@ import type {
   MyPlanSummary,
   NearbyActivitySummary,
 } from '@/types/activity';
+import { isAvatarCatalogId } from './avatar-identity.ts';
 
 const ACTIVITY_KINDS: ActivityKind[] = [
   'walk',
@@ -124,7 +125,23 @@ export function parseNearbyActivityRow(value: unknown): NearbyActivitySummary {
   if (!isRecord(value)) throw new Error('Activity response is not an object.');
   const distanceM = requireFiniteNumber(value, 'distance_m');
   if (distanceM < 0) throw new Error('Activity response contains invalid distance metadata.');
-  return { ...parseActivitySummaryRow(value), distanceM };
+  const config = value.host_avatar_config;
+  const validSeed = isRecord(config)
+    && typeof config.seed === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(config.seed)
+    ? config.seed
+    : undefined;
+  const validAvatarId = isRecord(config) && isAvatarCatalogId(config.avatarId)
+    ? config.avatarId
+    : undefined;
+  const hostAvatarConfig = isRecord(config) && config.version === 1 && (validSeed || validAvatarId)
+    ? {
+      version: 1 as const,
+      ...(validSeed ? { seed: validSeed } : {}),
+      ...(validAvatarId ? { avatarId: validAvatarId } : {}),
+    }
+    : null;
+  return { ...parseActivitySummaryRow(value), distanceM, hostAvatarConfig };
 }
 
 export function parseNearbyActivityRows(value: unknown): NearbyActivitySummary[] {

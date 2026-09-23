@@ -5,7 +5,14 @@ export type OnboardingStatus = 'needs_profile' | 'complete';
  * A future avatar renderer will replace this open object with a versioned schema.
  * It is intentionally empty by default while the custom builder is deferred.
  */
-export type AvatarConfig = Record<string, unknown>;
+import type { AvatarCatalogId } from './avatar';
+
+export interface AvatarConfig {
+  version?: 1;
+  seed?: string;
+  avatarId?: AvatarCatalogId;
+  [key: string]: unknown;
+}
 
 /**
  * The authenticated user's application profile. Phone number, OTP data, and
@@ -24,10 +31,12 @@ export interface UserProfile {
 
 export interface UpdateMyProfileRequest {
   displayName?: string;
+  avatarId?: AvatarCatalogId;
   interests?: string[];
 }
 
 /** The one command allowed during the minimal onboarding slice. */
 export interface CompleteProfileOnboardingRequest {
   displayName: string;
+  avatarId?: AvatarCatalogId;
 }

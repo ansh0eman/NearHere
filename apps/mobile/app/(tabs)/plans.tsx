@@ -16,6 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMyPlans } from '@/hooks/use-my-plans';
 import { useMembershipRequests } from '@/hooks/use-membership-requests';
+import { HostAvatar } from '@/components/host-avatar';
+import { avatarSeed } from '@/lib/avatar-identity';
+import { colors, radii, spacing, typeScale } from '@/constants/design-tokens';
 import { isInactivePlan, partitionPlans } from '@/lib/plan-utils';
 import { walkingDirectionsUrl } from '@/lib/directions';
 import { useAuth } from '@/providers/auth-provider';
@@ -129,7 +132,7 @@ export default function PlansScreen() {
           />
         ) : state.status === 'loading' && state.plans.length === 0 ? (
           <View style={styles.centerState}>
-            <ActivityIndicator color="#FF6B4A" />
+            <ActivityIndicator color={colors.accent} />
             <Text style={styles.stateBody}>Loading your plans…</Text>
           </View>
         ) : state.status === 'error' && state.plans.length === 0 ? (
@@ -155,7 +158,7 @@ export default function PlansScreen() {
                 styles.errorBanner,
                 (leavingActivityId || actionNotice) && styles.progressBanner,
               ]}>
-                {leavingActivityId && <ActivityIndicator color="#3E8E68" size="small" />}
+                {leavingActivityId && <ActivityIndicator color={colors.success} size="small" />}
                 <Text style={leavingActivityId || actionNotice ? styles.progressBannerText : styles.errorBannerText}>
                   {leavingActivityId
                     ? 'Leaving activity and removing private access…'
@@ -173,7 +176,7 @@ export default function PlansScreen() {
             />
             {state.status === 'loading' && (
               <View style={styles.refreshRow}>
-                <ActivityIndicator color="#FF6B4A" size="small" />
+                <ActivityIndicator color={colors.accent} size="small" />
                 <Text style={styles.refreshText}>Refreshing plans…</Text>
               </View>
             )}
@@ -235,11 +238,11 @@ function PlanCard({
         </View>
         <Text style={styles.cardTitle}>{plan.title}</Text>
         <View style={styles.detailRow}>
-          <Ionicons color="#66717D" name="time-outline" size={16} />
+          <Ionicons color={colors.mutedText} name="time-outline" size={16} />
           <Text style={styles.detailText}>{formatPlanTime(plan.startsAt)}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons color="#66717D" name="people-outline" size={16} />
+          <Ionicons color={colors.mutedText} name="people-outline" size={16} />
           <Text style={styles.detailText}>
             {plan.participantCount}/{plan.capacity} {isInactive ? 'participants' : 'going'} · Hosted by{' '}
             {plan.hostDisplayName}
@@ -248,7 +251,7 @@ function PlanCard({
 
         <View style={[styles.locationBox, !meetingPoint && styles.locationBoxLocked]}>
           <Ionicons
-            color={meetingPoint ? '#3E8E68' : '#8A929A'}
+            color={meetingPoint ? colors.success : colors.subtleText}
             name={meetingPoint ? 'location' : 'lock-closed-outline'}
             size={18}
           />
@@ -276,7 +279,7 @@ function PlanCard({
           accessibilityRole="button"
           onPress={onDirections}
           style={({ pressed }) => [styles.directionsButton, pressed && styles.buttonPressed]}>
-          <Ionicons color="#2E7554" name="navigate-outline" size={17} />
+          <Ionicons color={colors.accent} name="navigate-outline" size={17} />
           <Text style={styles.directionsButtonText}>Walking directions</Text>
         </Pressable>
       )}
@@ -286,7 +289,7 @@ function PlanCard({
           accessibilityRole="button"
           onPress={onLeave}
           style={({ pressed }) => [styles.leaveButton, pressed && styles.buttonPressed]}>
-          <Ionicons color="#9D3E2B" name="exit-outline" size={17} />
+          <Ionicons color={colors.danger} name="exit-outline" size={17} />
           <Text style={styles.leaveButtonText}>
             {plan.membershipStatus === 'pending'
               ? 'Withdraw request'
@@ -323,7 +326,7 @@ function RequestsSection({
   if (state.status === 'loading' && state.requests.length === 0) {
     return (
       <View style={styles.requestsLoading}>
-        <ActivityIndicator color="#FF6B4A" size="small" />
+        <ActivityIndicator color={colors.accent} size="small" />
         <Text style={styles.refreshText}>Checking join requests…</Text>
       </View>
     );
@@ -383,7 +386,7 @@ function RequestCard({
   return (
     <View style={styles.requestCard}>
       <View style={styles.requestAvatar}>
-        <Text style={styles.requestAvatarText}>{request.requesterDisplayName.slice(0, 1).toUpperCase()}</Text>
+        <HostAvatar seed={avatarSeed(null, request.requesterUserId)} size={40} />
       </View>
       <View style={styles.requestContent}>
         <Text style={styles.requestName}>{request.requesterDisplayName}</Text>
@@ -406,7 +409,7 @@ function RequestCard({
             disabled={disabled}
             onPress={() => void onDecide('approve')}
             style={({ pressed }) => [styles.acceptButton, pressed && styles.buttonPressed]}>
-            {isDeciding ? <ActivityIndicator color="#FFFFFF" size="small" /> : (
+            {isDeciding ? <ActivityIndicator color={colors.onAccent} size="small" /> : (
               <Text style={styles.acceptButtonText}>Accept</Text>
             )}
           </Pressable>
@@ -432,7 +435,7 @@ function EmptyState({
   return (
     <View style={styles.centerState}>
       <View style={styles.emptyIcon}>
-        <Ionicons color="#FF6B4A" name={icon} size={29} />
+        <Ionicons color={colors.accent} name={icon} size={29} />
       </View>
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.stateBody}>{body}</Text>
@@ -444,64 +447,63 @@ function EmptyState({
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#F7F4EE', flex: 1 },
-  content: { flexGrow: 1, paddingBottom: 110, paddingHorizontal: 22 },
-  header: { paddingTop: 24 },
-  eyebrow: { color: '#66717D', fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  title: { color: '#16202A', fontSize: 42, fontWeight: '900', letterSpacing: -1.8, marginTop: 8 },
-  subtitle: { color: '#66717D', fontSize: 15, lineHeight: 22, marginTop: 7 },
-  centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 430, paddingHorizontal: 22 },
-  emptyIcon: { alignItems: 'center', backgroundColor: '#FFE7DE', borderRadius: 28, height: 56, justifyContent: 'center', width: 56 },
-  emptyTitle: { color: '#16202A', fontSize: 22, fontWeight: '900', letterSpacing: -0.6, marginTop: 20, textAlign: 'center' },
-  stateBody: { color: '#66717D', fontSize: 14, lineHeight: 21, marginTop: 8, maxWidth: 300, textAlign: 'center' },
-  button: { backgroundColor: '#16202A', borderRadius: 999, marginTop: 22, paddingHorizontal: 19, paddingVertical: 13 },
-  buttonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
-  list: { gap: 14, marginTop: 24 },
-  listSectionTitle: { color: '#66717D', fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginTop: 10, textTransform: 'uppercase' },
-  refreshRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
-  refreshText: { color: '#66717D', fontSize: 12, fontWeight: '700' },
-  errorBanner: { backgroundColor: '#FFE7DE', borderRadius: 14, padding: 13 },
-  errorBannerText: { color: '#9D3E2B', fontSize: 12, fontWeight: '700', lineHeight: 17 },
-  card: { backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 24, borderWidth: 1, padding: 18 },
+  screen: { backgroundColor: colors.canvas, flex: 1 },
+  content: { flexGrow: 1, paddingBottom: 110, paddingHorizontal: spacing.lg },
+  header: { paddingTop: spacing.xl },
+  eyebrow: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.4 },
+  title: { color: colors.text, fontSize: 38, fontWeight: '800', letterSpacing: -1.3, marginTop: spacing.xs },
+  subtitle: { ...typeScale.secondary, color: colors.mutedText, marginTop: spacing.xs },
+  centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 430, paddingHorizontal: spacing.lg },
+  emptyIcon: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, height: 60, justifyContent: 'center', width: 60 },
+  emptyTitle: { ...typeScale.section, color: colors.text, marginTop: spacing.xl, textAlign: 'center' },
+  stateBody: { ...typeScale.secondary, color: colors.mutedText, marginTop: spacing.sm, maxWidth: 300, textAlign: 'center' },
+  button: { backgroundColor: colors.accent, borderRadius: radii.pill, marginTop: spacing.xl, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  buttonText: { color: colors.onAccent, fontSize: 13, fontWeight: '800' },
+  list: { gap: spacing.md, marginTop: spacing.xl },
+  listSectionTitle: { color: colors.mutedText, fontSize: 11, fontWeight: '800', letterSpacing: 0.8, marginTop: spacing.sm },
+  refreshRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' },
+  refreshText: { color: colors.mutedText, fontSize: 12, fontWeight: '700' },
+  errorBanner: { backgroundColor: '#422827', borderColor: '#69403C', borderRadius: radii.control, borderWidth: 1, padding: spacing.md },
+  errorBannerText: { color: colors.danger, fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, padding: spacing.lg },
   cardTopRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  kind: { color: '#FF6B4A', fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  statusPill: { backgroundColor: '#DDF1E6', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  statusPillMuted: { backgroundColor: '#F0ECE4' },
-  statusText: { color: '#33414E', fontSize: 10, fontWeight: '900' },
-  cardTitle: { color: '#16202A', fontSize: 21, fontWeight: '900', letterSpacing: -0.5, marginBottom: 12, marginTop: 12 },
+  kind: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
+  statusPill: { backgroundColor: '#304534', borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6 },
+  statusPillMuted: { backgroundColor: colors.raised },
+  statusText: { color: colors.text, fontSize: 10, fontWeight: '800' },
+  cardTitle: { color: colors.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.4, marginBottom: spacing.md, marginTop: spacing.md },
   detailRow: { alignItems: 'center', flexDirection: 'row', gap: 7, marginTop: 7 },
-  detailText: { color: '#66717D', flex: 1, fontSize: 12, lineHeight: 17 },
-  locationBox: { alignItems: 'flex-start', backgroundColor: '#ECF7F0', borderRadius: 16, flexDirection: 'row', gap: 10, marginTop: 16, padding: 13 },
-  locationBoxLocked: { backgroundColor: '#F4F1EB' },
+  detailText: { color: colors.mutedText, flex: 1, fontSize: 12, lineHeight: 17 },
+  locationBox: { alignItems: 'flex-start', backgroundColor: '#243E47', borderRadius: radii.control, flexDirection: 'row', gap: 10, marginTop: spacing.lg, padding: spacing.md },
+  locationBoxLocked: { backgroundColor: colors.raised },
   locationCopy: { flex: 1 },
-  locationTitle: { color: '#33414E', fontSize: 12, fontWeight: '900' },
-  locationText: { color: '#66717D', fontSize: 11, lineHeight: 16, marginTop: 3 },
-  progressBanner: { alignItems: 'center', backgroundColor: '#ECF7F0', flexDirection: 'row', gap: 9 },
-  progressBannerText: { color: '#316E53', flex: 1, fontSize: 12, fontWeight: '800' },
-  requestsLoading: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center', paddingVertical: 12 },
-  requestsSection: { backgroundColor: '#FFF4E5', borderColor: 'rgba(206,126,36,0.15)', borderRadius: 24, borderWidth: 1, gap: 10, padding: 16 },
+  locationTitle: { color: colors.text, fontSize: 12, fontWeight: '800' },
+  locationText: { color: colors.mutedText, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  progressBanner: { alignItems: 'center', backgroundColor: '#304534', borderColor: colors.border, flexDirection: 'row', gap: 9 },
+  progressBannerText: { color: colors.success, flex: 1, fontSize: 12, fontWeight: '700' },
+  requestsLoading: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'center', paddingVertical: spacing.md },
+  requestsSection: { backgroundColor: colors.warningSurface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   sectionHeadingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  sectionEyebrow: { color: '#A96422', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  sectionTitle: { color: '#16202A', fontSize: 20, fontWeight: '900', letterSpacing: -0.4, marginTop: 3 },
-  countBadge: { alignItems: 'center', backgroundColor: '#16202A', borderRadius: 14, height: 28, justifyContent: 'center', minWidth: 28, paddingHorizontal: 8 },
-  countBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
-  inlineError: { color: '#9D3E2B', fontSize: 11, fontWeight: '700', lineHeight: 16 },
-  inlineNotice: { color: '#316E53', fontSize: 11, fontWeight: '800', lineHeight: 16 },
-  requestCard: { alignItems: 'flex-start', backgroundColor: '#FFFFFF', borderRadius: 18, flexDirection: 'row', gap: 11, padding: 13 },
-  requestAvatar: { alignItems: 'center', backgroundColor: '#FFE7DE', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  requestAvatarText: { color: '#9D3E2B', fontSize: 15, fontWeight: '900' },
+  sectionEyebrow: { color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.1 },
+  sectionTitle: { ...typeScale.section, color: colors.text, marginTop: 3 },
+  countBadge: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.control, height: 30, justifyContent: 'center', minWidth: 30, paddingHorizontal: 8 },
+  countBadgeText: { color: colors.onAccent, fontSize: 11, fontWeight: '800' },
+  inlineError: { color: colors.danger, fontSize: 11, fontWeight: '700', lineHeight: 16 },
+  inlineNotice: { color: colors.success, fontSize: 11, fontWeight: '800', lineHeight: 16 },
+  requestCard: { alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, flexDirection: 'row', gap: 11, padding: 13 },
+  requestAvatar: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: radii.pill, height: 40, justifyContent: 'center', overflow: 'hidden', width: 40 },
   requestContent: { flex: 1 },
-  requestName: { color: '#16202A', fontSize: 14, fontWeight: '900' },
-  requestActivity: { color: '#4D5A66', fontSize: 12, fontWeight: '700', marginTop: 2 },
-  requestMeta: { color: '#7A838C', fontSize: 10, marginTop: 4 },
+  requestName: { color: colors.text, fontSize: 14, fontWeight: '800' },
+  requestActivity: { color: colors.mutedText, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  requestMeta: { color: colors.subtleText, fontSize: 10, marginTop: 4 },
   requestActions: { flexDirection: 'row', gap: 8, marginTop: 11 },
-  rejectButton: { alignItems: 'center', borderColor: '#D7D1C8', borderRadius: 999, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 38 },
-  rejectButtonText: { color: '#4D5A66', fontSize: 11, fontWeight: '900' },
-  acceptButton: { alignItems: 'center', backgroundColor: '#3E8E68', borderRadius: 999, flex: 1, justifyContent: 'center', minHeight: 38 },
-  acceptButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+  rejectButton: { alignItems: 'center', borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 42 },
+  rejectButtonText: { color: colors.text, fontSize: 11, fontWeight: '800' },
+  acceptButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.pill, flex: 1, justifyContent: 'center', minHeight: 42 },
+  acceptButtonText: { color: colors.onAccent, fontSize: 11, fontWeight: '800' },
   leaveButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 14, paddingHorizontal: 2, paddingVertical: 5 },
-  leaveButtonText: { color: '#9D3E2B', fontSize: 12, fontWeight: '900' },
+  leaveButtonText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
   directionsButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 14, paddingHorizontal: 2, paddingVertical: 5 },
-  directionsButtonText: { color: '#2E7554', fontSize: 12, fontWeight: '900' },
+  directionsButtonText: { color: colors.accent, fontSize: 12, fontWeight: '800' },
   buttonPressed: { opacity: 0.65 },
 });
