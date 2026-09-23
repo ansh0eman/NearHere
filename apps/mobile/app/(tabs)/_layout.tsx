@@ -8,11 +8,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#FF6B4A',
+        tabBarActiveTintColor: '#6B4FA6',
         tabBarInactiveTintColor: '#7A838D',
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: '#F7F4EE',
+          backgroundColor: '#FAF9FD',
           borderTopColor: 'rgba(22,32,42,0.1)',
           height: 82,
           paddingBottom: 24,
@@ -24,6 +24,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Nearby',
+          tabBarStyle: { display: 'none' },
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'map' : 'map-outline'} size={23} color={color} />
           ),

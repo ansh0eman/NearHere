@@ -1,5 +1,9 @@
 # NearHere UX Flows
 
+## Current discovery entry — 23 September 2026
+
+Open → full-screen map without automatic selection. Area control → location search. Browse dock → filters and list → tap row → return to selected map pin. Pin → compact host/activity card → existing detail or Join flow. Map tap/close → clear selection. Profile is top-right; Your plans is inside Browse. Host stays directly available on the dock. See [Map-first design](map-first-design.md).
+
 These flows describe user-visible states and transitions. They are not screen lists: one screen may represent several states, and a transition may call multiple systems.
 
 ## 1. Browse-first entry

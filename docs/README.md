@@ -1,5 +1,9 @@
 # NearHere Documentation Map
 
+## Current design direction — 23 September 2026
+
+Read [Map-first design](map-first-design.md) for the researched neighbourhood-playground direction, the implemented minimal discovery screen, original starter mascots, and the staged custom vector-map/ avatar-editor work. This supersedes older orange-and-cream discovery mockups.
+
 This directory is the living engineering record for NearHere. It is written for a computer-science graduate learning how a production product is designed, built, tested, and scaled. Every important decision should record the requirement, alternatives, tradeoff, implementation status, failure modes, and verification evidence.
 
 ## Recommended reading order

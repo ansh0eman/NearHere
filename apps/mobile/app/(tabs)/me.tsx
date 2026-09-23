@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HostAvatar } from '@/components/host-avatar';
 
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
@@ -34,7 +35,7 @@ export default function MeScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarFace}>🦊</Text>
+        <HostAvatar seed={profileState.profile?.displayName ?? 'nearhere'} size={88} />
       </View>
 
       {session ? (
@@ -99,13 +100,13 @@ export default function MeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { alignItems: 'center', backgroundColor: '#F7F4EE', flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
+  screen: { alignItems: 'center', backgroundColor: '#FAF9FD', flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
   avatar: { alignItems: 'center', backgroundColor: '#BFE9D4', borderColor: '#FFFFFF', borderRadius: 50, borderWidth: 5, height: 100, justifyContent: 'center', shadowColor: '#16202A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 18, width: 100 },
   avatarFace: { fontSize: 48 },
   buttonDisabled: { opacity: 0.5 },
   title: { color: '#16202A', fontSize: 30, fontWeight: '900', letterSpacing: -1.2, marginTop: 25, textAlign: 'center' },
   subtitle: { color: '#66717D', fontSize: 15, lineHeight: 23, marginTop: 10, maxWidth: 330, textAlign: 'center' },
-  primaryButton: { alignItems: 'center', backgroundColor: '#FF6B4A', borderRadius: 999, flexDirection: 'row', gap: 9, marginTop: 28, paddingHorizontal: 22, paddingVertical: 15 },
+  primaryButton: { alignItems: 'center', backgroundColor: '#6B4FA6', borderRadius: 999, flexDirection: 'row', gap: 9, marginTop: 28, paddingHorizontal: 22, paddingVertical: 15 },
   primaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   profileSpinner: { marginTop: 25 },
   secondaryButton: { borderColor: 'rgba(22,32,42,0.16)', borderRadius: 999, borderWidth: 1, marginTop: 25, paddingHorizontal: 22, paddingVertical: 13 },

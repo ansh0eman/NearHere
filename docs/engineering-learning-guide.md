@@ -1,5 +1,13 @@
 # NearHere Engineering Learning Guide
 
+## Lesson 33 — Designing around a map
+
+A map-first interface needs more than a map background. In the previous screen, a card was selected automatically, filter chips were always visible, and a tab bar occupied the bottom. These independent elements competed for the same space. The new screen stores a nullable `selectedId`: null is a valid resting state with no card. A marker or Browse row selects it; tapping the map clears it. The selected object is derived from current nearby rows so a vanished activity does not keep a stale preview.
+
+Browse is a modal, meaning an explicit temporary surface above the map. It owns filter/list presentation but shares the map's `filter` and nearby-data hook. The privacy contract therefore remains in the existing repository/RPC. UI minimalism must preserve recovery and navigation: the modal still has loading, empty, retry, close, and Your plans actions.
+
+`HostAvatar` is a reusable native component. A deterministic hash of a display name picks a pastel mascot colour. This gives consistent visual fallbacks with no external image requests, but it is not unique identity and not user customisation. A later versioned avatar config must travel through an explicit public host projection. The deeper distinction between a map renderer, vector tiles, and style JSON—and the exact limits of this implementation—is taught in [Map-first design](map-first-design.md).
+
 This document explains NearHere from first principles. It is a living companion to the codebase: every meaningful product slice should add a lesson covering the problem, architecture, implementation, tradeoffs, verification, and interview language.
 
 The companion [`practical-engineering-curriculum.md`](practical-engineering-curriculum.md) defines the broader path from CS theory to practical product engineering, including TypeScript, client state, APIs, authentication, databases, concurrency, realtime systems, Redis, testing, security, delivery, and system design.

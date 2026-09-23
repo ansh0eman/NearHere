@@ -1,5 +1,15 @@
 # NearHere Engineering Backlog
 
+## Map-first design follow-through — 23 September 2026
+
+- [x] Implement a map-first opening screen with progressive disclosure of filters/list.
+- [x] Add violet/mint discovery palette and original native starter host mascots.
+- [x] Verify empty map → Browse → filter → Plans navigation in Simulator.
+- [ ] Verify populated mascot markers and selection on Simulator and physical iPhone.
+- [ ] Add persistent versioned avatar choices and public-safe host-avatar RPC projection.
+- [ ] Select production vector tiles, integrate MapLibre, author illustrated map style, and verify attribution/performance.
+- [ ] Add zoom-based clustering and finish palette migration across other screens.
+
 Checkboxes record implementation, not aspiration. Items are ordered by dependency and user value.
 
 ## Identity foundation — Lessons 4 and 5

@@ -1,5 +1,12 @@
 # NearHere testing status
 
+## 23 September 2026 — map-first design acceptance
+
+TypeScript, lint (no warnings), and iOS production bundle export passed after
+this change. No database or native dependency change was introduced.
+
+Simulator inspection confirmed the light muted iOS map, minimal area/profile controls, recenter, and Browse/Host dock, with no initial selected card or tab bar on Nearby. Browse opened, Coffee changed selected filter, and Your plans reached the existing caller-scoped Plans screen with tabs available. The current area returned no active activities, so populated avatar-marker taps, selected-card sizing, and overlapping pins were **not** accepted in this run. The new native mascot is visible in profile access. Physical-device, large-text, and Android acceptance remain open. The custom MapLibre basemap and persistent avatar editor are planned, not implemented. See [design scope and next steps](map-first-design.md).
+
 This document records what has actually been tested. A green local build is
 not the same as a hosted authorization proof, and a Simulator launch is not the
 same as a physical-device usability check.

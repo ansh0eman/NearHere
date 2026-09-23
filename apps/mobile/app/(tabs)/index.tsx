@@ -5,30 +5,23 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { HostAvatar } from '@/components/host-avatar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNearbyActivities } from '@/hooks/use-nearby-activities';
-import { DEFAULT_MAP_REGION, useNearbyLocation } from '@/hooks/use-nearby-location';
+import { useNearbyLocation } from '@/hooks/use-nearby-location';
 import { joinActivity } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
 import type { ActivityFilter, ActivityKind, NearbyActivitySummary } from '@/types/activity';
-
-const KIND_COLORS: Record<ActivityKind, string> = {
-  walk: '#FF6B4A',
-  coffee: '#C2764B',
-  sports: '#3E8E68',
-  study: '#5867A8',
-  coworking: '#7A5A9E',
-  creative: '#C75B8B',
-  other: '#66717D',
-};
 
 const KIND_EMOJIS: Record<ActivityKind, string> = {
   walk: '🚶',
@@ -64,7 +57,7 @@ export default function NearbyScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [joiningId, setJoiningId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [isBrowseOpen, setBrowseOpen] = useState(false);
   const joiningIdRef = useRef<string | null>(null);
   const { refresh: refreshActivities, state: activityState } = useNearbyActivities(
     region.latitude,
@@ -161,7 +154,7 @@ export default function NearbyScreen() {
   const visibleActivities = activityState.activities;
 
   const selected =
-    visibleActivities.find((activity) => activity.id === selectedId) ?? visibleActivities[0];
+    visibleActivities.find((activity) => activity.id === selectedId);
 
   useEffect(() => {
     if (visibleActivities.length === 0) {
@@ -169,7 +162,7 @@ export default function NearbyScreen() {
       return;
     }
     if (!visibleActivities.some((activity) => activity.id === selectedId)) {
-      setSelectedId(visibleActivities[0].id);
+      setSelectedId(null);
     }
   }, [selectedId, visibleActivities]);
 
@@ -255,436 +248,193 @@ export default function NearbyScreen() {
 
   return (
     <View style={styles.screen}>
-      {viewMode === 'map' ? <MapView
+      <MapView
         ref={mapRef}
         provider={PROVIDER_DEFAULT}
         style={StyleSheet.absoluteFill}
-        initialRegion={DEFAULT_MAP_REGION}
+        initialRegion={region}
+        userInterfaceStyle="light"
+        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+        showsPointsOfInterest={false}
+        showsBuildings={false}
+        showsTraffic={false}
         showsUserLocation={source === 'device'}
         showsCompass={false}
         showsMyLocationButton={false}
-        toolbarEnabled={false}>
-        {visibleActivities.map((activity) => {
-          const isSelected = activity.id === selected?.id;
-          return (
-            <Marker
-              key={activity.id}
-              coordinate={activityCoordinate(activity)}
-              onPress={() => centerActivity(activity)}>
-              <View style={[styles.marker, isSelected && styles.markerSelected]}>
-                <Text style={styles.markerEmoji}>{KIND_EMOJIS[activity.kind]}</Text>
-                <Text style={styles.markerCount}>{activity.participantCount}</Text>
+        legalLabelInsets={{ top: 0, left: 16, right: 0, bottom: selected ? 350 : 170 }}
+        toolbarEnabled={false}
+        onPress={(event) => { if (event.nativeEvent.action !== 'marker-press') setSelectedId(null); }}>
+        {visibleActivities.map((activity) => (
+          <Marker
+            key={activity.id}
+            coordinate={activityCoordinate(activity)}
+            accessibilityLabel={`${activity.title}, hosted by ${activity.hostDisplayName}. Approximate activity area.`}
+            onPress={() => centerActivity(activity)}>
+            <View style={styles.pin}>
+              <View style={[styles.avatarPin, selectedId === activity.id && styles.selectedPin]}>
+                <HostAvatar seed={activity.hostDisplayName} />
+                <Text style={styles.activityBadge}>{KIND_EMOJIS[activity.kind]}</Text>
               </View>
-            </Marker>
-          );
-        })}
-      </MapView> : (
-        <View style={styles.listSurface}>
-          <Text style={styles.listHeading}>Nearby activities</Text>
-          <Text style={styles.listSubheading}>{visibleActivities.length ? `${visibleActivities.length} to explore` : 'Nothing live nearby yet'}</Text>
-          <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-            {visibleActivities.map((activity) => (
-              <Pressable key={activity.id} accessibilityRole="button" accessibilityLabel={`View ${activity.title}`} onPress={() => router.push({ pathname: '/activity/[id]', params: { distanceM: String(activity.distanceM), id: activity.id } })} style={styles.listRow}>
-                <View style={[styles.listIcon, { backgroundColor: `${KIND_COLORS[activity.kind]}22` }]}><Text style={styles.listEmoji}>{KIND_EMOJIS[activity.kind]}</Text></View>
-                <View style={styles.listCopy}><Text style={styles.listTitle}>{activity.title}</Text><Text style={styles.listMeta}>{formatDistance(activity.distanceM)} · {formatStartsAt(activity.startsAt)}</Text><Text style={styles.listHost}>Hosted by {activity.hostDisplayName}</Text></View>
-                <Ionicons color="#8A929A" name="chevron-forward" size={18} />
+              <View style={styles.pinShadow} />
+            </View>
+          </Marker>
+        ))}
+      </MapView>
+
+      <SafeAreaView edges={['top']} pointerEvents="box-none" style={styles.topArea}>
+        <View style={styles.topRow}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Search or change area" onPress={openLocationPicker} style={styles.areaButton}>
+            <View style={styles.areaDot} />
+            <View style={styles.areaCopy}>
+              <Text style={styles.wordmark}>nearhere</Text>
+              <Text numberOfLines={1} style={styles.areaText}>{label}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={15} color="#665E76" />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open my profile" onPress={() => router.push('/me')} style={styles.profileButton}>
+            <HostAvatar seed={profileState.profile?.displayName ?? 'nearhere'} size={38} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      <SafeAreaView edges={['bottom']} pointerEvents="box-none" style={styles.bottomArea}>
+        <View style={styles.mapTools}>
+          <Text style={styles.mapNote}>Activity areas · not live locations</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Center map on my location" onPress={() => void requestDeviceLocation()} style={styles.locateButton}>
+            {locationStatus === 'requesting' ? <ActivityIndicator color="#6650AA" /> : <Ionicons name="locate-outline" size={20} color="#443759" />}
+          </Pressable>
+        </View>
+
+        {locationStatus === 'denied' || locationStatus === 'error' ? (
+          <Pressable accessibilityRole="button" onPress={openLocationPicker} style={styles.notice}>
+            <Text style={styles.noticeText}>Choose an area to explore. Location is unavailable.</Text>
+          </Pressable>
+        ) : null}
+
+        {activityState.status === 'error' ? (
+          <Pressable accessibilityRole="button" onPress={() => void refreshActivities()} style={styles.notice}>
+            <Text style={styles.noticeText}>Couldn’t load activities. Tap to retry.</Text>
+          </Pressable>
+        ) : null}
+
+        {selected ? (
+          <View style={styles.selection}>
+            <View style={styles.selectionTop}>
+              <HostAvatar seed={selected.hostDisplayName} size={40} />
+              <View style={styles.selectionCopy}>
+                <Text style={styles.hostLabel}>With {selected.hostDisplayName}</Text>
+                <Text numberOfLines={2} style={styles.selectionTitle}>{selected.title}</Text>
+              </View>
+              <Pressable accessibilityLabel="Dismiss selected activity" accessibilityRole="button" onPress={() => setSelectedId(null)} style={styles.closeButton}>
+                <Ionicons name="close" size={19} color="#665E76" />
+              </Pressable>
+            </View>
+            <Text style={styles.selectionMeta}>{formatStartsAt(selected.startsAt)} · {formatDistance(selected.distanceM)} · {selected.participantCount}/{selected.capacity} going</Text>
+            <View style={styles.actions}>
+              <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.detailsButton}><Text style={styles.detailsText}>View activity</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={joiningId === selected.id} onPress={requireAuthenticationForJoin} style={styles.joinButton}>
+                {joiningId === selected.id ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.joinText}>{selected.joinMode === 'approval' ? 'Request to join' : 'Join'}</Text>}
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        <View style={styles.dock}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Browse activities and filters" onPress={() => setBrowseOpen(true)} style={styles.browseButton}>
+            <Text style={styles.browseTitle}>{activityState.status === 'loading' ? 'Looking nearby…' : visibleActivities.length ? `${visibleActivities.length} things to do` : 'Start something nearby'}</Text>
+            <Text style={styles.browseHint}>{filter === 'all' ? 'Explore your neighbourhood' : `${filter} · change filter`}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Host an activity" onPress={requireAuthenticationForHosting} style={styles.hostButton}><Text style={styles.hostButtonText}>＋ Host</Text></Pressable>
+        </View>
+      </SafeAreaView>
+
+      <Modal visible={isBrowseOpen} animationType="slide" onRequestClose={() => setBrowseOpen(false)}>
+        <SafeAreaView style={styles.browseScreen}>
+          <View style={styles.browseHeader}>
+            <View><Text style={styles.wordmark}>Explore nearby</Text><Text style={styles.browseHint}>Find a little reason to go outside.</Text></View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Back to map" onPress={() => setBrowseOpen(false)} style={styles.closeButton}><Ionicons name="close" size={22} color="#302842" /></Pressable>
+          </View>
+          <View style={styles.filters}>
+            <FilterPill label="All" active={filter === 'all'} onPress={() => selectFilter('all')} />
+            <FilterPill label="Walks" active={filter === 'walk'} onPress={() => selectFilter('walk')} />
+            <FilterPill label="Coffee" active={filter === 'coffee'} onPress={() => selectFilter('coffee')} />
+            <FilterPill label="Sports" active={filter === 'sports'} onPress={() => selectFilter('sports')} />
+          </View>
+          <ScrollView contentContainerStyle={styles.listContent}>
+            {activityState.status === 'loading' ? <ActivityIndicator color="#6650AA" /> : activityState.status === 'error' ? (
+              <Pressable accessibilityRole="button" onPress={() => void refreshActivities()} style={styles.notice}><Text style={styles.noticeText}>Couldn’t load activities. Tap to retry.</Text></Pressable>
+            ) : !visibleActivities.length ? <Text style={styles.emptyText}>Nothing here yet. Try another activity type or host the first one.</Text> : visibleActivities.map((activity) => (
+              <Pressable key={activity.id} accessibilityRole="button" accessibilityLabel={`Show ${activity.title} on the map`} onPress={() => { setBrowseOpen(false); centerActivity(activity); }} style={styles.listRow}>
+                <HostAvatar seed={activity.hostDisplayName} size={54} />
+                <View style={styles.selectionCopy}>
+                  <Text style={styles.hostLabel}>{KIND_EMOJIS[activity.kind]}  {activity.hostDisplayName}</Text>
+                  <Text style={styles.listTitle}>{activity.title}</Text>
+                  <Text style={styles.listMeta}>{formatStartsAt(activity.startsAt)} · {formatDistance(activity.distanceM)}</Text>
+                </View>
               </Pressable>
             ))}
           </ScrollView>
-        </View>
-      )}
-
-      <SafeAreaView edges={['top']} style={styles.topArea} pointerEvents="box-none">
-        <View style={styles.topRow}>
-          <View style={styles.brandPill}>
-            <View style={styles.brandMark}>
-              <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-            </View>
-            <Text style={styles.brandText}>NearHere</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Center map on my location"
-            onPress={() => void requestDeviceLocation()}
-            style={styles.iconButton}>
-            {locationStatus === 'loading' || locationStatus === 'requesting' ? (
-              <ActivityIndicator size="small" color="#16202A" />
-            ) : (
-              <Ionicons name="locate" size={21} color="#16202A" />
-            )}
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={viewMode === 'map' ? 'Show activities as a list' : 'Show activities on a map'}
-            accessibilityState={{ selected: viewMode === 'list' }}
-            onPress={() => setViewMode((mode) => mode === 'map' ? 'list' : 'map')}
-            style={styles.iconButton}>
-            <Ionicons name={viewMode === 'map' ? 'list' : 'map'} size={21} color="#16202A" />
-          </Pressable>
-        </View>
-
-        {source === 'manual' && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Change selected area"
-            onPress={openLocationPicker}
-            style={styles.manualLocationPill}>
-            <Ionicons name="location" size={14} color="#FF6B4A" />
-            <Text style={styles.manualLocationText}>{label}</Text>
-            <Ionicons name="chevron-forward" size={13} color="#66717D" />
-          </Pressable>
-        )}
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}>
-          <FilterPill label="All nearby" active={filter === 'all'} onPress={() => selectFilter('all')} />
-          <FilterPill label="Walks" active={filter === 'walk'} onPress={() => selectFilter('walk')} />
-          <FilterPill label="Coffee" active={filter === 'coffee'} onPress={() => selectFilter('coffee')} />
-          <FilterPill label="Sports" active={filter === 'sports'} onPress={() => selectFilter('sports')} />
-        </ScrollView>
-      </SafeAreaView>
-
-      {(locationStatus === 'denied' || locationStatus === 'error') && (
-        <View style={styles.locationFallback}>
-          <Ionicons name="location-outline" size={21} color="#16202A" />
-          <View style={styles.locationFallbackCopy}>
-            <Text style={styles.locationFallbackTitle}>Choose where to explore</Text>
-            <Text style={styles.locationFallbackBody}>Location is off. The map is using Bengaluru for now.</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Choose a different neighborhood"
-            onPress={openLocationPicker}
-            style={styles.changeButton}>
-            <Text style={styles.changeButtonText}>Change</Text>
-          </Pressable>
-        </View>
-      )}
-
-      <View style={[styles.bottomArea, viewMode === 'list' && styles.listBottomArea]}>
-        {viewMode === 'map' ? <>
-        <View style={styles.prototypeLabel}>
-          <View style={styles.liveDot} />
-          <Text style={styles.prototypeText}>LIVE ACTIVITIES</Text>
-        </View>
-
-        {activityState.status === 'loading' ? (
-          <View style={styles.emptyCard}>
-            <ActivityIndicator color="#FF6B4A" />
-            <Text style={styles.emptyTitle}>Looking nearby…</Text>
-          </View>
-        ) : activityState.status === 'error' ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.activityTitle}>Activities did not load</Text>
-            <Text style={styles.activityDescription}>{activityState.message}</Text>
-            <Pressable accessibilityRole="button" onPress={() => void refreshActivities()} style={styles.retryButton}>
-              <Text style={styles.retryButtonText}>Try again</Text>
-            </Pressable>
-          </View>
-        ) : selected ? (
-          <View style={styles.activityCard}>
-            <Pressable
-              accessibilityHint="Opens full activity details"
-              accessibilityLabel={`View ${selected.title}`}
-              accessibilityRole="button"
-              onPress={openSelectedActivity}
-              style={({ pressed }) => pressed && styles.cardPressed}>
-              <View style={styles.activityMetaRow}>
-                <Text style={[styles.activityKind, { color: KIND_COLORS[selected.kind] }]}>
-                  {selected.kind.toUpperCase()}
-                </Text>
-                <Text style={styles.startsIn}>{formatStartsAt(selected.startsAt)}</Text>
-              </View>
-              <Text style={styles.activityTitle}>{selected.title}</Text>
-              <Text numberOfLines={1} style={styles.activityDescription}>{selected.description}</Text>
-              <View style={styles.detailRow}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="walk-outline" size={17} color="#66717D" />
-                  <Text style={styles.detailText}>{formatDistance(selected.distanceM)}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={17} color="#66717D" />
-                  <Text style={styles.detailText}>
-                    {selected.participantCount}/{selected.capacity} going
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-            <View style={styles.cardActions}>
-              <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.detailsButton}>
-                <Text style={styles.detailsButtonText}>Details</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={joiningId === selected.id}
-                onPress={requireAuthenticationForJoin}
-                style={styles.joinButton}>
-                {joiningId === selected.id ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Text style={styles.joinButtonText}>Join activity</Text>
-                    <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
-                  </>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.activityTitle}>Nothing live nearby yet</Text>
-            <Text style={styles.activityDescription}>Be the first to host something in this area.</Text>
-          </View>
-        )}
-        </> : null}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Host an activity"
-          onPress={requireAuthenticationForHosting}
-          style={[styles.hostButton, viewMode === 'list' && styles.hostButtonList]}>
-          <Ionicons name="add" size={23} color="#FFFFFF" />
-        </Pressable>
-      </View>
+          <Pressable accessibilityRole="button" onPress={() => { setBrowseOpen(false); router.push('/plans'); }} style={styles.plansButton}><Text style={styles.detailsText}>Your plans</Text><Ionicons name="arrow-forward" color="#6650AA" size={18} /></Pressable>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
 
-function FilterPill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={[styles.filterPill, active && styles.filterPillActive]}>
-      <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
-    </Pressable>
-  );
+function FilterPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.filter, active && styles.filterActive]}><Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#DCEBDC' },
-  listSurface: { backgroundColor: '#F7F4EE', flex: 1, paddingHorizontal: 18, paddingTop: 176 },
-  listHeading: { color: '#16202A', fontSize: 30, fontWeight: '900', letterSpacing: -0.8 },
-  listSubheading: { color: '#66717D', fontSize: 13, marginTop: 5 },
-  listContent: { gap: 10, paddingBottom: 120, paddingTop: 18 },
-  listRow: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: 'rgba(22,32,42,0.08)', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 13 },
-  listIcon: { alignItems: 'center', borderRadius: 21, height: 42, justifyContent: 'center', width: 42 },
-  listEmoji: { fontSize: 20 },
-  listCopy: { flex: 1 },
-  listTitle: { color: '#16202A', fontSize: 14, fontWeight: '900' },
-  listMeta: { color: '#66717D', fontSize: 11, marginTop: 4 },
-  listHost: { color: '#8A929A', fontSize: 10, marginTop: 4 },
-  topArea: { position: 'absolute', left: 0, right: 0, top: 0 },
-  topRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  brandPill: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(247,244,238,0.96)',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 8,
-    padding: 7,
-    paddingRight: 14,
-    shadowColor: '#16202A',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  brandMark: {
-    alignItems: 'center',
-    backgroundColor: '#16202A',
-    borderRadius: 12,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  brandText: { color: '#16202A', fontSize: 16, fontWeight: '900', letterSpacing: -0.4 },
-  iconButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(247,244,238,0.96)',
-    borderRadius: 22,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-    shadowColor: '#16202A',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  filters: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
-  manualLocationPill: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(247,244,238,0.96)',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 5,
-    marginLeft: 16,
-    marginTop: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  manualLocationText: { color: '#16202A', fontSize: 11, fontWeight: '800' },
-  filterPill: {
-    backgroundColor: 'rgba(247,244,238,0.96)',
-    borderColor: 'rgba(22,32,42,0.12)',
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-  },
-  filterPillActive: { backgroundColor: '#16202A', borderColor: '#16202A' },
-  filterText: { color: '#16202A', fontSize: 13, fontWeight: '800' },
+  screen: { flex: 1, backgroundColor: '#EDF1EC' },
+  topArea: { position: 'absolute', top: 0, left: 0, right: 0 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
+  areaButton: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 23, paddingHorizontal: 16, paddingVertical: 11, maxWidth: '78%', shadowColor: '#302842', shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
+  areaDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: '#A7DCC7' },
+  areaCopy: { flexShrink: 1 },
+  wordmark: { fontSize: 20, fontWeight: '900', color: '#302842', letterSpacing: -0.8 },
+  areaText: { fontSize: 11, color: '#766D85', marginTop: 2 },
+  profileButton: { backgroundColor: '#FFFFFF', padding: 5, borderRadius: 24 },
+  pin: { alignItems: 'center', width: 70, height: 78 },
+  avatarPin: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 3, borderWidth: 2, borderColor: '#FFFFFF' },
+  selectedPin: { borderColor: '#7456BA', backgroundColor: '#F1EBFC' },
+  activityBadge: { position: 'absolute', right: -5, bottom: -5, fontSize: 16, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 3, overflow: 'hidden' },
+  pinShadow: { backgroundColor: 'rgba(48,40,66,0.16)', width: 23, height: 5, borderRadius: 12, marginTop: 7 },
+  bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16 },
+  mapTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  mapNote: { color: '#514A61', backgroundColor: 'rgba(255,255,255,0.9)', fontSize: 10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, overflow: 'hidden' },
+  locateButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  dock: { backgroundColor: '#FFFFFF', borderRadius: 27, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8, shadowColor: '#302842', shadowOpacity: 0.1, shadowRadius: 18, shadowOffset: { width: 0, height: 5 } },
+  browseButton: { flex: 1, minHeight: 44, justifyContent: 'center', paddingLeft: 3 },
+  browseTitle: { color: '#302842', fontSize: 16, fontWeight: '800', letterSpacing: -0.4 },
+  browseHint: { color: '#766D85', fontSize: 11, marginTop: 4 },
+  hostButton: { backgroundColor: '#6B4FA6', paddingHorizontal: 19, minHeight: 46, borderRadius: 19, justifyContent: 'center' },
+  hostButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
+  notice: { backgroundColor: '#F3EFFA', padding: 14, borderRadius: 18, marginBottom: 10 },
+  noticeText: { color: '#574477', fontSize: 12, lineHeight: 18 },
+  selection: { backgroundColor: '#FFFFFF', borderRadius: 25, padding: 16, marginBottom: 10 },
+  selectionTop: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  selectionCopy: { flex: 1 },
+  hostLabel: { color: '#766D85', fontSize: 11 },
+  selectionTitle: { color: '#302842', fontSize: 18, fontWeight: '800', marginTop: 4, letterSpacing: -0.4 },
+  selectionMeta: { color: '#766D85', fontSize: 11, lineHeight: 18, marginTop: 12 },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  actions: { flexDirection: 'row', gap: 12, alignItems: 'center', marginTop: 12 },
+  detailsButton: { flex: 1, paddingVertical: 13 },
+  detailsText: { fontSize: 13, fontWeight: '800', color: '#6650AA' },
+  joinButton: { minHeight: 44, borderRadius: 16, paddingHorizontal: 24, backgroundColor: '#6B4FA6', alignItems: 'center', justifyContent: 'center' },
+  joinText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  browseScreen: { flex: 1, backgroundColor: '#FAF9FD' },
+  browseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 16 },
+  filter: { flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 18, backgroundColor: '#EEEAF5' },
+  filterActive: { backgroundColor: '#6B4FA6' },
+  filterText: { color: '#665E76', fontSize: 12, fontWeight: '700' },
   filterTextActive: { color: '#FFFFFF' },
-  marker: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 2,
-    flexDirection: 'row',
-    gap: 3,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
-    shadowColor: '#16202A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 7,
-    elevation: 4,
-  },
-  markerSelected: { borderColor: '#FF6B4A', transform: [{ scale: 1.08 }] },
-  markerEmoji: { fontSize: 17 },
-  markerCount: {
-    backgroundColor: '#FF6B4A',
-    borderRadius: 10,
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '900',
-    minWidth: 20,
-    overflow: 'hidden',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    textAlign: 'center',
-  },
-  locationFallback: {
-    alignItems: 'center',
-    backgroundColor: '#FFF9E8',
-    borderColor: '#E9DDB9',
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    left: 16,
-    padding: 13,
-    position: 'absolute',
-    right: 16,
-    top: 152,
-  },
-  locationFallbackCopy: { flex: 1 },
-  locationFallbackTitle: { color: '#16202A', fontSize: 13, fontWeight: '900' },
-  locationFallbackBody: { color: '#66717D', fontSize: 11, lineHeight: 16, marginTop: 2 },
-  changeButton: { padding: 8 },
-  changeButtonText: { color: '#DB4C2F', fontSize: 12, fontWeight: '900' },
-  bottomArea: { bottom: 12, left: 12, position: 'absolute', right: 12 },
-  listBottomArea: { bottom: 88 },
-  prototypeLabel: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  liveDot: { backgroundColor: '#3E8E68', borderRadius: 4, height: 7, width: 7 },
-  prototypeText: { color: '#66717D', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-  activityCard: {
-    backgroundColor: '#F7F4EE',
-    borderColor: 'rgba(22,32,42,0.1)',
-    borderRadius: 26,
-    borderWidth: 1,
-    padding: 16,
-    shadowColor: '#16202A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  cardPressed: { opacity: 0.72 },
-  activityMetaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  activityKind: { fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
-  startsIn: { color: '#3E8E68', fontSize: 12, fontWeight: '800' },
-  activityTitle: { color: '#16202A', fontSize: 20, fontWeight: '900', letterSpacing: -0.7, marginTop: 9 },
-  activityDescription: { color: '#66717D', fontSize: 13, lineHeight: 18, marginTop: 4 },
-  emptyTitle: { color: '#16202A', fontSize: 15, fontWeight: '900', marginTop: 12, textAlign: 'center' },
-  detailRow: { flexDirection: 'row', gap: 16, marginTop: 11 },
-  detailItem: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-  detailText: { color: '#66717D', fontSize: 12, fontWeight: '700' },
-  hostText: { color: '#89919A', fontSize: 11, fontWeight: '700', marginTop: 10 },
-  cardActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  detailsButton: { paddingHorizontal: 3, paddingVertical: 11 },
-  detailsButtonText: { color: '#4D5A66', fontSize: 12, fontWeight: '900' },
-  avatarStack: { alignItems: 'center', flexDirection: 'row' },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: '#BFE9D4',
-    borderColor: '#F7F4EE',
-    borderRadius: 17,
-    borderWidth: 2,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  joinButton: {
-    alignItems: 'center',
-    backgroundColor: '#FF6B4A',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 7,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
-  joinButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
-  hostButton: {
-    alignItems: 'center',
-    backgroundColor: '#16202A',
-    borderColor: '#F7F4EE',
-    borderRadius: 27,
-    borderWidth: 3,
-    height: 54,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 12,
-    top: -70,
-    width: 54,
-    shadowColor: '#16202A',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  hostButtonList: { right: 16, top: -54 },
-  emptyCard: { backgroundColor: '#F7F4EE', borderRadius: 26, padding: 20 },
-  retryButton: { alignSelf: 'flex-start', backgroundColor: '#16202A', borderRadius: 999, marginTop: 14, paddingHorizontal: 16, paddingVertical: 10 },
-  retryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  listContent: { paddingHorizontal: 20, paddingBottom: 20 },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 20, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5DFEE' },
+  listTitle: { color: '#302842', fontSize: 16, fontWeight: '800', marginTop: 4 },
+  listMeta: { color: '#766D85', fontSize: 11, marginTop: 6 },
+  emptyText: { color: '#766D85', fontSize: 15, lineHeight: 23, paddingVertical: 25 },
+  plansButton: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, minHeight: 52 },
 });
