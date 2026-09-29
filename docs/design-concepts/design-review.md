@@ -2,6 +2,13 @@
 
 Date: 23 September 2026. **Visual target, not a shipped UI.**
 
+24 September scope extension: the user asked to plan the richer profile and
+previously deferred wardrobe. [The premium profile/character specification](../handoffs/premium-profile-avatar-spec.md)
+now defines optional real bio/interests/city, bounded outfit looks and a separately
+gated genuine 3D pipeline. The initial six-character/no-wardrobe limits below
+describe the first release, not a prohibition on that staged roadmap. The
+concept's fake handles/counts and live-tracking implications remain excluded.
+
 The user rejected the inconsistent cream/orange forms, violet discovery, small
 face markers, heavy cards, and sparse test map. They asked for a premium map-first
 community: “if Reddit had a map,” with Pokémon GO-like delight and expressive
@@ -161,3 +168,40 @@ quality** as the target; a dark background plus old emoji markers is not success
 Review Map, Profile, Host, Activity Detail, Plans and Auth together. Run populated,
 empty, error, keyboard-open, and large-text states. Record differences honestly.
 The app must remain understandable without colour, artwork or map gestures.
+
+## Implementation parity checkpoint — 2026-09-29
+
+The first cross-screen consistency fix reuses the authored Night Arcade MapLibre
+style in the manual area picker and private meeting-point picker. Before this,
+the discovery map used the custom dark style but both selection flows fell back
+to the bright iOS system map. `apps/mobile/components/map/selection-map.tsx`
+now owns the shared basemap, attribution, camera movement, and viewport-center
+callback; each screen retains its existing search, fixed center pin, and save
+behavior. A Simulator screenshot confirmed the manual-area flow loads the dark
+style and existing search/confirmation controls remain visible.
+
+This fixes a jarring style switch; it does **not** establish concept parity.
+The screenshot still uses conventional vector-map geometry, a simple branded
+center pin, and dark panels rather than the concept's illustrated street scene
+and full-body people. Map avatars, character artwork, and richer map-specific
+composition remain separate work. The picker style should be checked on the
+private meeting-point route and with physical-device network conditions before
+calling the location experience accepted.
+
+### Map character legibility follow-up — 30 September 2026
+
+The map renderer now places every individual character on a dark circular
+pedestal with a subtle border and increases its image scale (and its selected
+scale). This establishes a readable visual unit against detailed vector streets:
+an activity is a person in a place, rather than an unexplained tiny image. The
+cluster treatment remains distinct and the public-safe feature contract is
+unchanged. The legal attribution control remains available from the map; the
+custom visible affordance is now the compact “Map data” label instead of a
+repeated provider-name line. This reduces chrome without hiding credits.
+
+The current discovery response contained one unexpired development row during
+the visual capture. The demo seeder intentionally uses a current test-OTP
+configuration and refused an obsolete credential with HTTP 403 before creating
+or altering any data. Do not substitute local fake activities in the shipped
+client to make a screenshot look busy; rerun the non-destructive seeder only
+after the current development test OTP is available.

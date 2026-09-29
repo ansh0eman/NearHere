@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
+import type { Region } from 'react-native-maps';
 import {
   ActivityIndicator,
   Alert,
@@ -12,8 +13,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SelectionMap, type SelectionMapHandle } from '@/components/map/selection-map';
 
 import { DEFAULT_MAP_REGION } from '@/hooks/use-nearby-location';
 import { colors, radii, spacing } from '@/constants/design-tokens';
@@ -28,7 +29,7 @@ function parseCoordinate(value: string | string[] | undefined, fallback: number)
 
 export default function LocationPickerScreen() {
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<SelectionMapHandle>(null);
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
   const initialRegion = useMemo<Region>(
     () => ({
@@ -80,7 +81,7 @@ export default function LocationPickerScreen() {
     setResults([]);
     setSearchError(null);
     Keyboard.dismiss();
-    mapRef.current?.animateToRegion(nextRegion, 450);
+    mapRef.current?.moveTo([nextRegion.longitude, nextRegion.latitude], 14, 450);
   }
 
   async function confirmLocation() {
@@ -102,14 +103,15 @@ export default function LocationPickerScreen() {
 
   return (
     <View style={styles.screen}>
-      <MapView
+      <SelectionMap
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        initialRegion={initialRegion}
-        onRegionChangeComplete={setDraftRegion}
-        onPanDrag={() => setSelectedLabel(null)}
-        showsCompass={false}
-        toolbarEnabled={false}
+        center={[initialRegion.longitude, initialRegion.latitude]}
+        zoom={Math.max(4, Math.min(16, Math.log2(360 / initialRegion.latitudeDelta)))}
+        onViewportChange={([longitude, latitude], userInteraction) => {
+          setDraftRegion(current => ({ ...current, latitude, longitude }));
+          if (userInteraction) setSelectedLabel(null);
+        }}
       />
 
       <SafeAreaView edges={['top']} style={styles.headerArea} pointerEvents="box-none">

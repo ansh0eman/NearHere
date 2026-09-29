@@ -1,6 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Camera, GeoJSONSource, Images, Layer, Map as MapLibreMap, type CameraRef, type StyleSpecification } from '@maplibre/maplibre-react-native';
-import type { FeatureCollection, Point } from 'geojson';
 import { useFocusEffect, useRouter, useSegments } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -15,10 +13,10 @@ import {
   View,
 } from 'react-native';
 import { HostAvatar } from '@/components/host-avatar';
-import { AVATAR_CATALOG } from '@/lib/avatar-catalog';
-import { avatarChoice, avatarIndex, avatarSeed } from '@/lib/avatar-identity';
+import { ActivityMap, type ActivityMapHandle } from '@/components/map/activity-map';
+import { avatarChoice, avatarSeed } from '@/lib/avatar-identity';
+import { buildActivityMapFeatures, resolveSelectedActivity } from '@/lib/activity-map-features';
 import { colors, radii } from '@/constants/design-tokens';
-import nearhereMapStyle from '@/assets/maps/nearhere-night-arcade-v1.json';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNearbyActivities } from '@/hooks/use-nearby-activities';
@@ -33,10 +31,6 @@ const KIND_LABELS: Record<ActivityKind, string> = {
   coworking: 'Coworking', creative: 'Creative', other: 'Neighbourhood plan',
 };
 
-// The JSON style is validated with MapLibre's v8 validator in the style test;
-// imported JSON widens literal values such as version: 8 to number in TypeScript.
-const MAP_STYLE = nearhereMapStyle as unknown as StyleSpecification;
-
 function formatStartsAt(value: string) {
   const startsAt = new Date(value);
   const minutes = Math.round((startsAt.getTime() - Date.now()) / 60_000);
@@ -50,21 +44,24 @@ function formatDistance(distanceM: number) {
   return distanceM < 1000 ? `${Math.round(distanceM)} m away` : `${(distanceM / 1000).toFixed(1)} km away`;
 }
 
+function nearbyCountLabel(count: number) {
+  return count === 1 ? '1 thing to do' : `${count} things to do`;
+}
+
 export default function NearbyScreen() {
   const router = useRouter();
   const segments = useSegments();
-  const mapRef = useRef<React.ElementRef<typeof MapLibreMap>>(null);
-  const cameraRef = useRef<CameraRef>(null);
-  const sourceRef = useRef<React.ElementRef<typeof GeoJSONSource>>(null);
+  const mapRef = useRef<ActivityMapHandle>(null);
   const { pendingIntent, session, setPendingIntent } = useAuth();
   const { state: profileState } = useProfile();
-  const { failure, failureMessage, label, refreshManualLocation, region, requestDeviceLocation, source, status: locationStatus } =
+  const { deviceLocation, failure, failureMessage, label, refreshManualLocation, region, requestDeviceLocation, source, status: locationStatus } =
     useNearbyLocation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [isBrowseOpen, setBrowseOpen] = useState(false);
   const [mapAttempt, setMapAttempt] = useState(0);
+  const [bottomOverlayHeight, setBottomOverlayHeight] = useState(0);
   const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const joiningIdRef = useRef<string | null>(null);
   const hasInitiallyFocused = useRef(false);
@@ -75,33 +72,10 @@ export default function NearbyScreen() {
   );
 
   const visibleActivities = activityState.activities;
-  const activityFeatures = useMemo<FeatureCollection<Point, { activityId: string; avatarIcon: string }>>(() => ({
-    type: 'FeatureCollection',
-    features: visibleActivities.map((activity) => {
-      const seed = avatarSeed(activity.hostAvatarConfig, activity.hostDisplayName);
-      const selectedAvatarId = activity.hostAvatarConfig?.avatarId;
-      const avatar = selectedAvatarId
-        ? AVATAR_CATALOG.find((item) => item.id === selectedAvatarId) ?? AVATAR_CATALOG[avatarIndex(seed, AVATAR_CATALOG.length)]
-        : AVATAR_CATALOG[avatarIndex(seed, AVATAR_CATALOG.length)];
-      return {
-        type: 'Feature',
-        id: activity.id,
-        geometry: { type: 'Point', coordinates: [activity.publicLocation.longitude, activity.publicLocation.latitude] },
-        properties: { activityId: activity.id, avatarIcon: `avatar-${avatar.id}` },
-      };
-    }),
-  }), [visibleActivities]);
-
-  const avatarImages = useMemo(() => Object.fromEntries(
-    AVATAR_CATALOG.map((avatar) => [`avatar-${avatar.id}`, avatar.source]),
-  ), []);
+  const activityFeatures = useMemo(() => buildActivityMapFeatures(visibleActivities), [visibleActivities]);
 
   useEffect(() => {
-    cameraRef.current?.easeTo({
-      center: [region.longitude, region.latitude],
-      zoom: source === 'device' ? 13.8 : 12.8,
-      duration: 500,
-    });
+    mapRef.current?.easeTo([region.longitude, region.latitude], source === 'device' ? 13.8 : 12.8, 500);
   }, [region, source]);
 
   useFocusEffect(
@@ -187,8 +161,7 @@ export default function NearbyScreen() {
     });
   }, [pendingIntent, performJoin, profileState.status, region.latitude, region.longitude, router, segments, session, setPendingIntent]);
 
-  const selected =
-    visibleActivities.find((activity) => activity.id === selectedId);
+  const selected = resolveSelectedActivity(visibleActivities, selectedId);
 
   useEffect(() => {
     if (visibleActivities.length === 0) {
@@ -211,11 +184,11 @@ export default function NearbyScreen() {
 
   function centerActivity(activity: NearbyActivitySummary) {
     setSelectedId(activity.id);
-    cameraRef.current?.easeTo({
-      center: [activityCoordinate(activity).longitude, activityCoordinate(activity).latitude],
-      zoom: 15,
-      duration: 350,
-    });
+    mapRef.current?.easeTo(
+      [activityCoordinate(activity).longitude, activityCoordinate(activity).latitude],
+      15,
+      350,
+    );
   }
 
   function openLocationPicker() {
@@ -279,84 +252,21 @@ export default function NearbyScreen() {
 
   return (
     <View style={styles.screen}>
-      <MapLibreMap
+      <ActivityMap
         key={mapAttempt}
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        mapStyle={MAP_STYLE}
-        attribution
-        logo
-        compass={false}
-        scaleBar={false}
-        onDidFinishLoadingMap={() => setMapStatus('ready')}
-        onDidFailLoadingMap={() => setMapStatus('error')}
-        onPress={() => setSelectedId(null)}>
-        <Camera ref={cameraRef} initialViewState={{
-          center: [region.longitude, region.latitude],
-          zoom: source === 'device' ? 13.8 : 12.8,
-        }} />
-        <Images images={avatarImages} />
-        <GeoJSONSource
-          id="nearby-activities"
-          ref={sourceRef}
-          data={activityFeatures}
-          cluster
-          clusterRadius={58}
-          clusterMaxZoom={15}
-          onPress={(event) => {
-            event.stopPropagation();
-            const feature = event.nativeEvent.features[0];
-            if (!feature) return;
-            const coordinates = feature.geometry.type === 'Point' ? feature.geometry.coordinates : null;
-            const properties = feature.properties ?? {};
-            if (typeof properties.point_count === 'number' && typeof properties.cluster_id === 'number' && coordinates) {
-              void sourceRef.current?.getClusterExpansionZoom(properties.cluster_id).then((zoom) => {
-                cameraRef.current?.easeTo({ center: [coordinates[0], coordinates[1]], zoom, duration: 450 });
-              });
-              return;
-            }
-            if (typeof properties.activityId === 'string') setSelectedId(properties.activityId);
-          }}>
-          <Layer
-            id="activity-clusters"
-            type="circle"
-            filter={['has', 'point_count']}
-            paint={{ 'circle-color': colors.accent, 'circle-radius': ['step', ['get', 'point_count'], 18, 8, 22, 20, 27], 'circle-stroke-color': colors.canvas, 'circle-stroke-width': 2 }}
-          />
-          <Layer
-            id="activity-cluster-count"
-            type="symbol"
-            filter={['has', 'point_count']}
-            layout={{ 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13, 'text-font': ['Noto Sans Bold'] }}
-            paint={{ 'text-color': colors.onAccent }}
-          />
-          <Layer
-            id="selected-activity-halo"
-            type="circle"
-            filter={['all', ['!', ['has', 'point_count']], ['==', ['get', 'activityId'], selectedId ?? '']]}
-            paint={{ 'circle-color': colors.accent, 'circle-opacity': 0.22, 'circle-radius': 30, 'circle-stroke-color': colors.accent, 'circle-stroke-width': 2 }}
-          />
-          <Layer
-            id="activity-avatars"
-            type="symbol"
-            filter={['!', ['has', 'point_count']]}
-            layout={{
-              'icon-image': ['get', 'avatarIcon'],
-              'icon-size': ['case', ['==', ['get', 'activityId'], selectedId ?? ''], 0.15, 0.11],
-              'icon-anchor': 'bottom',
-              'icon-allow-overlap': true,
-              'icon-ignore-placement': true,
-              'icon-padding': 2,
-            }}
-          />
-        </GeoJSONSource>
-        {source === 'device' ? <GeoJSONSource id="my-location" data={{
-          type: 'Feature', geometry: { type: 'Point', coordinates: [region.longitude, region.latitude] }, properties: {},
-        }}>
-          <Layer id="my-location-halo" type="circle" paint={{ 'circle-radius': 11, 'circle-color': '#62B7FF', 'circle-opacity': 0.24 }} />
-          <Layer id="my-location-dot" type="circle" paint={{ 'circle-radius': 5, 'circle-color': '#62B7FF', 'circle-stroke-color': '#F4F5EF', 'circle-stroke-width': 2 }} />
-        </GeoJSONSource> : null}
-      </MapLibreMap>
+        features={activityFeatures}
+        center={region}
+        zoom={source === 'device' ? 13.8 : 12.8}
+        selectedId={selectedId}
+        deviceLocation={deviceLocation}
+        bottomOverlayHeight={bottomOverlayHeight}
+        onMapReady={() => setMapStatus('ready')}
+        onMapError={() => setMapStatus('error')}
+        onMapPress={() => setSelectedId(null)}
+        onSelectActivity={setSelectedId}
+      />
 
       {mapStatus === 'error' ? <View style={styles.mapError}>
         <Text style={styles.mapErrorText}>The map could not load. You can still browse the activity list.</Text>
@@ -388,17 +298,26 @@ export default function NearbyScreen() {
         </View>
       </SafeAreaView>
 
-      <SafeAreaView edges={['bottom']} pointerEvents="box-none" style={styles.bottomArea}>
+      <SafeAreaView
+        edges={['bottom']}
+        pointerEvents="box-none"
+        onLayout={(event) => {
+          const height = event?.nativeEvent?.layout?.height;
+          if (typeof height === 'number') {
+            setBottomOverlayHeight((current) => current === height ? current : height);
+          }
+        }}
+        style={styles.bottomArea}>
         <View style={styles.mapTools}>
           <View style={styles.mapNoteStack}>
-            <Text style={styles.mapNote}>Activity areas · not live locations</Text>
+            <Text style={styles.mapNote}>Activity areas, not live locations</Text>
             <Pressable
               accessibilityLabel="Show map data and tile-provider attribution"
               accessibilityRole="button"
               onPress={() => { void mapRef.current?.showAttribution(); }}
               style={styles.attributionButton}
             >
-              <Text style={styles.mapAttribution}>© OpenFreeMap · © OpenMapTiles · © OpenStreetMap</Text>
+              <Text style={styles.mapAttribution}>Map data</Text>
             </Pressable>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Center map on my location" onPress={() => void requestDeviceLocation()} style={styles.locateButton}>
@@ -454,7 +373,7 @@ export default function NearbyScreen() {
 
         <View style={styles.dock}>
           <Pressable accessibilityRole="button" accessibilityLabel="Browse activities and filters" onPress={() => { void refreshActivities(); setBrowseOpen(true); }} style={styles.browseButton}>
-            <Text style={styles.browseTitle}>{activityState.status === 'loading' ? 'Looking nearby…' : visibleActivities.length ? `${visibleActivities.length} things to do` : 'Start something nearby'}</Text>
+            <Text style={styles.browseTitle}>{activityState.status === 'loading' ? 'Looking nearby…' : visibleActivities.length ? nearbyCountLabel(visibleActivities.length) : 'Start something nearby'}</Text>
             <Text style={styles.browseHint}>{filter === 'all' ? 'Explore your neighbourhood' : `${filter} · change filter`}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Host an activity" onPress={requireAuthenticationForHosting} style={styles.hostButton}><Text style={styles.hostButtonText}>＋ Host</Text></Pressable>
@@ -519,9 +438,9 @@ const styles = StyleSheet.create({
   bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16 },
   mapTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   mapNoteStack: { flexShrink: 1, alignItems: 'flex-start', justifyContent: 'center', minHeight: 44 },
-  mapNote: { color: colors.text, backgroundColor: 'rgba(17,21,22,0.92)', borderColor: colors.border, borderWidth: 1, fontSize: 10, fontWeight: '600', paddingHorizontal: 11, paddingVertical: 7, borderRadius: 12, overflow: 'hidden' },
-  attributionButton: { justifyContent: 'center', minHeight: 16, maxWidth: '100%', paddingHorizontal: 4 },
-  mapAttribution: { color: colors.mutedText, fontSize: 8, lineHeight: 12 },
+  mapNote: { color: colors.text, backgroundColor: 'rgba(17,21,22,0.88)', borderColor: colors.border, borderWidth: 1, fontSize: 10, fontWeight: '600', paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, overflow: 'hidden' },
+  attributionButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 20, marginTop: 2, paddingHorizontal: 8, borderRadius: radii.pill, backgroundColor: 'rgba(17,21,22,0.72)' },
+  mapAttribution: { color: colors.mutedText, fontSize: 9, lineHeight: 12 },
   locateButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dock: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 25, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   browseButton: { flex: 1, minHeight: 44, justifyContent: 'center', paddingLeft: 3 },

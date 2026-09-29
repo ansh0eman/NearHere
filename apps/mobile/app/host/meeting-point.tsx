@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
+import type { Region } from 'react-native-maps';
 import {
   ActivityIndicator,
   Keyboard,
@@ -10,8 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SelectionMap, type SelectionMapHandle } from '@/components/map/selection-map';
 
 import { DEFAULT_MAP_REGION } from '@/hooks/use-nearby-location';
 import { colors, radii, spacing } from '@/constants/design-tokens';
@@ -26,7 +27,7 @@ function coordinate(value: string | string[] | undefined, fallback: number) {
 
 export default function MeetingPointScreen() {
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<SelectionMapHandle>(null);
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
   const initialRegion = useMemo<Region>(() => ({
     ...DEFAULT_MAP_REGION,
@@ -72,7 +73,7 @@ export default function MeetingPointScreen() {
     setResults([]);
     setSearchError(null);
     Keyboard.dismiss();
-    mapRef.current?.animateToRegion(nextRegion, 400);
+    mapRef.current?.moveTo([nextRegion.longitude, nextRegion.latitude], 15, 400);
   }
 
   async function confirmPoint() {
@@ -91,14 +92,15 @@ export default function MeetingPointScreen() {
 
   return (
     <View style={styles.screen}>
-      <MapView
+      <SelectionMap
         ref={mapRef}
-        initialRegion={initialRegion}
-        onPanDrag={() => setSelectedLabel(null)}
-        onRegionChangeComplete={setRegion}
-        showsCompass={false}
+        center={[initialRegion.longitude, initialRegion.latitude]}
+        zoom={Math.max(4, Math.min(17, Math.log2(360 / initialRegion.latitudeDelta)))}
+        onViewportChange={([longitude, latitude], userInteraction) => {
+          setRegion(current => ({ ...current, latitude, longitude }));
+          if (userInteraction) setSelectedLabel(null);
+        }}
         style={StyleSheet.absoluteFill}
-        toolbarEnabled={false}
       />
 
       <SafeAreaView edges={['top']} pointerEvents="box-none" style={styles.topArea}>

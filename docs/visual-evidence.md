@@ -1,5 +1,79 @@
 # NearHere Visual Evidence and Screenshot Log
 
+## 24 September 2026 — denied location and manual search
+
+V27: [Permission denied with manual area retained](screenshots/location-denied-manual-area-simulator-20260924.png),
+iPhone 17 Pro Simulator, iOS 26.5. Permission was revoked only for the
+Simulator app; “Center on my location” showed Settings/Choose area. Searching a
+public neighborhood landmark returned a result; selecting it and pressing Use
+this area persisted that area locally. A retry while denied preserved the
+manual region and removed the blue device-location marker. The prior permission
+and Near you state were restored. No exact meeting point, user phone or OTP is
+shown. This does not stand in for the user's physical iPhone or services-off,
+fresh-prompt and no-fix testing.
+
+## 24 September 2026 — keyboard-safe auth actions
+
+V26: [Phone entry with keyboard open](screenshots/auth-phone-keyboard-simulator-20260924.png)
+and [OTP entry with keyboard open](screenshots/auth-otp-keyboard-simulator-20260924.png),
+iPhone 17 Pro Simulator, iOS 26.5. The verification action and explicit Done
+remain visible above the number pad. This direct-route test intentionally had no
+pending phone, so Verify was disabled; it proves layout only, not a complete OTP
+authentication. The Phone screenshot shows the submit action and Done above the
+number pad while the default country prefix is still present. Phone-field
+interaction was additionally tested: Send was
+tappable while the keypad was open, invalid `+91` produced local validation,
+and Done returned to the normal footer without sending an SMS.
+
+P04 implementation detail: both auth forms track native keyboard frame events;
+the iOS action row is pinned above the measured keyboard, while the scroll
+content gains temporary bottom space and scrolls to keep the focused field
+visible. Android still uses its platform resize behavior and needs separate
+Simulator/device acceptance. No real phone or OTP is in this screenshot.
+
+## 24 September 2026 — map gestures
+
+V25: [Direct avatar selection](screenshots/map-avatar-marker-selected-simulator-20260924.png)
+and [selection cleared by tapping the map](screenshots/map-avatar-marker-cleared-simulator-20260924.png),
+iPhone 17 Pro Simulator, iOS 26.5, development fixtures. Direct avatar tap opened
+the selected activity card; tapping empty map dismissed it. A cluster tap zoomed
+to its members and retained enough bottom camera padding for the selection UI.
+The captured map/card shows public activity context only, not an exact meeting
+point. This verifies Simulator gestures, not large-data performance, VoiceOver
+target quality or physical-device behavior.
+
+An earlier local Plans capture showed the exact point of a fictional test
+activity; it has been deleted and is excluded from public evidence. Profile,
+Detail's top section and map captures are the privacy-safe avatar references.
+
+## 24 September 2026 — audit correction evidence
+
+V24: [Profile with actual upcoming plans](screenshots/night-arcade-profile-plans-audit-20260924.png),
+iPhone 17 Pro Simulator, iOS 26.5, fictional Chat Harness B, Metro-updated source
+on baseline `07999f0` plus local audit changes. Real Requested/Hosting summaries
+rendered; no exact point exposed. This is not a screenshot of the generated
+concept, a signed release or physical-device evidence. Scroll/large-text
+acceptance remains open even though the screen now uses ScrollView.
+
+The same session verified the corrected date sheet's Date/Time/Done accessibility
+targets and native wheel exposure. Switching tabs and dismissing worked; changing
+the native wheel value did not succeed through automation. Do not promote that
+partial result to complete date-selection acceptance.
+
+V25: [Direct avatar selection](screenshots/map-avatar-marker-selected-simulator-20260924.png)
+and [selection cleared by tapping the map](screenshots/map-avatar-marker-cleared-simulator-20260924.png),
+iPhone 17 Pro Simulator, iOS 26.5, development fixtures. Direct avatar tap opened
+the selected activity card; tapping empty map dismissed it. A cluster tap zoomed
+to its members and retained enough bottom camera padding for the selection UI.
+The captured map/card shows public activity context only, not an exact meeting
+point. This verifies Simulator gestures, not 60 fps, large-data performance,
+VoiceOver target quality or physical-device behavior.
+
+An earlier local Plans capture displayed a private test meeting point. It is
+deliberately excluded from this evidence log and must not be copied into a
+recruiter/public evidence set. Profile, Detail (top section), and map captures
+are the privacy-safe current avatar parity references.
+
 ## 23 September 2026 - Simulator design iteration evidence
 
 Three generated map/profile proposals are in `design-concepts/`. They establish
@@ -39,6 +113,10 @@ hosted tests prove what the backend permits. Neither replaces the other.
 | V21 | Custom start date/time modal | Date and Time tabs with native date wheel | Captured; modal opened; native wheel/tab interaction not separately verified |
 | V22 | Center on current location | Simulator map recenters and shows the blue device-location dot | Tap verified in Simulator only; physical “location unavailable” report remains open |
 | V23 | Selected activity avatar | Larger selected full-body marker and selection halo over the map | Render verified after live reload; selection entered through Browse, not by tapping the marker |
+| V24 | Host private point empty state | Discovery center no longer counts as a chosen exact meeting point | Captured; missing-point validation also shown before any create call; no fixture changed |
+| V25 | Map gestures | Direct avatar tap, cluster expansion and empty-map deselection | Verified in Simulator; 12/50/200 performance and device parity remain open |
+| V28 | Host searched meeting point | Selected public landmark returns to Host; address preview is limited to two lines | Captured; Host closed without publishing; no fixture changed |
+| V29 | Host quick start — Tomorrow | Tomorrow selected; visible local start date advances to the next day | Captured in Simulator; all three presets visually selected; no activity published |
 
 ## Screenshot procedure
 
@@ -216,3 +294,48 @@ important for an honest resume.
 Physical-device evidence is still open. Simulator screenshots prove layout and
 navigation, but not GPS behavior, SMS delivery, camera/audio hardware,
 accessibility on a real screen, thermal performance, or TestFlight signing.
+
+![V24 Host meeting point starts unselected](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/host-private-point-unselected-simulator-20260924.png)
+
+V24 supersedes the private-point row in V20: after fixing the implicit-location
+default, opening Host with a valid discovery/GPS center now shows “No meeting
+point selected.” V20 remains useful for layout, but its former “Current
+discovery area” text documents the defect and is not current behavior. A
+validation-only Publish tap with a local title showed the missing-exact-point
+error before the repository create call; no activity was written. All fixture
+rows remain unchanged.
+
+![V28 Host form with a compact searched landmark](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/host-search-result-compact-simulator-20260924.png)
+
+V28 records “Cubbon Park, Bengaluru” being searched, a public result selected,
+and “Use this meeting point” returning its label to the Host form. The full
+provider label remains in local draft state; the form previews at most two lines
+with a trailing ellipsis so the map-related data does not dominate the form.
+This is draft-flow evidence only. The activity was not published.
+
+![V29 Host quick-start Tomorrow](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/host-quick-start-tomorrow-simulator-20260924.png)
+
+V29 follows Simulator selection of 30 min, 1 hour and Tomorrow. The first two
+updated the displayed start time and selected-state styling; Tomorrow advanced
+the displayed date by one day and preserved its clock time. The host draft was
+closed, not published. This does not prove custom native wheel input or daylight
+saving/time-zone behavior on a physical device.
+
+![V30 Manual area picker using the shared Night Arcade map style](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/night-arcade-location-picker-simulator-20260929.png)
+
+V30 confirms the manual-area flow now renders the same authored MapLibre style
+as discovery instead of switching to the bright iOS system map. The search box,
+fixed center pin, map attribution, and local-use confirmation remain present.
+This is visual Simulator evidence only: it does not verify physical-device map
+networking or the separate host meeting-point route.
+
+![V31 Refined map-first home](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/night-arcade-map-home-polish-20260930.png)
+
+V31 records the native iPhone 17 Pro Simulator after map-character legibility
+and chrome reduction. The visible discovery row retains a full-body host
+character on a dark pedestal; the location privacy statement, compact map-data
+control, location recentering control, and one-action Host dock remain usable.
+The capture has one unexpired development activity, so it proves layout and
+rendering—not dense character clustering. The fixture seeder was not rerun
+successfully because the previous fixed test OTP returned HTTP 403; it wrote no
+rows and preserved the existing development data.
