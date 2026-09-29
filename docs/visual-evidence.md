@@ -339,3 +339,13 @@ The capture has one unexpired development activity, so it proves layout and
 rendering—not dense character clustering. The fixture seeder was not rerun
 successfully because the previous fixed test OTP returned HTTP 403; it wrote no
 rows and preserved the existing development data.
+
+![V32 Populated map selection from Browse](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/night-arcade-map-selected-v2-simulator-20260930.png)
+
+V32 supersedes the fixture note in V31. A current V2 fixture batch was created
+after reading the development project's Auth test configuration without exposing
+any OTP values. It added 12 labelled activities across four fictional accounts;
+the prior V1 rows were retained unchanged. Browse exposed 13 nearby rows,
+including the pre-existing activity. Selecting “Demo · Coworking morning”
+returned to the map, centered the result, and displayed its existing preview
+with accessible View activity and Join actions. No Join action was pressed.
