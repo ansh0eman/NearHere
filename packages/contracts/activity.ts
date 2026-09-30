@@ -70,6 +70,8 @@ export interface ActivitySummary {
 export interface NearbyActivitySummary extends ActivitySummary {
   /** Straight-line distance from the requested discovery center. */
   distanceM: number;
+  /** Caller-specific ownership bit; it exposes no account identifier. */
+  viewerIsHost: boolean;
   /** Small public avatar projection for map art; deliberately excludes account IDs. */
   hostAvatarConfig?: AvatarConfiguration | null;
 }
@@ -93,6 +95,8 @@ export interface MyPlanSummary extends ActivitySummary {
   membershipRole: ActivityMembershipRole;
   membershipStatus: Extract<ActivityMembershipStatus, 'pending' | 'accepted' | 'waitlisted'>;
   exactMeetingLocation: ExactActivityLocation | null;
+  /** Allowlisted character projection for the activity host; never raw profile config. */
+  hostAvatarConfig?: AvatarConfiguration | null;
 }
 
 /**
@@ -107,6 +111,8 @@ export interface ActivityDetail extends ActivitySummary {
   membershipRole: ActivityMembershipRole | null;
   membershipStatus: ActivityMembershipStatus | null;
   exactMeetingLocation: ExactActivityLocation | null;
+  /** Allowlisted character projection for the activity host; never raw profile config. */
+  hostAvatarConfig?: AvatarConfiguration | null;
 }
 
 export interface CreateActivityResponse {

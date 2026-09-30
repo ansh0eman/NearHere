@@ -41,6 +41,7 @@ test('nearby parser maps a database row into the mobile domain shape', () => {
   assert.equal(activity.kind, 'walk');
   assert.equal(activity.publicLocation.latitude, 12.9352);
   assert.equal(activity.distanceM, 812.4);
+  assert.equal(activity.viewerIsHost, false);
   assert.equal(activity.participantCount, 1);
   assert.equal(activity.hostAvatarConfig, null);
 });
@@ -111,10 +112,16 @@ test('activity parser maps every public contract field without leaking private f
     capacity: 8,
     joinMode: 'open',
     distanceM: 812.4,
+    viewerIsHost: false,
   });
   assert.equal('host_user_id' in activity, false);
   assert.equal('private_latitude' in activity, false);
   assert.equal('private_longitude' in activity, false);
+});
+
+test('nearby parser exposes only a boolean host-ownership bit for the caller', () => {
+  assert.equal(parseNearbyActivityRow({ ...validRow, viewer_is_host: true }).viewerIsHost, true);
+  assert.equal(parseNearbyActivityRow({ ...validRow, viewer_is_host: 'true' }).viewerIsHost, false);
 });
 
 test('creation parser does not require discovery-distance context', () => {
@@ -277,6 +284,19 @@ test('detail parser keeps anonymous reads public and accepts every durable membe
       membership_status: membershipStatus,
     }).membershipStatus, membershipStatus);
   }
+});
+
+test('detail avatar projection accepts only bundled identity fields and cannot leak profile JSON', () => {
+  const row = {
+    ...validRow,
+    exact_latitude: null,
+    exact_longitude: null,
+    membership_role: null,
+    membership_status: null,
+  };
+  const config = { version: 1, seed: '64d823ee-0d7a-4e13-a5a1-8d1774cc876e', avatarId: 'v1-03' };
+  assert.deepEqual(parseActivityDetailRow({ ...row, host_avatar_config: { ...config, phone: '+15550000000' } }).hostAvatarConfig, config);
+  assert.equal(parseActivityDetailRow({ ...row, host_avatar_config: { version: 2, seed: config.seed } }).hostAvatarConfig, null);
 });
 
 test('detail parser releases an exact point only to an active accepted caller', () => {
@@ -509,6 +529,19 @@ test('plans parser releases exact coordinates only for accepted membership', () 
   assert.deepEqual(accepted.exactMeetingLocation, { latitude: 12.9279, longitude: 77.6717 });
   assert.equal(pending.exactMeetingLocation, null);
   assert.deepEqual(parseMyPlanRows([]), []);
+});
+
+test('plans parser applies the same bounded host avatar projection', () => {
+  const row = {
+    ...validRow,
+    membership_role: 'host',
+    membership_status: 'accepted',
+    exact_latitude: null,
+    exact_longitude: null,
+    host_avatar_config: { version: 1, avatarId: 'v1-05', unexpected: 'discard' },
+  };
+  assert.deepEqual(parseMyPlanRow(row).hostAvatarConfig, { version: 1, avatarId: 'v1-05' });
+  assert.equal(parseMyPlanRow({ ...row, host_avatar_config: { version: 1, avatarId: 'unknown' } }).hostAvatarConfig, null);
 });
 
 test('plans parser rejects premature or missing private location data', () => {

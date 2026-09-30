@@ -203,6 +203,10 @@ export default function NearbyScreen() {
 
   function requireAuthenticationForJoin() {
     if (!selected) return;
+    if (selected.viewerIsHost) {
+      openSelectedActivity();
+      return;
+    }
     if (session) {
       if (profileState.status === 'needsProfile') {
         setPendingIntent({ kind: 'joinActivity', activityId: selected.id });
@@ -354,7 +358,7 @@ export default function NearbyScreen() {
                 size={40}
               />
               <View style={styles.selectionCopy}>
-              <Text style={styles.hostLabel}>{KIND_LABELS[selected.kind]} · With {selected.hostDisplayName}</Text>
+              <Text style={styles.hostLabel}>{selected.viewerIsHost ? 'You are hosting' : `${KIND_LABELS[selected.kind]} · With ${selected.hostDisplayName}`}</Text>
                 <Text numberOfLines={2} style={styles.selectionTitle}>{selected.title}</Text>
               </View>
               <Pressable accessibilityLabel="Dismiss selected activity" accessibilityRole="button" onPress={() => setSelectedId(null)} style={styles.closeButton}>
@@ -362,12 +366,18 @@ export default function NearbyScreen() {
               </Pressable>
             </View>
             <Text style={styles.selectionMeta}>{formatStartsAt(selected.startsAt)} · {formatDistance(selected.distanceM)} · {selected.participantCount}/{selected.capacity} going</Text>
-            <View style={styles.actions}>
-              <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.detailsButton}><Text style={styles.detailsText}>View activity</Text></Pressable>
-              <Pressable accessibilityRole="button" disabled={joiningId === selected.id} onPress={requireAuthenticationForJoin} style={styles.joinButton}>
-                {joiningId === selected.id ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.joinText}>{selected.joinMode === 'approval' ? 'Request to join' : 'Join'}</Text>}
+            {selected.viewerIsHost ? (
+              <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.manageButton}>
+                <Text style={styles.manageButtonText}>Manage activity</Text>
               </Pressable>
-            </View>
+            ) : (
+              <View style={styles.actions}>
+                <Pressable accessibilityRole="button" onPress={openSelectedActivity} style={styles.detailsButton}><Text style={styles.detailsText}>View activity</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={joiningId === selected.id} onPress={requireAuthenticationForJoin} style={styles.joinButton}>
+                  {joiningId === selected.id ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.joinText}>{selected.joinMode === 'approval' ? 'Request to join' : 'Join'}</Text>}
+                </Pressable>
+              </View>
+            )}
           </View>
         ) : null}
 
@@ -403,7 +413,7 @@ export default function NearbyScreen() {
                   size={54}
                 />
                 <View style={styles.selectionCopy}>
-                  <Text style={styles.hostLabel}>{KIND_LABELS[activity.kind]} · {activity.hostDisplayName}</Text>
+                  <Text style={styles.hostLabel}>{activity.viewerIsHost ? 'You are hosting' : `${KIND_LABELS[activity.kind]} · ${activity.hostDisplayName}`}</Text>
                   <Text style={styles.listTitle}>{activity.title}</Text>
                   <Text style={styles.listMeta}>{formatStartsAt(activity.startsAt)} · {formatDistance(activity.distanceM)}</Text>
                 </View>
@@ -462,6 +472,8 @@ const styles = StyleSheet.create({
   detailsText: { fontSize: 13, fontWeight: '700', color: colors.accent },
   joinButton: { minHeight: 44, borderRadius: 16, paddingHorizontal: 24, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   joinText: { color: colors.onAccent, fontSize: 13, fontWeight: '700' },
+  manageButton: { minHeight: 48, marginTop: 14, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  manageButtonText: { color: colors.onAccent, fontSize: 14, fontWeight: '700' },
   browseScreen: { flex: 1, backgroundColor: colors.canvas },
   browseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 42, paddingBottom: 20 },
   filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 16 },

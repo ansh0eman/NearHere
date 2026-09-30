@@ -42,7 +42,7 @@ export async function getActivityDetail(activityId: string): Promise<ActivityDet
     return { ok: false, message: 'Activity details are unavailable. Check the Supabase configuration.' };
   }
 
-  const { data, error } = await supabase.rpc('activity_detail', { p_activity_id: activityId });
+  const { data, error } = await supabase.rpc('activity_detail_with_avatar', { p_activity_id: activityId });
   if (error) {
     if (error.code === 'P0002') return { ok: false, message: 'This activity is no longer available.' };
     return { ok: false, message: 'NearHere could not load this activity. Check your connection and try again.' };
@@ -273,7 +273,7 @@ export async function getMyPlans(): Promise<MyPlansResult> {
     return { ok: false, message: 'Plans are unavailable. Check the Supabase configuration.' };
   }
 
-  const { data, error } = await supabase.rpc('my_plans', { p_limit: 50 });
+  const { data, error } = await supabase.rpc('my_plans_with_avatars', { p_limit: 50 });
   if (error) {
     return { ok: false, message: 'NearHere could not load your plans. Check your connection and try again.' };
   }
@@ -295,6 +295,7 @@ export async function joinActivity(activityId: string): Promise<JoinActivityOper
     if (error.code === 'P0001') return { ok: false, message: 'Complete your profile before joining.' };
     if (error.code === 'P0002') return { ok: false, message: 'This activity is no longer available.' };
     if (error.code === 'P0003') return { ok: false, message: 'You cannot rejoin this activity.' };
+    if (error.code === 'P0004') return { ok: false, message: 'You are already hosting this activity.' };
     return { ok: false, message: 'NearHere could not join the activity. Please try again.' };
   }
 

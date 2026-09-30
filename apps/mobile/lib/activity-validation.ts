@@ -1,5 +1,6 @@
 import type {
   ActivityDetail,
+  AvatarConfiguration,
   ActivityKind,
   ActivityMembershipRole,
   ActivitySummary,
@@ -74,6 +75,18 @@ function requireTimestamp(row: Record<string, unknown>, key: string): string {
   return value;
 }
 
+/** Parse only the small, versioned avatar projection; ignore arbitrary profile JSON. */
+function parseHostAvatarConfig(value: unknown): AvatarConfiguration | null {
+  if (!isRecord(value) || value.version !== 1) return null;
+  const seed = typeof value.seed === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.seed)
+    ? value.seed
+    : undefined;
+  const avatarId = isAvatarCatalogId(value.avatarId) ? value.avatarId : undefined;
+  if (!seed && !avatarId) return null;
+  return { version: 1, ...(seed ? { seed } : {}), ...(avatarId ? { avatarId } : {}) };
+}
+
 export function parseActivitySummaryRow(value: unknown): ActivitySummary {
   if (!isRecord(value)) throw new Error('Activity response is not an object.');
 
@@ -125,23 +138,14 @@ export function parseNearbyActivityRow(value: unknown): NearbyActivitySummary {
   if (!isRecord(value)) throw new Error('Activity response is not an object.');
   const distanceM = requireFiniteNumber(value, 'distance_m');
   if (distanceM < 0) throw new Error('Activity response contains invalid distance metadata.');
-  const config = value.host_avatar_config;
-  const validSeed = isRecord(config)
-    && typeof config.seed === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(config.seed)
-    ? config.seed
-    : undefined;
-  const validAvatarId = isRecord(config) && isAvatarCatalogId(config.avatarId)
-    ? config.avatarId
-    : undefined;
-  const hostAvatarConfig = isRecord(config) && config.version === 1 && (validSeed || validAvatarId)
-    ? {
-      version: 1 as const,
-      ...(validSeed ? { seed: validSeed } : {}),
-      ...(validAvatarId ? { avatarId: validAvatarId } : {}),
-    }
-    : null;
-  return { ...parseActivitySummaryRow(value), distanceM, hostAvatarConfig };
+  return {
+    ...parseActivitySummaryRow(value),
+    distanceM,
+    // Older deployed projections may omit this optional optimisation. Treating
+    // anything except literal true as false never grants host controls.
+    viewerIsHost: value.viewer_is_host === true,
+    hostAvatarConfig: parseHostAvatarConfig(value.host_avatar_config),
+  };
 }
 
 export function parseNearbyActivityRows(value: unknown): NearbyActivitySummary[] {
@@ -195,6 +199,7 @@ export function parseActivityDetailRow(value: unknown): ActivityDetail {
     exactMeetingLocation,
     membershipRole: membershipRole as ActivityDetail['membershipRole'],
     membershipStatus: membershipStatus as ActivityDetail['membershipStatus'],
+    hostAvatarConfig: parseHostAvatarConfig(value.host_avatar_config),
   };
 }
 
@@ -234,6 +239,7 @@ export function parseMyPlanRow(value: unknown): MyPlanSummary {
     membershipRole: membershipRole as ActivityMembershipRole,
     membershipStatus: membershipStatus as MyPlanSummary['membershipStatus'],
     exactMeetingLocation,
+    hostAvatarConfig: parseHostAvatarConfig(value.host_avatar_config),
   };
 }
 

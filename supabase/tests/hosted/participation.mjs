@@ -293,10 +293,32 @@ async function main() {
   }
 
   async function plans(session) {
-    const response = await rpc('my_plans', { p_limit: 100 }, session.accessToken);
-    assert(response.ok, `Plans read failed (${safeErrorDetails(response)}).`);
-    assert(Array.isArray(response.payload), 'Plans must return a list.');
-    return response.payload;
+    const [base, projected] = await Promise.all([
+      rpc('my_plans', { p_limit: 100 }, session.accessToken),
+      rpc('my_plans_with_avatars', { p_limit: 100 }, session.accessToken),
+    ]);
+    assert(base.ok, `Base Plans read failed (${safeErrorDetails(base)}).`);
+    assert(projected.ok, `Avatar Plans read failed (${safeErrorDetails(projected)}).`);
+    assert(Array.isArray(base.payload) && Array.isArray(projected.payload), 'Plans must return lists.');
+    assert(base.payload.length === projected.payload.length, 'Avatar wrapper changed the caller Plans row count.');
+    for (let index = 0; index < base.payload.length; index++) {
+      for (const [field, value] of Object.entries(base.payload[index])) {
+        assert(JSON.stringify(projected.payload[index][field]) === JSON.stringify(value), `Avatar wrapper changed Plans ${field}.`);
+      }
+      assertAvatarProjection(projected.payload[index].host_avatar_config);
+    }
+    return projected.payload;
+  }
+
+  function assertAvatarProjection(value) {
+    if (value === null) return;
+    assert(typeof value === 'object' && !Array.isArray(value), 'Avatar projection must be an object or null.');
+    assert(Object.keys(value).every((key) => ['version', 'seed', 'avatarId'].includes(key)), 'Avatar projection returned an unapproved field.');
+    assert(value.version === 1, 'Avatar projection returned an unsupported version.');
+    const validSeed = typeof value.seed === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.seed);
+    const validAvatar = ['v1-01', 'v1-02', 'v1-03', 'v1-04', 'v1-05', 'v1-06'].includes(value.avatarId);
+    assert(validSeed || validAvatar, 'Avatar projection did not contain a supported identity.');
   }
 
   async function leave(session, activityId) {
@@ -436,6 +458,7 @@ async function main() {
           p_limit: 1,
         }),
         rpc('my_plans', { p_limit: 1 }),
+        rpc('my_plans_with_avatars', { p_limit: 1 }),
       ]);
       for (const response of responses) {
         assert(
@@ -447,6 +470,37 @@ async function main() {
 
     const actorAOnlyId = await createActivity(sessionA, 'open', 'CALLER A ONLY');
     const actorBOnlyId = await createActivity(sessionB, 'open', 'CALLER B ONLY');
+    await runTest('a host cannot join their own activity', async () => {
+      const response = await rpc(
+        'join_activity',
+        { p_activity_id: actorAOnlyId },
+        sessionA.accessToken,
+      );
+      assert(
+        !response.ok && response.payload?.code === 'P0004',
+        `Host self-join did not return P0004 (${safeErrorDetails(response)}).`,
+      );
+    });
+    await runTest('nearby discovery marks only the caller’s own activity without exposing host IDs', async () => {
+      const nearbyForA = await rpc('nearby_activities_with_avatars', {
+        p_latitude: 12.9352,
+        p_longitude: 77.6245,
+        p_radius_m: 5000,
+        p_limit: 50,
+      }, sessionA.accessToken);
+      const nearbyForB = await rpc('nearby_activities_with_avatars', {
+        p_latitude: 12.9352,
+        p_longitude: 77.6245,
+        p_radius_m: 5000,
+        p_limit: 50,
+      }, sessionB.accessToken);
+      assert(nearbyForA.ok && nearbyForB.ok, 'Nearby ownership projections failed.');
+      const ownRow = nearbyForA.payload?.find((row) => row.id === actorAOnlyId);
+      const otherRow = nearbyForB.payload?.find((row) => row.id === actorAOnlyId);
+      assert(ownRow?.viewer_is_host === true, 'Host activity was not marked as owned.');
+      assert(otherRow?.viewer_is_host === false, 'Another viewer was marked as the host.');
+      assert(!Object.hasOwn(ownRow ?? {}, 'host_user_id'), 'Nearby discovery exposed a host account ID.');
+    });
     await runTest('Plans is caller-scoped for host-only activities', async () => {
       const [plansA, plansB] = await Promise.all([plans(sessionA), plans(sessionB)]);
       assert(plansA.some((plan) => plan.id === actorAOnlyId), 'Actor A cannot see own plan.');
