@@ -34,7 +34,7 @@ export async function resolveDeviceLocation(provider: Provider, timeoutMs = 12_0
 
 export function locationFailureMessage(reason: LocationFailure): string {
   switch (reason) {
-    case 'servicesDisabled': return 'Location Services are off. Enable them in iPhone Settings, or choose an area.';
+    case 'servicesDisabled': return 'Location Services are off. Enable them in Settings, or choose an area.';
     case 'permissionDenied': return 'NearHere needs location permission. Allow access in Settings, or choose an area.';
     case 'fixUnavailable': return 'No location fix yet. Your selected area is unchanged. Try again, or choose an area.';
   }

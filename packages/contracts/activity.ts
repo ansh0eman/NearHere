@@ -18,7 +18,8 @@ export type ActivityMembershipStatus =
   | 'left'
   | 'removed';
 
-import type { AvatarCatalogId } from './avatar';
+import type { AvatarConfiguration } from './avatar';
+export type { AvatarConfiguration } from './avatar';
 export type JoinActivityOutcome = Extract<
   ActivityMembershipStatus,
   'accepted' | 'pending' | 'waitlisted'
@@ -31,6 +32,8 @@ export interface PublicActivityLocation {
 }
 
 export interface CreateActivityRequest {
+  /** Caller-scoped key reused only for retries of an unchanged host draft. */
+  requestId: string;
   kind: ActivityKind;
   title: string;
   description: string;
@@ -74,12 +77,6 @@ export interface NearbyActivitySummary extends ActivitySummary {
   viewerIsHost: boolean;
   /** Small public avatar projection for map art; deliberately excludes account IDs. */
   hostAvatarConfig?: AvatarConfiguration | null;
-}
-
-export interface AvatarConfiguration {
-  version: 1;
-  seed?: string;
-  avatarId?: AvatarCatalogId;
 }
 
 export interface ExactActivityLocation {

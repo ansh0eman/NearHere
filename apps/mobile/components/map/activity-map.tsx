@@ -5,18 +5,16 @@ import {
   Layer,
   Map as MapLibreMap,
   type CameraRef,
-  type StyleSpecification,
 } from '@maplibre/maplibre-react-native';
 import type { FeatureCollection, Point } from 'geojson';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors } from '@/constants/design-tokens';
-import nearhereMapStyle from '@/assets/maps/nearhere-night-arcade-v1.json';
-import { AVATAR_CATALOG } from '@/lib/avatar-catalog';
-import { cameraBottomPadding, type ActivityMapProperties } from '@/lib/activity-map-features';
-
-const MAP_STYLE = nearhereMapStyle as unknown as StyleSpecification;
+import { useTheme } from '@/providers/theme-provider';
+import { makeMapStyle } from '@/lib/map-style';
+import { AVATAR_RENDER_CATALOG } from '@/lib/avatar-catalog';
+import { cameraBottomPadding, cameraMotionDuration, shouldShowSelectedMapLabel, type ActivityMapProperties } from '@/lib/activity-map-features';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
 export interface ActivityMapHandle {
   easeTo(center: [number, number], zoom: number, duration: number): void;
@@ -55,40 +53,45 @@ export const ActivityMap = forwardRef<ActivityMapHandle, ActivityMapProps>(funct
   forwardedRef,
 ) {
   const mapRef = useRef<React.ElementRef<typeof MapLibreMap>>(null);
+  const { colors, mode } = useTheme();
+  const reduceMotion = useReducedMotion();
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
+  const mapStyle = useMemo(() => makeMapStyle(mode), [mode]);
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<React.ElementRef<typeof GeoJSONSource>>(null);
   const [mapHeight, setMapHeight] = useState(0);
   const [isMapReady, setIsMapReady] = useState(false);
   const mapReadyRef = useRef(false);
   const bottomPadding = cameraBottomPadding(bottomOverlayHeight, mapHeight);
+  const showSelectedLabel = shouldShowSelectedMapLabel(features, selectedId);
   const bottomPaddingRef = useRef(bottomPadding);
   bottomPaddingRef.current = bottomPadding;
   const avatarImages = useMemo(() => Object.fromEntries(
-    AVATAR_CATALOG.map((avatar) => [`avatar-${avatar.id}`, avatar.source]),
+    AVATAR_RENDER_CATALOG.map((avatar) => [`avatar-${avatar.id}`, avatar.source]),
   ), []);
+
+  const moveCamera = useCallback((nextCenter: [number, number], nextZoom: number, requestedDuration: number) => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+    const padding = { top: 0, left: 0, right: 0, bottom: bottomPaddingRef.current };
+    const duration = cameraMotionDuration(requestedDuration, reduceMotionRef.current);
+    if (duration === 0) camera.jumpTo({ center: nextCenter, zoom: nextZoom, padding });
+    else camera.easeTo({ center: nextCenter, zoom: nextZoom, duration, padding });
+  }, []);
 
   useImperativeHandle(forwardedRef, () => ({
     easeTo: (nextCenter, nextZoom, duration) => {
       if (!mapReadyRef.current) return;
-      cameraRef.current?.easeTo({
-        center: nextCenter,
-        zoom: nextZoom,
-        duration,
-        padding: { top: 0, left: 0, right: 0, bottom: bottomPaddingRef.current },
-      });
+      moveCamera(nextCenter, nextZoom, duration);
     },
     showAttribution: () => { void mapRef.current?.showAttribution(); },
-  }), []);
+  }), [moveCamera]);
 
   useEffect(() => {
     if (!isMapReady) return;
-    cameraRef.current?.easeTo({
-      center: [center.longitude, center.latitude],
-      zoom,
-      duration: 500,
-      padding: { top: 0, left: 0, right: 0, bottom: bottomPadding },
-    });
-  }, [bottomPadding, center.latitude, center.longitude, isMapReady, zoom]);
+    moveCamera([center.longitude, center.latitude], zoom, 500);
+  }, [bottomPadding, center.latitude, center.longitude, isMapReady, moveCamera, reduceMotion, zoom]);
 
   function handleMapReady() {
     mapReadyRef.current = true;
@@ -117,7 +120,7 @@ export const ActivityMap = forwardRef<ActivityMapHandle, ActivityMapProps>(funct
       <MapLibreMap
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        mapStyle={MAP_STYLE}
+        mapStyle={mapStyle}
         attribution
         logo
         compass={false}
@@ -147,12 +150,7 @@ export const ActivityMap = forwardRef<ActivityMapHandle, ActivityMapProps>(funct
             if (typeof properties.point_count === 'number' && typeof properties.cluster_id === 'number' && coordinates) {
               void sourceRef.current?.getClusterExpansionZoom(properties.cluster_id).then((nextZoom) => {
                 if (!mapReadyRef.current) return;
-                cameraRef.current?.easeTo({
-                  center: [coordinates[0], coordinates[1]],
-                  zoom: nextZoom,
-                  duration: 450,
-                  padding: { top: 0, left: 0, right: 0, bottom: bottomPaddingRef.current },
-                });
+                moveCamera([coordinates[0], coordinates[1]], nextZoom, 450);
               });
               return;
             }
@@ -198,14 +196,42 @@ export const ActivityMap = forwardRef<ActivityMapHandle, ActivityMapProps>(funct
               'icon-size': ['case', ['==', ['get', 'activityId'], selectedId ?? ''], 0.16, 0.125],
               'icon-anchor': 'bottom',
               'icon-allow-overlap': true,
-              'icon-ignore-placement': true,
+              // Keep every avatar visible, but reserve its footprint so text
+              // labels in the following layer yield instead of covering it.
+              'icon-ignore-placement': false,
               'icon-padding': 2,
+            }}
+          />
+          <Layer
+            id="activity-labels"
+            type="symbol"
+            // Keep the map quiet at browse density. Only the selected activity
+            // gets a cue; its full title and actions remain in the bottom card.
+            minzoom={12}
+            filter={showSelectedLabel
+              ? ['all', ['!', ['has', 'point_count']], ['==', ['get', 'activityId'], selectedId ?? '']]
+              : ['==', ['get', 'activityId'], '']}
+            layout={{
+              'text-field': ['get', 'mapLabel'],
+              'text-font': ['Noto Sans Bold'],
+              'text-size': 11,
+              'text-variable-anchor': ['top', 'left', 'right'],
+              'text-offset': [0, 2.8],
+              'text-justify': 'auto',
+              'text-padding': 6,
+              'text-allow-overlap': false,
+              'text-ignore-placement': false,
+            }}
+            paint={{
+              'text-color': colors.text,
+              'text-halo-color': colors.surface,
+              'text-halo-width': 2,
             }}
           />
         </GeoJSONSource>
         <GeoJSONSource id="my-location" data={locationFeature}>
           <Layer id="my-location-halo" type="circle" paint={{ 'circle-radius': 11, 'circle-color': '#62B7FF', 'circle-opacity': 0.24 }} />
-          <Layer id="my-location-dot" type="circle" paint={{ 'circle-radius': 5, 'circle-color': '#62B7FF', 'circle-stroke-color': '#F4F5EF', 'circle-stroke-width': 2 }} />
+          <Layer id="my-location-dot" type="circle" paint={{ 'circle-radius': 5, 'circle-color': '#62B7FF', 'circle-stroke-color': colors.surface, 'circle-stroke-width': 2 }} />
         </GeoJSONSource>
       </MapLibreMap>
     </View>

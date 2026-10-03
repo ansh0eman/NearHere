@@ -5,6 +5,7 @@ import { Region } from 'react-native-maps';
 
 import { clearManualLocationIfUnchanged, manualLocationRevision, readManualLocation } from '@/lib/location-storage';
 import { locationFailureMessage, resolveDeviceLocation, type LocationFailure } from '@/lib/device-location';
+import { locationFailurePresentation, restoreManualSelection } from '@/lib/location-selection';
 import { LocationSource, LocationStatus, ManualLocation } from '@/types/location';
 
 export const DEFAULT_MAP_REGION: Region = {
@@ -29,30 +30,29 @@ export function useNearbyLocation() {
   const [source, setSource] = useState<LocationSource>('default');
   const [label, setLabel] = useState('Bengaluru');
   const [failure, setFailure] = useState<LocationFailure | null>(null);
+  const [deviceLocation, setDeviceLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const requestId = useRef(0);
+  const sourceRef = useRef<LocationSource>('default');
+  const labelRef = useRef('Bengaluru');
 
   const applyManualLocation = useCallback((location: ManualLocation) => {
     requestId.current += 1;
+    setDeviceLocation(null);
     setFailure(null);
     setRegion(regionFromManualLocation(location));
     setStatus('ready');
+    sourceRef.current = 'manual';
     setSource('manual');
+    labelRef.current = location.label;
     setLabel(location.label);
   }, []);
 
   const refreshManualLocation = useCallback(async () => {
     const id = ++requestId.current;
-    let savedLocation: ManualLocation | null;
-    try {
-      savedLocation = await readManualLocation();
-    } catch {
-      return false;
-    }
-    if (id !== requestId.current) return false;
-    if (!savedLocation) return false;
-
-    applyManualLocation(savedLocation);
-    return true;
+    const revision = manualLocationRevision();
+    return restoreManualSelection(readManualLocation,
+      () => id === requestId.current && revision === manualLocationRevision(),
+      applyManualLocation);
   }, [applyManualLocation]);
 
   const requestDeviceLocation = useCallback(async () => {
@@ -69,21 +69,37 @@ export function useNearbyLocation() {
     if (id !== requestId.current) return;
     if (result.ok) {
       // A storage failure must not masquerade as a GPS or permission failure.
-      await clearManualLocationIfUnchanged(storageRevision).catch(() => false);
+      const cleared = await clearManualLocationIfUnchanged(storageRevision).catch(() => null);
       if (id !== requestId.current) return;
+      // false means a newer manual pick won. null means storage failed, not GPS.
+      // Also protect the gap between the serialized clear and this continuation.
+      if (cleared === false || manualLocationRevision() !== storageRevision + 1) {
+        await refreshManualLocation();
+        return;
+      }
       setRegion({
         ...DEFAULT_MAP_REGION,
         latitude: result.point.coords.latitude,
         longitude: result.point.coords.longitude,
       });
+      setDeviceLocation({
+        latitude: result.point.coords.latitude,
+        longitude: result.point.coords.longitude,
+      });
       setStatus('ready');
+      sourceRef.current = 'device';
       setSource('device');
-      setLabel(result.cached ? 'Recent location' : 'Near you');
+      labelRef.current = result.cached ? 'Recent location' : 'Near you';
+      setLabel(labelRef.current);
     } else {
+      const fallback = locationFailurePresentation(sourceRef.current, labelRef.current);
+      setDeviceLocation(fallback.deviceLocation);
+      labelRef.current = fallback.label;
+      setLabel(fallback.label);
       setStatus(result.reason === 'permissionDenied' ? 'denied' : 'error');
       setFailure(result.reason);
     }
-  }, []);
+  }, [refreshManualLocation]);
 
   useEffect(() => {
     let previousState = AppState.currentState;
@@ -101,7 +117,7 @@ export function useNearbyLocation() {
     let isActive = true;
 
     async function initializeLocation() {
-      if (await refreshManualLocation()) return;
+      if (await refreshManualLocation() !== 'empty') return;
       if (isActive) await requestDeviceLocation();
     }
 
@@ -115,6 +131,7 @@ export function useNearbyLocation() {
   return {
     failure,
     failureMessage: failure ? locationFailureMessage(failure) : null,
+    deviceLocation,
     label,
     refreshManualLocation,
     region,

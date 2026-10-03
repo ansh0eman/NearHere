@@ -7,6 +7,22 @@ priority order. Its [implementation playbook](handoffs/night-arcade-execution.md
 contains file ownership, contracts, failure modes and verification. Do not execute
 the earlier violet/mascot follow-through as if the user accepted that appearance.
 
+## 3 October 2026 — current theme/identity ticket states
+
+| Ticket | Source / local evidence | Still open |
+| --- | --- | --- |
+| D01 themes | All listed app consumers use theme-aware style factories; unit tests, typecheck, lint and iOS export pass | Open the app in Simulator GUI and verify System/Daylight/Night across flows, relaunch and large text; physical device |
+| D02 map styles | Pure day/night variants pass MapLibre style-spec and stable-layer/source tests | Repeated native style switches with selected markers, attribution and location picker; visual contrast/performance |
+| D03 Reduce Motion | Shared map camera boundary chooses MapLibre `jumpTo` or timed `easeTo`; policy tests pass; Release build installed/launched | Change OS Reduce Motion, visually verify map recenter/selection/cluster behavior, then profile 12/50/200 synthetic points |
+| U01 usernames | Nullable schema, unique index, authenticated row-locking RPC, parser/validator and client adapter coded; static SQL guards pass | Execute migration and concurrency/authorization tests in a disposable database; verify schema cache; no hosted actors claimed |
+| A01 modular avatar art | Original transparent cel-shaded style anchor is saved under design concepts and legible at 64 px | Establish coordinate anchors, compatible parts, alignment and alpha/edge QA; anchor not in app/catalog |
+| I01-I03 sign-in | Planning/research only for email/Google/Apple and account linking | Provider setup, secure linking/recovery UX, hosted configuration and real-device tests |
+
+Latest local code gate: 107 unit tests, TypeScript, Expo lint, `git diff --check`
+and a 5,121,260-byte iOS Hermes export pass. The Xcode Release build/Sim launch
+applies to the D03 source before username UI exists. No new hosted migration or
+activity record was changed in this continuation.
+
 ## Map-first design follow-through — 23 September 2026
 
 - [x] Implement a map-first opening screen with progressive disclosure of filters/list.
@@ -15,9 +31,9 @@ the earlier violet/mascot follow-through as if the user accepted that appearance
 - [x] Verify populated character markers, selection and cluster expansion in iPhone 17 Pro Simulator; physical iPhone still open.
 - [x] Add six-preset character choice and public-safe host-avatar RPC projection; authenticated save and cross-surface proof remain open.
 - [x] Integrate MapLibre and attribute OpenFreeMap/OpenMapTiles/OpenStreetMap.
-- [x] Author and MapLibre-validate `nearhere-night-arcade-v1.json`; V15-V17 provide Simulator rendering and attribution-control evidence. Authored-style marker/cluster interaction remains unverified; production tile-provider/SLA decision remains open.
+- [x] Author and MapLibre-validate `nearhere-night-arcade-v1.json`; V15-V17 provide Simulator rendering and attribution-control evidence. V25 additionally verifies authored-style avatar taps and cluster expansion; production tile-provider/SLA decision remains open.
 - [x] Add zoom-based clustering and apply Night Arcade tokens across Plans, Host, Activity Detail and location-picking overlays; Browse/profile/Plans/Host/location flows now have partial Simulator review (V18-V21), while remaining layouts and authored-style map hit testing stay open.
-- [x] Increase map avatar legibility with a small idle/selected icon-size hierarchy (0.11 / 0.15) and verify selected-state rendering in Simulator (V23); test dense-area overlap at more zoom levels before beta.
+- [x] Increase map avatar legibility with a small idle/selected icon-size hierarchy (0.11 / 0.15), then directly tap a character, expand a cluster and clear selection by tapping empty map space (V23/V25); test dense-area overlap and scale before beta.
 
 Checkboxes record implementation, not aspiration. Items are ordered by dependency and user value.
 
@@ -106,16 +122,16 @@ Checkboxes record implementation, not aspiration. Items are ordered by dependenc
 - [x] Add immutable operator review recovery paths; tune rate limits with beta evidence later
 - [x] Add reduced-motion preference hook and accessibility-aware safety/chat controls
 - [ ] Complete full VoiceOver/TalkBack, dynamic-type, contrast, and physical-device accessibility audit
-- [ ] Complete location matrix: current Simulator's Center-on-me control recentered and displayed the blue dot (V22), but the user's physical-iPhone “location unavailable” report, denial/Settings recovery, stale/low-accuracy fix and real GPS still need evidence. Area search works in Simulator and remains the fallback.
+- [ ] Complete location matrix: Simulator denial showed Settings/Choose area; public-place search and manual-area persistence worked; retry retained manual area and removed the stale GPS dot (V27). The physical-iPhone “location unavailable” report, Services-off, no/cached/low-accuracy fix and real GPS still need evidence.
 - [x] Add client request correlation IDs for sensitive operations and bounded operator observability
 - [ ] Add shared structured error envelopes, server request IDs, metrics, traces, and crash reporting
 - [ ] Add physical-device, TestFlight, and Android internal-test workflows
-- [ ] Accept keyboard avoidance, numeric-keypad Done controls, custom schedule selection, and private-pin selection on Simulator and physical iPhone
+- [ ] Phone/OTP main actions and Done are visible/tappable above the numeric keyboard on iPhone 17 Pro Simulator (V26); still accept Android/physical keyboard, full OTP journey, custom schedule selection and private-pin selection.
 
 ## Deferred until evidence
 
 - [ ] Custom avatar builder
-- [x] NearHere-authored first-pass MapLibre style over hosted vector tiles; render and attribution are Simulator-verified. Marker/cluster interaction and production provider decision remain open
+- [x] NearHere-authored first-pass MapLibre style over hosted vector tiles; render, attribution, marker selection, cluster expansion and overlay-safe camera movement are Simulator-verified. Dense data, accessibility and production provider decision remain open
 - [ ] Make rendered avatar/cluster features discoverable and operable with VoiceOver/TalkBack, or provide a documented accessible equivalent; current Simulator accessibility tree exposes nearby screen controls but not MapLibre rendered feature hit areas
 - [x] Add map/list toggle using the same privacy-safe nearby result projection
 - [ ] Redis caching/presence/rate-limit infrastructure

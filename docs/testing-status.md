@@ -1,5 +1,189 @@
 # NearHere testing status
 
+**30 September 2026 — App Store T0 baseline:** 88 unit tests passed, TypeScript
+and Expo lint passed, and `git diff --check` passed. Xcode 26.6 is installed.
+Read-only linked migration inventory reports 30/30 local/remote IDs matching
+through `202609300001` on the linked **development** project. No database writes
+or Simulator flows were run for this baseline. The complete release sequence
+and caveats are in the [App Store T-pass handoff](handoffs/app-store-t-pass-20260930.md).
+The same session confirmed the booted iPhone 17 Pro Simulator opens the installed
+app at the map and exposes its “Activity areas, not live locations” and primary
+control labels to accessibility. A non-destructive Browse navigation exposed 11
+individually named Demo activities, preserving the current populated test set.
+Coffee filtered to two results; selecting one returned to the map. Its owner
+card showed “You are hosting” and “Manage activity”, not Join. Direct screenshots
+record Browse and map selection. Two marker avatars appear partly clipped at
+the left viewport edge and need a T5 design check. No participant join, publish,
+edit, or cancellation was performed. Plans and Me also opened: 46 View actions
+were visible in Plans (below the current 50-row fetch cap; pagination remains
+untested), while Me exposed profile edit and Sign out but no account deletion.
+No hosted record was changed. See the [T-pass record](handoffs/app-store-t-pass-20260930.md#t4-local-simulator-probe--30-september-2026).
+
+The initial T5 comparison of the current map against
+[`night-arcade.png`](design-concepts/night-arcade.png) found the charcoal/lime
+map-first treatment in place, but activity labels and large, fully framed avatar
+markers from the concept are not. Two avatars were clipped at the left map edge.
+This visual audit led to a small label/privacy slice; edge clipping remains open.
+
+**30 September 2026 — T5 selected-label slice:** 90 unit tests passed, TypeScript
+and Expo lint passed, and `git diff --check` passed. Selected-marker labels use
+only category and rounded approximate distance, never user titles or exact
+coordinates. A 250 m geographic spacing guard suppresses the optional label
+when nearby character art could be obscured. iPhone 17 Pro Simulator confirmed
+the label is suppressed in the dense selected-map state without covering avatar
+art. Follow-up review separated label suppression from the selected-marker
+accent halo, so density no longer removes the selected-state cue. Post-fix
+checks: 90/90 unit tests, TypeScript, Expo lint and `git diff --check` pass.
+An isolated positive-render case, visual confirmation of the halo-only fix,
+marker edge clipping, VoiceOver, iPad and physical-device checks remain open.
+No activity or database row changed. See
+the [detailed T5 record](handoffs/app-store-t-pass-20260930.md#t5-visual-comparison-and-selected-marker-label-slice--30-september-2026)
+and [current capture](screenshots/app-store-t5-selected-label-suppression-20260930.png).
+
+**30 September 2026 — P04 copy correction:** location-services-disabled
+instructions now say “Settings” rather than “iPhone Settings,” matching the
+confirmed iPhone+iPad target. Added pure-message regression coverage for the
+three typed location failures and the manual-area fallback. This does not test
+native permission dialogs or real GPS; those P04 checks remain open. Current
+full local gate after the correction: **91/91 unit tests**, TypeScript, Expo
+lint, and `git diff --check` passed. Node emits non-failing
+`MODULE_TYPELESS_PACKAGE_JSON` warnings for TS test imports.
+
+**Latest Simulator follow-up:** current-bundle Cancel/Done and Time tab verified.
+Cancel retained one-hour selection; Done cleared shortcuts and retained the
+timestamp. Wheel dragging is still blocked by the control bridge. This is partial
+acceptance, not proof of changing wheel values.
+[Exact evidence and screenshot](host-time-selection.md).
+
+**Current, 29 September:** 86 unit tests, TypeScript and Expo lint pass. iOS
+Hermes export succeeds (5.14 MB). Custom time now has draft/commit semantics
+and sequential Android dialogs; [native checks remain open](host-time-selection.md). Owner
+profile details and account-switch isolation are implemented. Both hosted
+profile suites pass; migrations match through `202609280001`. Simulator verified
+an owner-details save and real stale-revision conflict/reload. See
+[the implementation lesson](profile-owner-editing.md). The 5.12 MB iOS export
+below is historical; the new 5.14 MB export includes the profile changes.
+
+**Current, 30 September:** 87 unit tests, TypeScript and Expo lint pass. The
+non-destructive V2 fixture run added 12 future, clearly-labelled activities
+across four fictional accounts after V1 had expired; it preserved every older
+row. Simulator Browse showed 13 rows and Browse-to-map selection produced the
+correct existing preview. This restores a credible populated-map test state,
+but does not replace physical-device, production-tile-provider, accessibility,
+or beta-community acceptance.
+
+### 24 September 2026 — custom time gate
+
+Added two tests for the 30-minute, one-hour and 24-hour shortcut contract and
+their minute-rounding behavior. The native iOS Date and Time tabs opened and
+switched in Simulator, but neither accessibility value setting nor a direct
+wheel tap changed a date; coordinate input returned `noWindowsAvailable`. The
+sheet was closed without changing or publishing a draft. `npm run test:unit`
+passes 82/82, TypeScript and lint pass. The 5.12 MB iOS bundle was exported
+after the preceding UI change; this slice only changed test and documentation
+files. Physical-device custom wheel selection remains open.
+
+The same Simulator session selected 30 min, 1 hour, and Tomorrow. Each option
+visibly highlighted and updated the local start label; Tomorrow advanced the
+date to the next day at the same time. V29 records the final state. The draft
+was discarded without publishing.
+
+## 24 September 2026 — fixture identity + host-avatar projection
+
+Fresh unit suite: **79 passed, 0 failed**, including fixture identity, map data,
+layout and avatar projection parser tests. TypeScript, Expo lint and 5.12 MB iOS
+bundle export pass. Linked migrations match through `202609240002`.
+
+P01 hosted fixture seeder ran twice: **12 retained, 0 created** each run. Two
+concurrent invocations produced one normal completion and one exclusive-lock
+rejection; no existing activity rows were changed. Anonymous avatar detail
+smoke passed for 3 existing activities with membership/exact coordinates null.
+The two-actor detail harness and four-actor participation harness passed after
+testing wrappers against base RPCs, including waitlist and both block directions.
+Migration `202609240002` fixes the previously uncovered blocked participant
+exact-point leak in Plans; the host retains their own exact point.
+
+Simulator confirmed the same configured host character on Me, map selection,
+Activity Detail and Plans; screenshots: [Profile](screenshots/host-avatar-profile-simulator-20260924.png),
+[Detail](screenshots/host-avatar-detail-simulator-20260924.png). The local Plans
+capture was excluded because it showed the exact point for a fictional test
+activity; do not use that image as public evidence.
+
+Authenticated acceptance harnesses intentionally created new `TEST` activities
+and cancelled their detail fixture; client-writable profile fields were
+restored, no row was deleted, and all test events remain for visual review.
+This is separate from P01's fixture-seeder no-op. Physical-device acceptance
+remains open. See the live [execution ledger](handoffs/night-arcade-status.md).
+
+### P03 map isolation sub-slice — same date
+
+Six new tests cover GeoJSON coordinate order, invalid/boundary data, duplicate
+IDs, deterministic avatar keys, exact-field rejection, filtered selection and
+bounded camera padding. The full suite is **79/79 passing**. TypeScript/lint and
+iOS export passed (5.12 MB). Simulator verified render, Browse row selection,
+overlay-aware camera pan and the attribution panel after extraction:
+[selection capture](screenshots/map-adapter-browse-selection-20260924.png),
+[overlay capture](screenshots/map-adapter-overlay-selection-20260924.png). A
+null native layout event and an early camera command were reproduced and fixed
+with defensive event parsing/readiness gating. No data changed. Direct map
+avatar tap, cluster expansion, empty-map deselection and selection-card
+visibility were then verified in Simulator. Cluster camera movement now uses
+the same measured overlay padding as other map focus paths. Safe evidence:
+[selected avatar](screenshots/map-avatar-marker-selected-simulator-20260924.png)
+and [cleared selection](screenshots/map-avatar-marker-cleared-simulator-20260924.png).
+Filter-change deselection, tile-error retry and 12/50/200 physical-device
+performance profiling remain `not_run`.
+
+### P04 auth keyboard sub-slice — same date
+
+The phone and OTP screens now keep their primary actions reachable while the
+number pad is open. Simulator evidence showed the original phone button hidden
+by the keyboard; a normal footer change did not resolve the native overlap, and
+the iOS phone-pad InputAccessoryView did not render its controls. The final
+implementation measures keyboard height, pins an action/Done row above it, and
+scrolls the form content clear of that row. When the keyboard closes, the normal
+footer returns.
+
+In iPhone 17 Pro Simulator, Send remained tappable with the keyboard open; using
+only the incomplete `+91` value produced the expected local validation message
+and made no SMS request. Done dismissed the number pad. OTP showed a matching
+action row; the button was disabled on a direct route with no pending phone,
+which is the correct unauthenticated state. No OTP was submitted and no real
+phone number was used. See [keyboard evidence](visual-evidence.md#24-september-2026--keyboard-safe-auth-actions).
+The Android keyboard path and physical iPhone acceptance are still open. A new
+pure location-presentation test covers device, manual and default fallback labels
+and verifies that all failure outcomes clear the current-location marker. The
+full unit suite now passes 80/80; typecheck/lint and the 5.13 MB iOS export pass.
+
+The same P04 Simulator slice revoked location permission for the Simulator app.
+The failure card exposed Open Settings and Choose area. Searching a public
+neighborhood landmark returned a valid Nominatim result; selecting and
+confirming it persisted a manual label locally and recentred discovery. A later
+GPS retry while denied preserved that manual center and cleared the stale blue
+device-location marker. Permission and the app's initial Near you state were
+restored. Evidence: [denied GPS + retained manual area](screenshots/location-denied-manual-area-simulator-20260924.png).
+This does not verify services disabled, fresh OS permission prompts, timeout or
+cached-fix paths, the user's physical-device failure, or Android behavior.
+
+## 24 September 2026 — planner audit and corrective slice
+
+See the [complete per-ticket audit](handoffs/night-arcade-plan-audit-20260924.md).
+Fresh checks: **67 unit tests pass**, TypeScript/lint pass, iOS export passes
+(5,115,533-byte Hermes bundle), `git diff --check` passes. All 26 migrations
+match locally/remotely through 230004. Anonymous live discovery: HTTP 200,
+12 marked demos, 12 bounded avatar configs, no unexpected response fields.
+Dependency audit: 13 moderate + 11 high findings; no forced fixes applied.
+
+New tests cover delayed manual-location reads returning empty/saved/error after
+newer intent. Simulator verified real profile plans and draft avatar selection/
+Cancel navigation. The date sheet now exposes Date, Time, Done and native wheels;
+switching tabs and dismissing worked. AX wheel setValue did not change its value,
+and coordinate drag returned `noWindowsAvailable`. Arbitrary custom time remains
+unaccepted. Profile save/relaunch, forced retry, full actor/role/privacy matrices,
+physical iPhone, accessibility and map scale tests remain open. No hosted records
+were mutated. Source corrections are not a new signed native build. (The separate
+P02 slice below did deploy only the additive avatar-read migration.)
+
 ## 24 September 2026 — NearHere-authored map style
 
 Replaced the stock OpenFreeMap `dark` style URL in Nearby with
@@ -444,11 +628,154 @@ we closed without pressing “Use this meeting point.” In manual location sear
 we closed without pressing “Use this area.” Thus neither durable area selection
 nor activity publication changed. The activity form and custom date/time sheet
 were visually inspected: all three quick choices and the separate custom entry
-were present, and the sheet offered Date and Time tabs. The native wheel/tab
-coordinate input path currently errors, so actually changing and confirming a
-custom time remains unverified. GPS/current-location permission and recovery
+were present, and the sheet offered Date and Time tabs. In the 24 September
+follow-up, switching to Time by its accessibility control and closing the sheet
+worked; setting a native wheel through accessibility had no effect, while a
+coordinate drag returned `noWindowsAvailable`. Actually changing and
+confirming a custom time remains unverified. GPS/current-location permission and recovery
 were then checked with the “Center map on my location” control: in this
 Simulator it recentered and showed the blue location dot without an error
 (V22). That is evidence for the current granted/mock location path only. The
 earlier physical-iPhone “location unavailable” report, permission-denied path,
 Settings recovery, accuracy and real GPS remain open.
+
+### P04 Host privacy default — 2026-09-24
+
+Simulator verification found and fixed the host form's implicit exact-point
+default. The Nearby map center is now only the picker camera starting position;
+host creation begins with no private point. A validation-only Publish tap with
+a valid local title showed “Choose an exact private meeting point before
+publishing.” before `createActivity` is called. The picker was explicitly
+confirmed once to verify its local draft returns to Host as “Dropped pin”; Host
+was then closed without publishing. Custom date and time tabs both opened, but
+the native iOS spinner values have not been changed/confirmed. See V24 and the
+dated P04 entry in `docs/handoffs/night-arcade-status.md`. No hosted data changed.
+After that check, “Cubbon Park, Bengaluru” returned public search results; a
+result was selected and explicitly confirmed. Its label returned to the Host
+form, was visually limited to two lines, and retained in the local draft. The
+form was then closed without publishing. V28 records this draft-state flow.
+### 30 September 2026 — iPad native launch check
+
+Built/installed the current app on iPad (A16) Simulator (iOS 26.5), then
+exercised the fresh location prompt with “Allow Once.” Nearby rendered and the
+map eventually showed streets and the device marker. Initial map loading was
+not clean: iPad logs recorded OpenFreeMap tile failures (`NSURLErrorDomain
+-1005`) before visible tiles appeared. The iPad screenshot is
+`docs/screenshots/p04-ipad-location-map-20260930.png`. No account or activity
+mutation was used. This initially established iPad launch/prompt; location
+accuracy, public-place search, authenticated flows, reliable tiles,
+accessibility and physical-device acceptance remain open. The later denial and
+manual-selection follow-ups below established the manual fallback and local
+selection persistence on this Simulator only. See the detailed P04 handoff entry.
+Follow-up: the iPad Simulator permission was revoked and the app relaunched;
+the recovery banner offered Settings and Choose area while retaining Bengaluru
+and the existing 17-activity count. Neither action was pressed. The simulated
+permission was returned to not-determined after capture. See
+`docs/screenshots/p04-ipad-location-denied-20260930.png`.
+Then manual area was opened and explicitly confirmed; returning from Browse and
+reinstalling/relaunching the dev build preserved “Selected area,” Bengaluru and
+the 17 existing activities without a device-location marker. The permission
+remained not-determined. This is local Simulator persistence, not physical GPS
+evidence. Screenshot: `docs/screenshots/p04-ipad-area-persistence-20260930.png`.
+
+Physical-device check: Xcode sees the paired iPhone 13 Pro as available and
+NearHere 1.0.0 is already installed. `npx expo run:ios --device <UDID>` did not
+recognize the paired device; using its registered name reached Xcode but failed
+before install with error 65: no Development provisioning profile for
+`com.nearhere.app`; Xcode requires `-allowProvisioningUpdates` to create/find
+one. No profile or device app was changed. Enabling Apple-account provisioning
+is an external signing change and awaits explicit user approval. The physical
+build/permission/auth test is therefore blocked, not passed.
+
+### 1 October 2026 — chat recovery and publish idempotency
+
+Added pure transition coverage for Activity Detail's chat transport. The prior
+implementation cleared an interval after Realtime recovered but retained its
+handle, causing a second disconnect to skip polling. The transition helper now
+requires the screen to unset the handle. Unit checks cover first failure,
+duplicate failure, recovery and second failure. This is not a claimed live
+Realtime delivery test.
+
+Added `202610010001_create_activity_idempotency.sql` and applied it to the linked
+development project. The new RPC stores a host-scoped request ID plus a canonical
+draft hash, creates an event once, returns its original public-safe receipt for
+the same retry, and rejects a changed draft using the same request ID. The Host
+screen retains the key only while its serialized draft is unchanged. Local suite:
+**96 pass, 0 fail**; `npx tsc --noEmit`, Expo lint and `git diff --check` pass.
+No hosted actor harness, Simulator publish or physical-device test was run.
+
+### 2 October 2026 — physical iPhone connection and development build
+
+Xcode 27 exposes physical-device management as **Xcode → Open Developer Tool →
+Device Hub** rather than the older Window → Devices and Simulators menu. Device
+Hub and `xcdevice` both showed the paired iPhone 13 Pro (`bob the builder`) as
+available over USB, and `xcodebuild -showdestinations` listed it as a compatible
+NearHere destination.
+
+The first device build failed before signing because several transitive CocoaPods
+targets declared legacy deployment targets (iOS 9.0, 11.0 and 13.4), while this
+Xcode version accepts iOS 15 and later. The app already declares iOS 15.1. The
+Podfile post-install hook now aligns every generated Pods target to iOS 15.1;
+after `pod install`, `xcodebuild` completed successfully with the owner's
+previously approved automatic-provisioning flags. Third-party compiler warnings
+were emitted, but the build exited 0.
+
+`devicectl` installed NearHere 1.0.0 (bundle `com.nearhere.app`) onto the
+physical phone and confirmed the installed bundle. A direct launch request was
+then refused by iOS because the development certificate/profile has not yet been
+explicitly trusted on that phone. This is not a successful physical-device app
+acceptance: the remaining user action is to trust the developer certificate in
+Settings, then rerun/launch and execute the physical test matrix. No test
+activities, accounts, or hosted data were changed.
+
+Follow-up: after the owner trusted the development certificate, `devicectl`
+successfully launched `com.nearhere.app` on the physical iPhone. This proves
+the signed Debug process can start on that device. Device Hub cannot mirror this
+iOS 26.6.2 phone from the current Mac because it requires iOS 27.0 for screen
+sharing, so no visual rendering or interaction claim is made from the Mac. The
+next evidence is direct on-phone acceptance of location, OTP, host, join and
+privacy flows.
+
+### 2 October 2026 - selection-marker clarity
+
+The former selection marker was a circular lime control with no visual point of
+contact with the map. That made it unclear which coordinate would be saved.
+Manual-area and private-meeting-point pickers now share one non-interactive
+`SelectionPin` component. It uses a high-contrast signal-orange teardrop, dark
+center, white ring, and a ground reticle. The pin tip and reticle are anchored
+to the picker camera center. Signal orange is reserved for this temporary exact
+selection state; NearHere lime remains the normal brand/action color.
+
+TypeScript and Expo lint passed. An iPhone 17 Pro Simulator deep-link check of
+the private-meeting-point route visibly rendered the marker above the dark
+authored basemap. The picker was not confirmed, so no meeting-point draft or
+activity was changed. This does not prove physical-device rendering.
+
+### 2 October 2026 - Google Places provider boundary
+
+Added an inactive, provider-swappable Google Places path without replacing
+MapLibre. `supabase/functions/place-search/index.ts` owns the future provider
+secret and returns only a limited identifier/label/coordinate contract. The
+mobile app selects this path only when the explicit public provider switch is
+`google_places`; its default remains Nominatim for current development. The
+runtime parser rejects malformed function payloads before picker rendering.
+
+The full mobile unit suite passes **98/98**, and TypeScript, Expo lint, and
+`git diff --check` pass. No Google Cloud project, billing account, key, Edge
+Function deployment, live provider request, search setting, activity, or other
+hosted data was changed. `docs/google-places-search.md` records the owner setup
+and the remaining provider-policy review.
+# 2 October 2026 — day/night theme foundation, acceptance pending
+
+Started D00/D01 from `docs/handoffs/daylight-avatar-identity-20261002.md`.
+Implemented a local theme preference provider (System/Daylight/Night Arcade),
+AsyncStorage persistence, startup hydration gate, Appearance route, StatusBar
+resolution and shared cartography color derivation for ActivityMap and
+SelectionMap. Set Expo app interface style to automatic. Existing non-map
+screens still mostly use static Night Arcade styles, so Daylight is incomplete.
+
+No automated tests, typecheck, lint, Simulator capture, or device verification
+were run in this continuation. D00 baseline gates therefore remain open. This
+entry is an implementation record, not acceptance evidence. Expo SDK54 docs
+consulted: [SystemUI](https://docs.expo.dev/versions/v54.0.0/sdk/system-ui/)
+and [AsyncStorage](https://docs.expo.dev/versions/v54.0.0/sdk/async-storage/).

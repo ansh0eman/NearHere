@@ -15,15 +15,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radii } from '@/constants/design-tokens';
+import { radii } from '@/constants/design-tokens';
+import { HostAvatar } from '@/components/host-avatar';
+import { avatarChoice, avatarSeed } from '@/lib/avatar-identity';
 import { useActivityDetail } from '@/hooks/use-activity-detail';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { appendActivityMessage } from '@/lib/activity-message-utils';
+import { resolveChatConnectionTransition, type ChatSubscriptionStatus } from '@/lib/chat-connection';
 import { blockActivityHost, cancelActivity, getActivityMessages, getHostActivityParticipants, joinActivity, leaveActivity, removeActivityParticipant, reportActivity, sendActivityMessage } from '@/lib/activity-repository';
 import { walkingDirectionsUrl } from '@/lib/directions';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
+import { useTheme } from '@/providers/theme-provider';
 import type { ActivityDetail, ActivityKind, ActivityMessage, HostActivityParticipant } from '@/types/activity';
 
 const KIND_EMOJIS: Record<ActivityKind, string> = {
@@ -76,6 +80,8 @@ function actionLabel(activity: ActivityDetail) {
 
 export default function ActivityDetailScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const params = useLocalSearchParams<{ id: string; distanceM?: string }>();
   const activityId = typeof params.id === 'string' ? params.id : '';
   const parsedDistance = Number(params.distanceM);
@@ -130,6 +136,18 @@ export default function ActivityDetailScreen() {
     }
 
     let pollingTimer: ReturnType<typeof setInterval> | undefined;
+    const applyChatConnection = (status: ChatSubscriptionStatus) => {
+      const transition = resolveChatConnectionTransition(status, pollingTimer !== undefined);
+      setChatConnection(transition.connection);
+
+      if (transition.stopPolling && pollingTimer !== undefined) {
+        clearInterval(pollingTimer);
+        pollingTimer = undefined;
+      }
+      if (transition.startPolling) {
+        pollingTimer = setInterval(() => { void refreshMessages(); }, 15_000);
+      }
+    };
     const channel = supabase?.channel(`activity-chat:${activityId}`)
       .on('postgres_changes', {
         event: 'INSERT',
@@ -139,21 +157,19 @@ export default function ActivityDetailScreen() {
       }, () => { void refreshMessages(); })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          setChatConnection('live');
-          if (pollingTimer) clearInterval(pollingTimer);
+          applyChatConnection('SUBSCRIBED');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          setChatConnection('polling');
-          if (!pollingTimer) pollingTimer = setInterval(() => { void refreshMessages(); }, 15_000);
+          applyChatConnection(status);
         }
       });
 
     if (!channel) {
-      setChatConnection('polling');
-      pollingTimer = setInterval(() => { void refreshMessages(); }, 15_000);
+      applyChatConnection('unavailable');
     }
 
     return () => {
-      if (pollingTimer) clearInterval(pollingTimer);
+      if (pollingTimer !== undefined) clearInterval(pollingTimer);
+      pollingTimer = undefined;
       if (channel) void channel.unsubscribe();
     };
   }, [activityId, canChat, refreshMessages]);
@@ -427,8 +443,20 @@ export default function ActivityDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroMark}><Text style={styles.heroEmoji}>{KIND_EMOJIS[activity.kind]}</Text></View>
-        <Text style={styles.eyebrow}>{activity.kind.toUpperCase()}</Text>
+        <View style={styles.heroRow}>
+          <View style={styles.heroMark}>
+            <HostAvatar
+              seed={avatarSeed(activity.hostAvatarConfig, activity.hostDisplayName)}
+              avatarId={avatarChoice(activity.hostAvatarConfig, activity.hostDisplayName)}
+              size={82}
+            />
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.eyebrow}>{KIND_EMOJIS[activity.kind]}  {activity.kind.toUpperCase()}</Text>
+            <Text style={styles.hostName}>{activity.hostDisplayName}</Text>
+            <Text style={styles.hostCaption}>NearHere host</Text>
+          </View>
+        </View>
         <Text style={styles.title}>{activity.title}</Text>
         <Text style={styles.description}>{activity.description || 'A nearby activity hosted by the community.'}</Text>
 
@@ -446,7 +474,6 @@ export default function ActivityDetailScreen() {
         <View style={styles.infoCard}>
           <InfoRow icon="calendar-outline" text={formatFullTime(activity.startsAt, activity.endsAt)} />
           {distanceLabel && <InfoRow icon="walk-outline" text={distanceLabel} />}
-          <InfoRow icon="person-outline" text={`Hosted by ${activity.hostDisplayName}`} />
           <InfoRow icon="people-outline" text={`${activity.participantCount}/${activity.capacity} going`} />
           <InfoRow
             icon={activity.joinMode === 'approval' ? 'shield-checkmark-outline' : 'flash-outline'}
@@ -623,6 +650,8 @@ export default function ActivityDetailScreen() {
 }
 
 function InfoRow({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <View style={styles.infoRow}>
       <Ionicons color={colors.mutedText} name={icon} size={18} />
@@ -631,14 +660,19 @@ function InfoRow({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: s
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
   screen: { backgroundColor: colors.canvas, flex: 1 },
   navRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 10 },
   navTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
   iconButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 22, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
   iconButtonPlaceholder: { height: 44, width: 44 },
   content: { paddingBottom: 42, paddingHorizontal: 22 },
-  heroMark: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 31, height: 62, justifyContent: 'center', marginTop: 20, width: 62 },
+  heroRow: { alignItems: 'center', flexDirection: 'row', gap: 16, marginTop: 24 },
+  heroMark: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 42, height: 82, justifyContent: 'center', overflow: 'hidden', width: 82 },
+  heroCopy: { flex: 1 },
+  hostName: { color: colors.text, fontSize: 18, fontWeight: '900', marginTop: 7 },
+  hostCaption: { color: colors.mutedText, fontSize: 12, marginTop: 3 },
   heroEmoji: { fontSize: 29 },
   eyebrow: { color: colors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginTop: 25 },
   title: { color: colors.text, fontSize: 38, fontWeight: '900', letterSpacing: -1.5, lineHeight: 42, marginTop: 7 },
@@ -696,4 +730,5 @@ const styles = StyleSheet.create({
   centerBody: { color: colors.mutedText, fontSize: 14, lineHeight: 21, marginTop: 10, textAlign: 'center' },
   textButton: { marginTop: 17, padding: 10 },
   textButtonText: { color: colors.mutedText, fontSize: 13, fontWeight: '800' },
-});
+  });
+}

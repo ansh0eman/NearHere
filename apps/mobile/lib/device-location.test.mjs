@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveDeviceLocation } from './device-location.ts';
+import { locationFailureMessage, resolveDeviceLocation } from './device-location.ts';
 
 const point = { coords: { latitude: 12.9, longitude: 77.6 } };
 const provider = (overrides = {}) => ({ servicesEnabled: async () => true, permissionGranted: async () => true,
@@ -20,4 +20,13 @@ test('a missing simulator GPS fix times out without hanging', async () => {
 });
 test('cache failure also produces a recoverable unavailable state', async () => {
   assert.deepEqual(await resolveDeviceLocation(provider({ current: async () => { throw Error(); }, recent: async () => { throw Error(); } })), { ok: false, reason: 'fixUnavailable' });
+});
+test('location failures tell users which setting or manual fallback applies', () => {
+  assert.match(locationFailureMessage('servicesDisabled'), /Location Services are off/);
+  assert.match(locationFailureMessage('servicesDisabled'), /in Settings/);
+  assert.match(locationFailureMessage('permissionDenied'), /location permission/);
+  for (const reason of ['servicesDisabled', 'permissionDenied', 'fixUnavailable']) {
+    assert.match(locationFailureMessage(reason), /choose an area/i);
+  }
+  assert.match(locationFailureMessage('fixUnavailable'), /selected area is unchanged/);
 });

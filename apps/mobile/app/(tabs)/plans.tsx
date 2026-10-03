@@ -17,12 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMyPlans } from '@/hooks/use-my-plans';
 import { useMembershipRequests } from '@/hooks/use-membership-requests';
 import { HostAvatar } from '@/components/host-avatar';
-import { avatarSeed } from '@/lib/avatar-identity';
-import { colors, radii, spacing, typeScale } from '@/constants/design-tokens';
+import { avatarChoice, avatarSeed } from '@/lib/avatar-identity';
+import { radii, spacing, typeScale } from '@/constants/design-tokens';
 import { isInactivePlan, partitionPlans } from '@/lib/plan-utils';
 import { walkingDirectionsUrl } from '@/lib/directions';
 import { useAuth } from '@/providers/auth-provider';
 import type { HostedMembershipRequest, MyPlanSummary } from '@/types/activity';
+import { useTheme } from '@/providers/theme-provider';
 
 const STATUS_LABELS: Record<MyPlanSummary['membershipStatus'], string> = {
   accepted: 'Going',
@@ -41,6 +42,8 @@ function formatPlanTime(value: string) {
 
 export default function PlansScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const { session, setPendingIntent } = useAuth();
   const userId = session?.user.id ?? null;
   const { actionError, actionNotice, leave, leavingActivityId, refresh, state } = useMyPlans(userId);
@@ -211,6 +214,8 @@ function PlanCard({
   onOpen: () => void;
   plan: MyPlanSummary;
 }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const isHost = plan.membershipRole === 'host';
   const meetingPoint = plan.exactMeetingLocation;
   const isInactive = isInactivePlan(plan);
@@ -241,12 +246,16 @@ function PlanCard({
           <Ionicons color={colors.mutedText} name="time-outline" size={16} />
           <Text style={styles.detailText}>{formatPlanTime(plan.startsAt)}</Text>
         </View>
-        <View style={styles.detailRow}>
-          <Ionicons color={colors.mutedText} name="people-outline" size={16} />
-          <Text style={styles.detailText}>
-            {plan.participantCount}/{plan.capacity} {isInactive ? 'participants' : 'going'} · Hosted by{' '}
-            {plan.hostDisplayName}
-          </Text>
+        <View style={styles.hostRow}>
+          <View style={styles.hostAvatar}>
+            <HostAvatar seed={avatarSeed(plan.hostAvatarConfig, plan.hostDisplayName)} avatarId={avatarChoice(plan.hostAvatarConfig, plan.hostDisplayName)} size={38} />
+          </View>
+          <View style={styles.hostCopy}>
+            <Text style={styles.hostName}>{plan.hostDisplayName}</Text>
+            <Text style={styles.detailText}>
+              {plan.participantCount}/{plan.capacity} {isInactive ? 'participants' : 'going'}
+            </Text>
+          </View>
         </View>
 
         <View style={[styles.locationBox, !meetingPoint && styles.locationBoxLocked]}>
@@ -320,6 +329,8 @@ function RequestsSection({
   onRetry: () => void;
   state: ReturnType<typeof useMembershipRequests>['state'];
 }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   if (state.status === 'signedOut' || (state.status === 'ready' && state.requests.length === 0)) {
     return null;
   }
@@ -383,6 +394,8 @@ function RequestCard({
   onDecide: (decision: 'approve' | 'reject') => Promise<boolean>;
   request: HostedMembershipRequest;
 }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <View style={styles.requestCard}>
       <View style={styles.requestAvatar}>
@@ -432,6 +445,8 @@ function EmptyState({
   onPress: () => void;
   title: string;
 }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <View style={styles.centerState}>
       <View style={styles.emptyIcon}>
@@ -446,7 +461,8 @@ function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
   screen: { backgroundColor: colors.canvas, flex: 1 },
   content: { flexGrow: 1, paddingBottom: 110, paddingHorizontal: spacing.lg },
   header: { paddingTop: spacing.xl },
@@ -463,23 +479,27 @@ const styles = StyleSheet.create({
   listSectionTitle: { color: colors.mutedText, fontSize: 11, fontWeight: '800', letterSpacing: 0.8, marginTop: spacing.sm },
   refreshRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' },
   refreshText: { color: colors.mutedText, fontSize: 12, fontWeight: '700' },
-  errorBanner: { backgroundColor: '#422827', borderColor: '#69403C', borderRadius: radii.control, borderWidth: 1, padding: spacing.md },
+  errorBanner: { backgroundColor: colors.dangerSurface, borderColor: colors.danger, borderRadius: radii.control, borderWidth: 1, padding: spacing.md },
   errorBannerText: { color: colors.danger, fontSize: 12, fontWeight: '700', lineHeight: 17 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, padding: spacing.lg },
   cardTopRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   kind: { color: colors.accent, fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
-  statusPill: { backgroundColor: '#304534', borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6 },
+  statusPill: { backgroundColor: colors.successSurface, borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6 },
   statusPillMuted: { backgroundColor: colors.raised },
   statusText: { color: colors.text, fontSize: 10, fontWeight: '800' },
   cardTitle: { color: colors.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.4, marginBottom: spacing.md, marginTop: spacing.md },
   detailRow: { alignItems: 'center', flexDirection: 'row', gap: 7, marginTop: 7 },
   detailText: { color: colors.mutedText, flex: 1, fontSize: 12, lineHeight: 17 },
-  locationBox: { alignItems: 'flex-start', backgroundColor: '#243E47', borderRadius: radii.control, flexDirection: 'row', gap: 10, marginTop: spacing.lg, padding: spacing.md },
+  hostRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  hostAvatar: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 18, height: 38, justifyContent: 'center', overflow: 'hidden', width: 38 },
+  hostCopy: { flex: 1 },
+  hostName: { color: colors.text, fontSize: 12, fontWeight: '800' },
+  locationBox: { alignItems: 'flex-start', backgroundColor: colors.water, borderRadius: radii.control, flexDirection: 'row', gap: 10, marginTop: spacing.lg, padding: spacing.md },
   locationBoxLocked: { backgroundColor: colors.raised },
   locationCopy: { flex: 1 },
   locationTitle: { color: colors.text, fontSize: 12, fontWeight: '800' },
   locationText: { color: colors.mutedText, fontSize: 11, lineHeight: 16, marginTop: 3 },
-  progressBanner: { alignItems: 'center', backgroundColor: '#304534', borderColor: colors.border, flexDirection: 'row', gap: 9 },
+  progressBanner: { alignItems: 'center', backgroundColor: colors.successSurface, borderColor: colors.border, flexDirection: 'row', gap: 9 },
   progressBannerText: { color: colors.success, flex: 1, fontSize: 12, fontWeight: '700' },
   requestsLoading: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, justifyContent: 'center', paddingVertical: spacing.md },
   requestsSection: { backgroundColor: colors.warningSurface, borderColor: colors.border, borderRadius: radii.surface, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
@@ -506,4 +526,5 @@ const styles = StyleSheet.create({
   directionsButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 14, paddingHorizontal: 2, paddingVertical: 5 },
   directionsButtonText: { color: colors.accent, fontSize: 12, fontWeight: '800' },
   buttonPressed: { opacity: 0.65 },
-});
+  });
+}

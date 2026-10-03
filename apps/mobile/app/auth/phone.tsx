@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -15,12 +15,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { colors, radii, spacing, typeScale } from '@/constants/design-tokens';
+import { radii, spacing, typeScale } from '@/constants/design-tokens';
 import { isValidE164PhoneNumber, normalizePhoneNumber } from '@/lib/phone-number';
 import { useAuth } from '@/providers/auth-provider';
+import { useTheme } from '@/providers/theme-provider';
 
 export default function PhoneScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+  const scrollRef = useRef<ScrollView>(null);
   const { isConfigured, requestOtp, setPendingIntent, status } = useAuth();
   const [phone, setPhone] = useState('+91 ');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,6 +39,14 @@ export default function PhoneScreen() {
     const hideSubscription = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
     return () => { showSubscription.remove(); hideSubscription.remove(); };
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (keyboardHeight > 0) scrollRef.current?.scrollToEnd({ animated: true });
+      else scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [keyboardHeight]);
 
   async function sendCode() {
     setErrorMessage(null);
@@ -60,21 +72,24 @@ export default function PhoneScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'android' ? 'height' : undefined}
         style={styles.content}>
+        <View style={styles.header}>
+          <Pressable
+            accessibilityLabel="Close phone sign in"
+            accessibilityRole="button"
+            onPress={cancelSignIn}
+            style={styles.closeButton}>
+            <Ionicons name="close" size={23} color={colors.text} />
+          </Pressable>
+        </View>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollRef}
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 100 }]}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-        <Pressable
-          accessibilityLabel="Close phone sign in"
-          accessibilityRole="button"
-          onPress={cancelSignIn}
-          style={styles.closeButton}>
-          <Ionicons name="close" size={23} color={colors.text} />
-        </Pressable>
-
         <View style={styles.hero}>
           <View style={styles.iconWrap}>
             <Ionicons name="phone-portrait-outline" size={29} color={colors.accent} />
@@ -112,19 +127,24 @@ export default function PhoneScreen() {
           />
         </View>
 
-        <Button label="Send one-time code" icon="arrow-forward" loading={isSending} onPress={() => void sendCode()} style={styles.primaryButton} />
         </ScrollView>
-        {keyboardHeight > 0 ? <Pressable accessibilityLabel="Dismiss keyboard" accessibilityRole="button" onPress={Keyboard.dismiss} style={[styles.keyboardDismissButton, { bottom: keyboardHeight + 10 }]}><Text style={styles.doneKeyboardText}>Done</Text></Pressable> : null}
+        <View style={[styles.footer, Platform.OS === 'ios' && keyboardHeight > 0 && styles.iosKeyboardFooter, Platform.OS === 'ios' && keyboardHeight > 0 && { bottom: keyboardHeight + spacing.sm }]}>
+          <Button label="Send one-time code" icon="arrow-forward" loading={isSending} onPress={() => void sendCode()} style={[styles.primaryButton, Platform.OS === 'ios' && keyboardHeight > 0 && styles.iosPrimaryButton]} />
+          {keyboardHeight > 0 ? <Pressable accessibilityLabel="Dismiss keyboard" accessibilityRole="button" onPress={Keyboard.dismiss} style={styles.keyboardDismissButton}><Text style={styles.doneKeyboardText}>Done</Text></Pressable> : null}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
   screen: { backgroundColor: colors.canvas, flex: 1 },
   content: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 24 },
-  closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, height: 44, justifyContent: 'center', marginTop: 8, width: 44 },
+  header: { height: 60, justifyContent: 'center', paddingHorizontal: 24 },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: spacing.md },
+  closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
   hero: { marginTop: 42 },
   iconWrap: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: 28, height: 56, justifyContent: 'center', marginBottom: 22, width: 56 },
   eyebrow: { ...typeScale.label, color: colors.accent, letterSpacing: 1.3 },
@@ -135,7 +155,11 @@ const styles = StyleSheet.create({
   setupTitle: { ...typeScale.secondary, color: colors.accent, fontWeight: '700' },
   setupBody: { ...typeScale.label, color: colors.mutedText, lineHeight: 18, marginTop: 3 },
   form: { marginTop: 28 },
-  primaryButton: { marginBottom: spacing.lg, marginTop: 'auto', minHeight: 54 },
-  keyboardDismissButton: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: radii.pill, borderColor: colors.border, borderWidth: 1, paddingHorizontal: 17, paddingVertical: 10, position: 'absolute', right: 24 },
+  footer: { backgroundColor: colors.canvas, paddingHorizontal: 24, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  iosKeyboardFooter: { flexDirection: 'row', gap: spacing.sm, left: 0, position: 'absolute', right: 0 },
+  primaryButton: { minHeight: 54 },
+  iosPrimaryButton: { flex: 1 },
+  keyboardDismissButton: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: radii.pill, borderColor: colors.border, borderWidth: 1, justifyContent: 'center', minHeight: 54, paddingHorizontal: 17 },
   doneKeyboardText: { color: colors.text, fontSize: 13, fontWeight: '700' },
-});
+  });
+}

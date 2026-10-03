@@ -3,7 +3,8 @@ import type { PropsWithChildren } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PressableProps, StyleProp, TextStyle, ViewStyle } from 'react-native';
 
-import { colors, radii, spacing, touchTarget } from '@/constants/design-tokens';
+import { radii, spacing, touchTarget } from '@/constants/design-tokens';
+import { useTheme } from '@/providers/theme-provider';
 
 type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
 
@@ -19,18 +20,17 @@ type ButtonProps = PropsWithChildren<{
   labelStyle?: StyleProp<TextStyle>;
 }>;
 
-const variantStyles = {
-  primary: { backgroundColor: colors.accent, borderColor: colors.accent, label: colors.onAccent },
-  secondary: { backgroundColor: colors.raised, borderColor: colors.border, label: colors.text },
-  quiet: { backgroundColor: 'transparent', borderColor: 'transparent', label: colors.mutedText },
-  danger: { backgroundColor: '#422827', borderColor: '#69403C', label: colors.danger },
-} as const;
-
 export function Button({
   label, onPress, variant = 'primary', disabled = false, loading = false,
   accessibilityLabel, icon, style, labelStyle,
 }: ButtonProps) {
-  const palette = variantStyles[variant];
+  const { colors } = useTheme();
+  const palette = {
+    primary: { backgroundColor: colors.accent, borderColor: colors.accent, label: colors.onAccent },
+    secondary: { backgroundColor: colors.raised, borderColor: colors.border, label: colors.text },
+    quiet: { backgroundColor: 'transparent', borderColor: 'transparent', label: colors.mutedText },
+    danger: { backgroundColor: colors.dangerSurface, borderColor: colors.danger, label: colors.danger },
+  }[variant];
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel ?? label}

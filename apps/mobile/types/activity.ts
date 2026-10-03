@@ -1,5 +1,6 @@
 export type {
   ActivityDetail,
+  AvatarConfiguration,
   ActivityKind,
   ActivityMembershipRole,
   ActivityMembershipStatus,

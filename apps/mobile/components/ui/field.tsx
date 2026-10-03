@@ -2,7 +2,8 @@ import { useId } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TextInputProps } from 'react-native';
 
-import { colors, radii, spacing, typeScale } from '@/constants/design-tokens';
+import { radii, spacing, typeScale } from '@/constants/design-tokens';
+import { useTheme } from '@/providers/theme-provider';
 
 type FieldProps = TextInputProps & {
   label: string;
@@ -12,6 +13,8 @@ type FieldProps = TextInputProps & {
 
 export function Field({ label, helper, error, accessibilityLabel, style, ...inputProps }: FieldProps) {
   const generatedId = useId();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const message = error || helper;
   return (
     <View style={styles.wrap}>
@@ -30,11 +33,13 @@ export function Field({ label, helper, error, accessibilityLabel, style, ...inpu
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
-  label: { ...typeScale.label, color: colors.mutedText },
-  input: { ...typeScale.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, color: colors.text, minHeight: 52, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  inputError: { borderColor: colors.danger },
-  message: { ...typeScale.secondary, color: colors.mutedText },
-  error: { color: colors.danger },
-});
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    wrap: { gap: spacing.sm },
+    label: { ...typeScale.label, color: colors.mutedText },
+    input: { ...typeScale.body, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, color: colors.text, minHeight: 52, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+    inputError: { borderColor: colors.danger },
+    message: { ...typeScale.secondary, color: colors.mutedText },
+    error: { color: colors.danger },
+  });
+}

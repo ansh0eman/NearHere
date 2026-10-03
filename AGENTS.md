@@ -1,9 +1,20 @@
 # NearHere continuation entry point
 
+For the 2 October day/night map, custom Avatar Studio, username and multi-provider
+sign-in request, read `docs/handoffs/daylight-avatar-identity-20261002.md` completely
+after the status file. Start at D00 or its first unfinished ticket. This newer
+request supersedes conflicting visual/wardrobe scope below; existing privacy,
+fixture-preservation and evidence rules continue to apply.
+
 When the user says **continue** for the premium map/profile redesign:
 
 1. Read `docs/handoffs/night-arcade-status.md` first.
-2. Read `docs/handoffs/night-arcade-execution.md` completely before implementation.
+2. Read `docs/handoffs/premium-product-execution.md` completely. It is the current
+   master plan (P00-P10); follow its read order and ticket gates. Read
+   `premium-profile-avatar-spec.md` before P05-P08 and `premium-community-roadmap.md`
+   before E01-E08. These are in `docs/handoffs/`. The older
+   `night-arcade-execution.md` remains required baseline technical guidance;
+   the premium plan supersedes its blanket wardrobe deferral, not privacy rules.
 3. Read `docs/design-concepts/design-review.md` and inspect the chosen reference image.
 4. Read `apps/mobile/AGENTS.md` before editing mobile code. Verify live Git/source/config rather than trusting a historical summary.
 5. Execute the first unfinished ticket only, test it, update the handoff, then proceed to the next. Do not stop merely because a ticket is complete if the user asked to continue autonomously.

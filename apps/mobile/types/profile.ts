@@ -4,8 +4,10 @@
  */
 export type {
   AvatarConfig,
+  ClaimMyUsernameRequest,
   CompleteProfileOnboardingRequest,
   OnboardingStatus,
+  SaveMyAvatarV3Request,
   UpdateMyProfileRequest,
   UserProfile,
 } from '../../../packages/contracts/user';
@@ -22,4 +24,4 @@ export type ProfileState =
 
 export type ProfileOperationResult =
   | { ok: true; profile: UserProfile }
-  | { ok: false; message: string };
+  | { ok: false; message: string; conflict?: boolean };

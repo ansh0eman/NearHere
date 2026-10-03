@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { colors } from '@/constants/design-tokens';
+import { useTheme } from '@/providers/theme-provider';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{

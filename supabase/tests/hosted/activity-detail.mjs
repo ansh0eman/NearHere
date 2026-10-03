@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Black-box hosted checks for activity_detail and cancel_activity.
+ * Black-box hosted checks for activity detail/avatar projection and cancellation.
  *
  * This runner uses only the publishable-key client boundary. It never prints
  * phones, OTPs, tokens, user IDs, activity IDs, or exact coordinates.
@@ -203,10 +203,49 @@ async function main() {
   }
 
   async function detail(activityId, accessToken) {
-    const response = await rpc('activity_detail', { p_activity_id: activityId }, accessToken);
-    assert(response.ok, `Activity detail failed (${safeErrorDetails(response)}).`);
-    assert(Array.isArray(response.payload) && response.payload.length === 1, 'Expected one detail row.');
-    return response.payload[0];
+    const [base, projected] = await Promise.all([
+      rpc('activity_detail', { p_activity_id: activityId }, accessToken),
+      rpc('activity_detail_with_avatar', { p_activity_id: activityId }, accessToken),
+    ]);
+    assert(base.ok, `Base activity detail failed (${safeErrorDetails(base)}).`);
+    assert(projected.ok, `Avatar activity detail failed (${safeErrorDetails(projected)}).`);
+    assert(Array.isArray(base.payload) && base.payload.length === 1, 'Expected one base detail row.');
+    assert(Array.isArray(projected.payload) && projected.payload.length === 1, 'Expected one avatar detail row.');
+    const original = base.payload[0];
+    const row = projected.payload[0];
+    for (const [field, value] of Object.entries(original)) {
+      assert(JSON.stringify(row[field]) === JSON.stringify(value), `Avatar wrapper changed the authorized ${field} field.`);
+    }
+    assertAvatarProjection(row.host_avatar_config);
+    return row;
+  }
+
+  function assertAvatarProjection(value) {
+    if (value === null) return;
+    assert(typeof value === 'object' && !Array.isArray(value), 'Avatar projection must be an object or null.');
+    assert(Object.keys(value).every((key) => ['version', 'seed', 'avatarId'].includes(key)), 'Avatar projection returned an unapproved field.');
+    assert(value.version === 1, 'Avatar projection returned an unsupported version.');
+    const validSeed = typeof value.seed === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.seed);
+    const validAvatar = ['v1-01', 'v1-02', 'v1-03', 'v1-04', 'v1-05', 'v1-06'].includes(value.avatarId);
+    assert(validSeed || validAvatar, 'Avatar projection did not contain a supported identity.');
+  }
+
+  async function plans(session) {
+    const [base, projected] = await Promise.all([
+      rpc('my_plans', { p_limit: 100 }, session?.accessToken),
+      rpc('my_plans_with_avatars', { p_limit: 100 }, session?.accessToken),
+    ]);
+    assert(base.ok && projected.ok, `Caller-scoped Plans wrapper failed (${safeErrorDetails(projected)}).`);
+    assert(Array.isArray(base.payload) && Array.isArray(projected.payload), 'Plans wrappers did not return lists.');
+    assert(base.payload.length === projected.payload.length, 'Avatar wrapper changed Plans row count.');
+    for (let index = 0; index < base.payload.length; index++) {
+      for (const [field, value] of Object.entries(base.payload[index])) {
+        assert(JSON.stringify(projected.payload[index][field]) === JSON.stringify(value), `Avatar wrapper changed Plans ${field}.`);
+      }
+      assertAvatarProjection(projected.payload[index].host_avatar_config);
+    }
+    return projected.payload;
   }
 
   async function runTest(name, operation) {
@@ -260,6 +299,11 @@ async function main() {
       assert(hasNullExactPoint(row), 'Anonymous detail exposed exact coordinates.');
     });
 
+    await runTest('anonymous caller cannot invoke the Plans avatar wrapper', async () => {
+      const response = await rpc('my_plans_with_avatars', { p_limit: 50 });
+      assert(!response.ok && (response.status === 401 || response.payload?.code === '28000'), 'Anonymous Plans wrapper was not denied.');
+    });
+
     await runTest('authenticated non-member receives no membership or exact point', async () => {
       const row = await detail(activityId, sessionB.accessToken);
       assert(row.membership_role === null, 'Non-member detail exposed a membership role.');
@@ -278,6 +322,10 @@ async function main() {
       assert(row.membership_role === 'participant', 'Pending detail has the wrong role.');
       assert(row.membership_status === 'pending', 'Pending detail has the wrong status.');
       assert(hasNullExactPoint(row), 'Pending detail exposed exact coordinates.');
+      const actorPlans = await plans(sessionB);
+      const activityPlan = actorPlans.find((plan) => plan.id === activityId);
+      assert(activityPlan?.membership_status === 'pending', 'Pending Plans wrapper omitted the caller activity.');
+      assert(activityPlan.exact_latitude === null && activityPlan.exact_longitude === null, 'Pending Plans wrapper exposed the exact point.');
     });
 
     await runTest('accepted participant and host receive the exact active point', async () => {
@@ -301,6 +349,44 @@ async function main() {
       assert(host.membership_status === 'accepted', 'Host is not accepted.');
       assert(host.membership_role === 'host', 'Host role is missing.');
       assert(hasExactPoint(host), 'Host lacks the exact point.');
+      const [participantPlans, hostPlans] = await Promise.all([plans(sessionB), plans(sessionA)]);
+      for (const actorPlans of [participantPlans, hostPlans]) {
+        const activityPlan = actorPlans.find((plan) => plan.id === activityId);
+        assert(activityPlan?.membership_status === 'accepted', 'Accepted activity is missing from avatar Plans.');
+        assert(typeof activityPlan.exact_latitude === 'number' && typeof activityPlan.exact_longitude === 'number', 'Accepted Plans wrapper removed the authorized point.');
+      }
+    });
+
+    await runTest('either-direction block revokes participant exact detail and Plans coordinates', async () => {
+      const block = (blocker, blocked) => rpc('block_user', { p_blocked_user_id: blocked.userId }, blocker.accessToken);
+      const unblock = (blocker, blocked) => rpc('unblock_user', { p_blocked_user_id: blocked.userId }, blocker.accessToken);
+      try {
+        for (const [blocker, blocked] of [[sessionA, sessionB], [sessionB, sessionA]]) {
+          const blockedResult = await block(blocker, blocked);
+          assert(blockedResult.ok, `Block setup failed (${safeErrorDetails(blockedResult)}).`);
+          const [detailA, detailB, plansA, plansB] = await Promise.all([
+            detail(activityId, sessionA.accessToken),
+            detail(activityId, sessionB.accessToken),
+            plans(sessionA),
+            plans(sessionB),
+          ]);
+          assert(hasExactPoint(detailA), 'Host lost access to its own exact meeting point.');
+          assert(hasNullExactPoint(detailB), 'Blocked participant detail retained exact coordinates.');
+          const hostPlan = plansA.find((item) => item.id === activityId);
+          const participantPlan = plansB.find((item) => item.id === activityId);
+          assert(hostPlan && hasExactPoint(hostPlan), 'Host lost its own exact point in Plans.');
+          assert(participantPlan && hasNullExactPoint(participantPlan), 'Blocked participant Plans retained exact coordinates.');
+          const unblocked = await unblock(blocker, blocked);
+          assert(unblocked.ok, `Block cleanup failed (${safeErrorDetails(unblocked)}).`);
+        }
+      } finally {
+        await Promise.all([unblock(sessionA, sessionB), unblock(sessionB, sessionA)]);
+      }
+      const [participant, host] = await Promise.all([
+        detail(activityId, sessionB.accessToken),
+        detail(activityId, sessionA.accessToken),
+      ]);
+      assert(hasExactPoint(participant) && hasExactPoint(host), 'Unblocking did not restore normal accepted-member access.');
     });
 
     await runTest('non-host and anonymous cancellation are denied', async () => {

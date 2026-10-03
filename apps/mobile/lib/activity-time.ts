@@ -16,6 +16,12 @@ export function isFutureStart(value: Date, now = new Date()): boolean {
   return value.getTime() > now.getTime();
 }
 
+/** Date and time dialogs return full Date objects. Compose their local parts,
+ * never their ISO date strings (which would silently switch to UTC). */
+export function combineLocalDateAndTime(day: Date, clock: Date): Date {
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), clock.getHours(), clock.getMinutes(), 0, 0);
+}
+
 export function formatActivityStart(value: Date): string {
   return value.toLocaleString(undefined, {
     day: 'numeric',

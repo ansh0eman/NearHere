@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { validateStyleMin } from '@maplibre/maplibre-gl-style-spec';
+import { makeMapStyleFrom } from './map-style-core.mjs';
 
 const styleUrl = new URL('../assets/maps/nearhere-night-arcade-v1.json', import.meta.url);
 const style = JSON.parse(readFileSync(fileURLToPath(styleUrl), 'utf8'));
@@ -32,4 +33,20 @@ test('Night Arcade map style is a self-contained MapLibre v8 vector style', () =
 
   const errors = validateStyleMin(style);
   assert.deepEqual(errors, [], errors.map((error) => error.message).join('\n'));
+});
+
+test('generated daylight and night styles validate without changing map data or attribution', () => {
+  const baseline = JSON.parse(readFileSync(fileURLToPath(styleUrl), 'utf8'));
+  const day = makeMapStyleFrom(baseline, 'light');
+  const night = makeMapStyleFrom(baseline, 'dark');
+
+  assert.deepEqual(validateStyleMin(day), []);
+  assert.deepEqual(validateStyleMin(night), []);
+  assert.deepEqual(day.sources, baseline.sources);
+  assert.deepEqual(night.sources, baseline.sources);
+  assert.deepEqual(day.layers.map(({ id }) => id), baseline.layers.map(({ id }) => id));
+  assert.deepEqual(night.layers, baseline.layers);
+  assert.equal(day.name, 'NearHere Daylight Playground v1');
+  assert.notDeepEqual(day.layers, night.layers);
+  assert.match(day.sources.openmaptiles.attribution, /OpenStreetMap/);
 });

@@ -1,9 +1,18 @@
 # Night Arcade implementation playbook
 
+**Scope update, 24 September:** [Premium product execution](premium-product-execution.md)
+is now the master continuation plan. This file remains baseline technical
+guidance; its initial no-wardrobe scope is superseded by the staged, gated
+profile/wardrobe specification. Never interpret that expansion as permission to
+buy assets, weaken privacy, publish or charge users without the required gates.
+
 Owner: the current implementation agent. Planner handoff: 23 September 2026.
 User requested planning first, then a lighter model will execute on **continue**.
 No prompt or document can guarantee a model never hallucinates. This playbook
 reduces the risk by requiring source inspection, small diffs and observable gates.
+
+24 September audit: [verified progress and omissions](night-arcade-plan-audit-20260924.md).
+Treat the numbered steps below as requirements, not evidence that they passed.
 
 ## 0. How to resume without repeating work
 
@@ -144,9 +153,9 @@ Steps:
 9. Current timer bounds the current-fix step, not every native API. If a native
    service/permission/cache call actually hangs, reproduce then bound the full
    workflow without timing out an actively displayed permission prompt arbitrarily.
-10. Returning from Settings currently requires tapping recenter again. Decide a
-    focused AppState recovery path for denied/error only; never override a manual
-    area or trigger permission loops on every focus. Document this behaviour.
+10. A focused AppState recovery path now retries denied/error states on foreground
+    without overriding a manual area. Verify it in native Settings; do not add a
+    second permission loop. The audit fixed a separate stale startup-read race.
 
 Pass: 12 populated demo slots visible through relevant actor/anonymous views,
 second run retains rather than duplicates, selected area labels remain truthful,
@@ -209,11 +218,10 @@ test catalog uniqueness, known seed mapping, malformed config and unknown IDs.
 
 ## Ticket 3 — Public host avatar without exposing private profiles
 
-Current own-profile seed assignment is implemented. Map host markers still use
-display-name fallbacks because the discovery contract lacks avatar configuration.
-Fix that intentionally; don't query everyone's profile from the client.
-
-Proposed API **not yet implemented**: `nearby_activities_with_avatars`.
+Own-profile seed assignment and discovery's bounded host-avatar projection are
+implemented and deployed through migration 230004. The API is
+`nearby_activities_with_avatars`. Detail identity (step 7) is still missing.
+The following steps describe requirements to preserve, not work to duplicate.
 
 1. Read current `nearby_activities` SQL and table columns. Match all argument
    names/defaults/types and original return columns exactly; add only a bounded
@@ -270,7 +278,8 @@ is in `app/onboarding/profile.tsx`; existing profiles use Me → Edit profile.
    If querying only the first 50 plans, don't label their length lifetime totals.
 8. Keep the user's phone private. No avatar uploads/storage bucket required.
 
-Code and unit/parser gates pass at 61 tests. Simulator acceptance remains:
+Latest audit source gates pass at 67 tests; Me scrolling/upcoming plans and retry
+mode were fixed in that audit. Simulator acceptance remains:
 new profile assigned; existing seed retained; edit/save/cancel/relaunch; same
 character across map and Me; failure preserves draft; cross-user update denied.
 
@@ -284,10 +293,11 @@ never restyles base geography.
 1. Verified runtime and official metadata: Expo `~54.0.35`, RN `0.81.5`, React
    `19.1.0`, New Architecture enabled. Installed `@maplibre/maplibre-react-native`
    `11.4.0`, whose peers require Expo >=54, RN >=0.80, React >=19.1.
-2. Expo plugin was added to app config. Build is in progress/needs recovery;
-   do not run a parallel `expo run:ios` until checking PIDs and build products.
+2. Expo plugin was added to app config; the native Simulator build succeeded in
+   the earlier checkpoint. Check PIDs/build products before any rebuild.
    Avoid `prebuild --clean`; it can remove generated native customizations.
-3. Prototype uses OpenFreeMap `https://tiles.openfreemap.org/styles/dark`. Official
+3. Prototype initially used OpenFreeMap `https://tiles.openfreemap.org/styles/dark`;
+   it now uses local `assets/maps/nearhere-night-arcade-v1.json`. Official
    site says no key/registration and free, but current terms say as-is, no
    availability warranty, possible discontinuation, and Cloudflare CDN processing.
    Keep MapLibre attribution/logo visible; this is not a production SLA selection.
@@ -298,9 +308,9 @@ never restyles base geography.
    sprites, selection halo and own-device-only location point. Prove pan/zoom,
    tap/cluster expansion, 12+ fixtures, road imagery/labels, tile failure and
    attribution in Simulator before calling the vertical slice accepted.
-6. Renderer, style and tiles are distinct. This currently uses a public dark
-   style—not a custom NearHere style JSON. Next, inspect its actual style-layer
-   IDs before writing any source-layer customization.
+6. Renderer, style and tiles are distinct. NearHere now owns the local 13-layer
+   style while OpenFreeMap supplies tiles/glyphs. Inspect the local JSON before
+   changing layer IDs; keep the schema regression test and attribution.
 7. External tile request includes client network metadata and the requested
    approximate map viewport; never put exact meeting coordinates in tile URLs.
 

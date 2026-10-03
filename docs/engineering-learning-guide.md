@@ -1,5 +1,193 @@
 # NearHere Engineering Learning Guide
 
+## Live lessons — themes, modular sprites and identity
+
+[The 2 October execution guide](handoffs/daylight-avatar-identity-20261002.md)
+specifies the next learning sequence: reactive theme state, shared map styling,
+database uniqueness under concurrent requests, deterministic avatar composition
+and cache keys, backward-compatible contracts, OAuth versus account linking,
+and native/device acceptance. Some source work is now implemented; the handoff
+ledger keeps code, database execution, Simulator acceptance and production
+readiness separate. Each ticket adds its actual walkthrough, challenges, fixes
+and evidence here or in a linked lesson.
+
+### D01 first implementation note — preference state versus rendered styles
+
+NearHere's current palette used to be imported as plain hex values and baked
+into module-scope `StyleSheet.create` objects. Adding a context alone could not
+recolor those existing styles. D01 now has `ThemeProvider`, persisted
+System/Daylight/Night Arcade preference, active palette factories across the
+feature screens and derived day/night map styles. The preference belongs in
+AsyncStorage because it is not secret; auth tokens do not. Expo's SDK54 native
+configuration (`userInterfaceStyle`) still requires a rebuilt binary. Source
+migration and local checks pass, but device appearance switching and full visual
+acceptance remain open.
+
+Flow: `Me or signed-out Settings → setPreference → ThemeProvider state →
+resolved mode → themed screen factories + map style → AsyncStorage persistence`.
+The implementation is in `apps/mobile/providers/theme-provider.tsx`,
+`apps/mobile/lib/theme.ts`, `apps/mobile/lib/map-style.ts` and
+`apps/mobile/app/settings/appearance.tsx`. Each consumer calls a `makeStyles`
+factory with semantic colors; it does not mutate a global palette object.
+`lib/map-style-core.mjs` remains a pure tested function, separate from Expo's
+Metro asset imports.
+
+### D03 — Reduce Motion at the native camera boundary
+
+Picture the call path: a user taps an avatar; Nearby calls the map's imperative
+handle; `ActivityMap` decides between an immediate jump and a timed ease; native
+MapLibre moves the viewport. The important rule is that there is one camera
+boundary. If only the card animates accessibly but a map camera still flies, the
+user's motion preference was not honored.
+
+`useReducedMotion()` reads `AccessibilityInfo.isReduceMotionEnabled()` and
+subscribes to `reduceMotionChanged`. `ActivityMap` stores the latest boolean in
+a ref because `useImperativeHandle` can retain a callback across renders. A
+React closure captures the values from the render that created it; the mutable
+ref lets the stable camera handle read the current setting. The pure
+`cameraMotionDuration` function tests the policy: immediate when Reduce Motion
+is enabled, otherwise retain the intended 350–500 ms duration with a 1,200 ms
+safety cap. The native layer calls `jumpTo` for the immediate branch and
+`easeTo` otherwise. The installed MapLibre source confirms `jumpTo` sets a
+zero-duration stop; this avoids guessing that `easeTo(duration: 0)` is portable.
+
+Verification: five policy assertions joined the suite (107 total pass), then
+TypeScript, lint, iOS export and an Xcode Release build passed. The built app
+launched through `simctl` on iPhone 17 Pro Simulator. That simulator CLI has no
+Reduce Motion switch, and Simulator.app is missing; therefore OS event delivery,
+visible camera movement and performance profiling are not accepted yet.
+
+### U01 — a username is a column, not a new user identity
+
+Database first principles: `profiles` is the table; one `profiles` row belongs
+to one `auth.users.id`; `username` is a nullable column on that row. A unique
+index is the database rule that makes “nobody else can have this handle” true
+even if two phones submit at the same instant. An availability hint in the UI
+can become stale; it cannot reserve the name.
+
+The claim flow is:
+
+```mermaid
+sequenceDiagram
+  participant UI as Username form
+  participant Repo as profile-repository.ts
+  participant RPC as claim_my_username
+  participant DB as profiles + unique index
+  UI->>Repo: canonical candidate + expected revision
+  Repo->>RPC: p_username, p_expected_revision
+  RPC->>RPC: actor = auth.uid()
+  RPC->>DB: lock owner's row and verify revision
+  DB->>DB: check reserved syntax + unique index
+  DB-->>Repo: claimed profile or conflict
+  Repo-->>UI: validated result
+```
+
+Files: `packages/contracts/user.ts` defines `ClaimMyUsernameRequest`;
+`apps/mobile/lib/profile-validation.ts` normalizes/checks local input;
+`apps/mobile/lib/profile-repository.ts` calls the RPC without an owner ID;
+`supabase/migrations/202610030001_username_claim.sql` owns final validation,
+locking and uniqueness. `profile_revision` prevents a stale screen from
+overwriting a newer profile. Existing `update_my_profile_v2` cannot write this
+column and direct `UPDATE(username)` remains revoked. First claim is currently
+immutable; a rename/cooldown policy has not been designed.
+
+Challenge: current OTP actors already represent durable user rows. Using one to
+test the first claim would permanently claim a username because no rename or
+release exists. Docker's executable is installed but no daemon is running, so
+there is no disposable local PostgreSQL stack. We therefore added input/parser
+tests and source-text migration guards only, left the migration unapplied, and
+did not claim database verification. The repository temporarily falls back to
+the old profile projection only when the backend explicitly lacks the new
+column/RPC; this preserves staged app compatibility but does not make username
+claim work until the migration is applied.
+
+### A01 — do not confuse a pretty PNG with an avatar system
+
+The saved [style anchor](design-concepts/avatar-modular-style-proof-20261003.png)
+is a single complete raster character. Its PNG has alpha and 1,188,852 fully
+transparent pixels; the full-body silhouette is still legible after downscaling
+to 64 pixels. That proves basic visual suitability, not modularity. A custom
+maker needs multiple aligned parts in the same canvas coordinate system, a
+stable layer order and compatibility rules. Until those parts compose in the
+same renderer, the art stays out of the app catalog. Existing v1 avatars remain
+the fallback.
+
+## Lesson 35 — A green code check is not an App Store release
+
+The current release audit begins at
+[the T-pass plan](handoffs/app-store-t-pass-20260930.md) and its
+[V1 scope draft](release/v1-scope.md). On 30 September, the current worktree
+passed 88 unit tests, TypeScript, lint, and `git diff --check`. The linked
+development database also reported 30/30 migration IDs matching. These are
+useful but separate observations: none signs the app, tests a physical GPS chip,
+proves real SMS, approves account deletion, or predicts App Review.
+
+```mermaid
+flowchart LR
+  Code[Source + local tests] --> DB[Hosted development checks]
+  DB --> Sim[Simulator interaction]
+  Sim --> Device[Physical device on release backend]
+  Device --> Build[Signed production build]
+  Build --> Store[App Review + release]
+```
+
+The code path for a small test starts at `apps/mobile/package.json`'s
+`test:unit` script. It invokes Node's test runner over mobile parser/state tests
+and the fixture utility test. `npx tsc --noEmit` checks static type consistency;
+`npm run lint` applies the project's Expo lint configuration. The migration
+inventory compares local SQL filenames to the linked remote migration ledger;
+it does not prove each routine's behavior or that a production project exists.
+
+The audit also found product boundaries that need owner policy: deleting a
+profile currently intersects with host activities, chat, reports, and audit
+retention; and UGC has length validation but no server content filter. That is
+why an account-deletion button or a regex added in the UI would not make the app
+safe. The database must own authorization and durable transitions, and the
+product owner must decide retention/moderation rules first.
+
+**Interview explanation:** “I distinguish static checks, automated unit tests,
+hosted integration evidence, Simulator flows, physical-device behavior, signed
+builds, and store review. Each tests a different boundary, so I report the exact
+gate rather than calling the whole product production-ready after compilation.”
+
+**Exercise:** Pick one report from `docs/testing-status.md`. Mark each claimed
+result as local, hosted, Simulator, physical device, signed build, or App Review.
+For every missing layer, name the smallest evidence artifact that could close it.
+
+## Implemented lessons — 28–29 September 2026
+
+Read [owner-profile editing](profile-owner-editing.md) for optimistic concurrency,
+row locks, account-switch races, Unicode limits and hosted boundary tests. Then
+read [hosting time selection](host-time-selection.md) for draft/commit state,
+local versus UTC time, native dialogs and local double-submit protection.
+Both chapters separate code verification from device acceptance.
+
+For a smaller P04 example, see the [location recovery lesson](code-tour.md#location-failure-copy-is-part-of-the-recovery-contract): typed permission/service/fix states become platform-neutral recovery copy. Its regression is local evidence only; OS prompts and device GPS remain separate acceptance work.
+
+## Planned next learning path (24 September 2026)
+
+The [premium implementation guide](handoffs/premium-product-execution.md) maps
+each future ticket to code, tests, a diagram and an interview explanation. This
+is a syllabus, not a claim that the following lessons are implemented:
+
+1. P00-P01: reproducible baselines, fixture identity, idempotency and race conditions.
+2. P02: read models, additive API evolution, RLS and negative authorization tests.
+3. P03-P04: pure geometry transformations, renderer boundaries, accessibility,
+   measured layout and asynchronous native state.
+4. P05-P06: auth versus profile, draft versus saved state, optimistic concurrency,
+   private/public projections and reference-faithful native UI.
+5. P07: stable identity, versioned catalogs, backwards compatibility and asset QA.
+6. P08: meshes/materials/rigging versus images, GPU lifecycle, asynchronous render
+   jobs and cache invalidation. Read the [wardrobe specification](handoffs/premium-profile-avatar-spec.md).
+7. E01-E08: durable events/outbox, delivery retries, metric definitions, deterministic
+   ranking, recurrence/timezones, moderation, payment state machines and measured
+   scaling. Read the [extension roadmap](handoffs/premium-community-roadmap.md).
+
+After every implemented ticket add the actual lesson and evidence here or link
+its focused lesson. An exercise should ask you to trace/debug/change one small
+thing yourself. Explain both why the solution works and what the tests do not
+prove. Keep this distinction clear for resume and interview discussions.
+
 ## Lesson 34 — Separate appearance, identity, and evidence
 
 The same host should look the same after changing their name. A random choice in
@@ -3282,3 +3470,422 @@ selecting a Browse row drives the map's selected-activity state; accepting a
 join request is a repository/API operation; and PostgreSQL remains the durable
 authority. When a bug report says “it changed,” ask *which state changed, where
 does it live, and what evidence shows it survived a refresh?*
+
+## 24 September 2026 — Owner-scoped fixture identity and reusable host avatars
+
+### Lesson A: “Not on the map” is not proof that an activity does not exist
+
+The original test-activity seeder used nearby discovery to decide what to
+create. Discovery is intentionally filtered by map radius, row limit and blocks,
+so an existing fixture could be invisible to one query and get duplicated.
+Instead, each fictional actor reads their own caller-scoped Plans list and the
+script considers only rows where that actor is the host:
+
+```text
+fictional actor token
+        │
+        ▼
+my_plans(limit=100) ── too many rows? ── yes ──> stop safely
+        │ no
+        ▼
+own host-role rows → stable [NEARHERE_DEMO_V1:n] markers
+        ├── one owner per slot → preserve/reuse
+        └── ambiguous slot → stop; change nothing
+```
+
+This is an example of *reconciliation*: compare the intended state to durable
+server state before trying another write. A local exclusive lock also avoids
+two copies racing on one Mac. It is not a distributed lock; multi-machine
+uniqueness would require a database design. The checks live in
+`supabase/tests/hosted/demo-activities.mjs`, with deterministic cases in
+`demo-activities.test.mjs`. During the initial audit the actor values were not
+available, so that baseline attempt did not call the seeder. The later P01 run
+used the already-configured fictional actors: two consecutive runs each retained
+all 12 slots with zero creates, and a same-Mac concurrent invocation was rejected
+by the local exclusive lock. No existing activity was modified or deleted.
+
+### Lesson B: keep data authority in the existing read model
+
+The UI wanted a host character on detail and Plans, but `profiles` is private
+and detail also carries a private meeting point. Reading profile rows directly
+from the client would couple presentation to sensitive storage and tempt an RLS
+broadening. The additive wrappers instead compose around the already-authorized
+read models:
+
+```text
+mobile repository
+   ├── activity_detail_with_avatar ──> activity_detail(p_activity_id)
+   │                                  └─ existing caller/block/location rules
+   └── my_plans_with_avatars ───────> my_plans(p_limit)
+                                      └─ existing caller/plan/location rules
+                 + allowlisted avatar version, seed, catalog ID
+                 ▼
+      runtime parser discards unknown fields → same bundled HostAvatar
+```
+
+Migration `202609240001_activity_host_avatar_projection.sql` uses new RPC
+names so older app versions keep working. The wrappers append only `version: 1`,
+a validated UUID seed and/or one known catalog ID; the full avatar JSON never
+leaves profile storage. Crucially, the wrapper calls `activity_detail` or
+`my_plans` for the actual rows instead of recreating the location authorization
+logic. The avatar itself is presentation, not verified identity.
+
+The runtime boundary is defended twice: the SQL allowlist limits what the server
+returns, and `parseHostAvatarConfig` in `apps/mobile/lib/activity-validation.ts`
+accepts only the known fields. This is defense in depth. Unknown JSON keys are
+discarded instead of becoming accidental public API. Activity Detail and Plans
+now consume the same configured identity as the map; a missing legacy config
+falls back to deterministic local art and does not block viewing.
+
+Verification this iteration: 73 unit tests passed, TypeScript and Expo lint
+passed, the migration was applied to the linked development project, and
+anonymous hosted smoke checked three activities with membership and exact
+coordinates remaining null. Authenticated role/block matrix and Simulator visual
+review are still unverified. A passing anonymous smoke is not enough to claim
+private authorization acceptance.
+
+**Interview framing:** “I evolved an existing caller-scoped Supabase read model
+with additive RPC wrappers to expose a minimal avatar projection. I kept exact
+location authorization in the existing functions, applied SQL and runtime
+allowlists, and added an anonymous negative-privacy smoke test. The signed-in
+role matrix remains an explicit acceptance gate.”
+
+**Exercise:** trace the mobile `getActivityDetail` call into the new RPC, then
+identify the exact base function that decides whether `exact_latitude` can be
+non-null. Explain why duplicating that SQL in the avatar wrapper is riskier.
+
+### Lesson B2: test privacy across every read path, not just the screen you see
+
+The new `activity_detail_with_avatar` wrapper preserved the old Detail rules,
+but a hosted block test found that the old `my_plans` RPC returned an accepted
+participant's exact meeting point even after a host/participant block. The
+screen could therefore be visually correct while its other backend read path
+still exposed private data. The test compared old and new wrappers field by
+field, then checked the new avatar projection separately.
+
+The intended boundary is asymmetric by ownership: either direction of block
+removes exact meeting-point access from the affected participant, while the host
+retains access to the point they provided. Migration
+`202609240002_my_plans_respects_blocks.sql` copies the current Plans read model
+and adds the same symmetric block predicate to both exact-coordinate CASE
+expressions. It leaves membership, history, ordering and host access unchanged.
+The avatar wrapper still calls the base function, so it inherits the fix rather
+than implementing a second policy.
+
+The hosted test first failed against the real project, pinpointing the leak;
+after the migration, two block directions passed in both Detail and Plans. The
+four-actor participation suite then passed pending, accepted, waitlisted,
+promotion, rejection and removal using the avatar-enriched Plans wrapper. The
+detail harness also covered anonymous/outsider, host, accepted, cancelled and
+left states. Both harnesses restore the four test profiles; purpose-labelled
+`TEST` activities remain in the development project by design and are never
+deleted by cleanup.
+
+**Engineering lesson:** a new API wrapper can only preserve guarantees that its
+base API actually has. Compare the *entire* allowed response across old and new
+read models, test the same actor state through every screen/API that serves the
+data, and distinguish “host owns the exact point” from “participant is still
+authorized to see it.”
+
+**Exercise:** imagine a block is created while a Plans screen remains open.
+Which server response must change, how should the client refresh it, and why
+must the UI never use a cached accepted-plan coordinate as permission?
+
+### Lesson C: make the native map a renderer, not the whole screen
+
+The Nearby screen previously owned data conversion, camera refs, MapLibre
+layers, selection state, and all surrounding controls. That makes every visual
+change harder to reason about. P03 now separates a pure feature builder from the
+native adapter:
+
+```text
+caller-scoped public NearbyActivitySummary[]
+                 │
+                 ▼
+buildActivityMapFeatures()  (pure TypeScript; no network or native UI)
+                 │ GeoJSON [longitude, latitude] + catalog sprite ID
+                 ▼
+ActivityMap adapter (MapLibre native renderer + camera/layers)
+                 │ IDs and tap callbacks only
+                 ▼
+Nearby screen (auth, discovery state, Browse card and join action)
+```
+
+The coordinate ordering is important: the app contract uses named
+`latitude/longitude`, but GeoJSON requires `[longitude, latitude]`. A point that
+looks numerically valid can still be wrong if swapped. The utility tests use
+Bengaluru's `[77.6739, 12.9283]` sentinel, malformed coordinates, duplicate IDs,
+empty collections, invalid avatar data and detail-shaped records containing
+exact-point fields. Invalid data is omitted; it is never “fixed” by moving a
+person/activity on the map.
+
+`apps/mobile/components/map/activity-map.tsx` owns MapLibre `Map`, `Camera`,
+sprite registry, clustered GeoJSON source and layers. Its typed props are
+data-in/callbacks-out. It cannot authenticate, fetch a profile, join an event or
+write to Supabase. A small imperative handle exists only for camera movement and
+provider attribution, which lets the parent retain product behavior without
+owning native refs. The selected halo layer remains mounted with an empty filter
+instead of being conditionally removed; MapLibre previously reported “id cannot
+be changed” when conditional rendering shifted native identities.
+
+After this change, **79 local tests pass**, TypeScript/lint and iOS export pass.
+Simulator Fast Refresh showed the authored map and Browse-list selection still
+worked. The adapter measures viewport and dock heights, then applies bounded
+camera bottom padding so Browse-selected features remain visible above the
+overlay. Two runtime failures taught the timing boundary: native layout data may
+arrive null, and imperative camera commands must wait until MapLibre reports its
+map ready. Null-safe layout reading plus a ready guard fixed both; the app was
+rechecked in Simulator. Attribution still opens its provider credits. Direct
+avatar taps, cluster expansion and empty-map deselection now also work; cluster
+zoom uses the same overlay padding. This proves core map interaction in one
+Simulator, not large-data performance, accessibility or measured 60 fps. Those
+need separate tests and physical-device profiling.
+
+**Exercise:** with the map on screen, trace one activity from its public summary
+through `buildActivityMapFeatures` to `GeoJSONSource`. Point to the exact line
+where `[lat, lon]` becomes `[lon, lat]`, then explain why a private point must
+never be accepted by this renderer.
+
+### Lesson D: keyboard geometry is part of the screen layout
+
+**User problem:** on Phone/OTP, the keyboard covered the action. A field could
+accept text, but the user could not see how to complete the task. This is not
+just a “keyboard setting”; it is a layout contract between the native keyboard,
+the scrollable form and the primary action.
+
+The first implementation put the action inside the `ScrollView`. Simulator
+showed it being covered. Moving it into a normal footer still failed because
+the iOS software keyboard overlaid the window without shrinking the React Native
+layout. An `InputAccessoryView` experiment reserved an empty bar for this phone-
+pad keyboard, so it was abandoned rather than reported as successful.
+
+The current flow in `apps/mobile/app/auth/phone.tsx` and
+`apps/mobile/app/auth/verify.tsx` is:
+
+```text
+keyboardWillShow / keyboardDidShow
+             │ native endCoordinates.height
+             ▼
+      keyboardHeight state
+        ┌────┴──────────────┐
+        ▼                   ▼
+ScrollView adds temporary   iOS footer moves to a point
+bottom scroll space         above the keyboard frame
+and scrolls to end          ├── Primary action
+                            └── Done → Keyboard.dismiss()
+             │
+             ▼
+keyboardWillHide / keyboardDidHide → height 0 → footer returns to normal flow
+```
+
+`keyboardHeight` is a transient UI measurement, not persisted app state. The
+short delay lets React Native apply the updated scroll content size before
+calling `scrollToEnd`; without that ordering, scrolling can target the old
+content height. On iOS, the action footer is positioned using the measured
+keyboard height. Android remains on its native resize path and is explicitly
+not accepted by this Simulator check. The scroll view keeps
+`keyboardShouldPersistTaps="handled"`, so pressing Send while the keypad is up
+reaches the button instead of dismissing the keyboard first.
+
+Simulator acceptance used only the incomplete country prefix `+91`: Send stayed
+visible and tappable, produced the local validation error, and made no network
+request. Done dismissed the keypad and returned the normal footer. On OTP, the
+same action row was visible; that screen was opened without a pending phone, so
+the action correctly stayed disabled. A successful sign-in needs the fictional
+provider mapping and must not be inferred from this layout test.
+
+**Interview framing:** “I reproduced a native keyboard occlusion in Simulator,
+then separated the scrollable form from its action footer. Because iOS overlays
+the keyboard without shrinking the view in this configuration, I used the
+reported keyboard frame to reposition the action and expanded scroll range so
+the focused field remains accessible. I tested invalid input locally without
+triggering an SMS. Android and physical-device behavior remain separate gates.”
+
+**Exercise:** explain why `keyboardShouldPersistTaps` alone did not solve this
+bug. Then trace `keyboardHeight` from `Keyboard.addListener` to the footer's
+`bottom` style and the scroll content's temporary bottom padding. What would go
+wrong if measured height were applied twice by both a resize behavior and an
+absolute footer?
+
+### Lesson E: permission, map center and the current-location dot are different state
+
+Location APIs answer several separate questions. iOS can allow permission but
+still have no fresh GPS fix; GPS can be denied after a last-known point was
+shown; and a person can choose a manual discovery area without sharing device
+location. Combining these into a single “location” boolean makes the map lie.
+
+```text
+manual area saved? ── yes ──> selected map region = manual area
+       │ no
+       ▼
+permission + services + fix ── success ──> region = device fix; show blue dot
+       │ denied / unavailable
+       └─────────────────────────────────> keep region; hide stale blue dot;
+                                            offer Settings or Choose area
+```
+
+`useNearbyLocation` now tracks the map's `region/source` separately from the
+optional `deviceLocation` marker. Applying a manual choice hides the blue dot.
+A failed device refresh clears the current-device marker but does not overwrite
+the user's chosen map center. If the previous region was only from device GPS,
+the label changes to “Last known area”; if it was manual, its selected label
+stays unchanged. The `sourceRef` is updated alongside React state so the async
+location callback can make that display decision without adding `source` as a
+callback dependency and accidentally restarting initialization GPS whenever a
+render changes the source.
+
+In Simulator, access was revoked after a location had been visible. The failure
+card offered Settings and Choose area. A public landmark result was selected and
+confirmed; it stayed on the map after a further denied GPS request, while the
+old blue dot disappeared. Permission and the initial device-centered state were
+restored. This test proves the denied/manual fallback only; physical GPS, no-fix,
+cached-fix and Android are distinct acceptance gates.
+
+**Exercise:** why should disabling location permission not erase a manual area?
+What information would you add to distinguish “last known location” from a
+fresh device fix without publishing either one to other people?
+
+### P04 Host form: a map center is not consent to an exact meeting point
+
+The Nearby screen needs a center to show the map. That does not mean the user
+has selected a private rendezvous point. They are different pieces of state:
+
+```text
+Nearby camera center (approximate discovery context)
+                    │ opens picker at a useful starting view
+                    ▼
+Map pin/search result (draft only)
+                    │ host explicitly presses “Use this meeting point”
+                    ▼
+Host form meetingPoint (confirmed private choice)
+                    │ form validates all fields
+                    ▼
+createActivity request (only after Publish)
+```
+
+In `apps/mobile/app/host/create.tsx`, `meetingPoint` is nullable and starts as
+`null`. The coordinates in the Host route parameters are used only to build the
+meeting-point picker's initial camera params. When the picker returns, its local
+draft is read and cleared; before Publish this is still just an unsent form
+draft. The publish handler validates title, description length, the confirmed
+meeting point, and future start time before calling `createActivity`.
+The Host card limits the long provider address to two display lines; it does not
+rewrite the selected label stored in the local draft.
+
+This ordering is a privacy control and a good general UI rule: do not silently
+convert context (current map center, device GPS, current profile) into an
+explicit user decision. Make the decision visible, cancellable, and validated.
+Simulator evidence for the empty state and local validation is V24 in
+`docs/visual-evidence.md`; V28 shows a public search result returning to the
+form with a compact preview. Custom date/time has two modes, but the iOS spinner's
+open state is not proof of successful wheel selection; test selection and the
+future-time boundary separately.
+
+**Exercise:** if a user opens the picker, moves its map, and presses Close, which
+state should change: the Nearby camera, the Host form, both, or neither? Explain
+why the explicit Use button changes the answer.
+
+### P04 Start time: date values, rounding, and test boundaries
+
+`apps/mobile/lib/activity-time.ts` keeps time rules outside the screen. A
+JavaScript `Date` stores an instant (milliseconds since the Unix epoch); it is
+not a formatted string and has no inherent “local timezone” label. The UI formats
+it for people, while the create request serializes it with `toISOString()` for
+the server.
+
+```text
+quick preset (30 / 60 / 1,440 minutes)
+    → add offset to current instant
+    → round UP to the next whole minute
+    → show localized label
+    → reject unless strictly later than now
+    → serialize as ISO-8601 UTC for createActivity
+```
+
+The rounding expression is `Math.ceil((now + offset) / 60_000) * 60_000`.
+Rounding upward means a preset can be up to 59.999 seconds longer than its named
+offset; it must never accidentally become shorter because milliseconds were
+discarded. `isFutureStart` uses strict `>` rather than `>=`, so a time equal to
+the current instant is invalid. The two added tests lock down the visible
+30-minute/one-hour/Tomorrow contract and verify the hour/day arithmetic at a
+non-zero second offset.
+
+The native custom picker calls `updateStart(event, nextValue)`. Dismissal and a
+missing value are ignored; iOS retains the sheet until Done, while Android
+closes its native picker after a selection. The native date/time wheel opens and
+its Date/Time tabs switch in Simulator, but the current UI automation bridge
+cannot alter a wheel value. Therefore unit proof of the math and Simulator proof
+of the sheet opening are separate from physical-device proof of an actual
+custom time selection. Do not claim the whole custom-time journey passed yet.
+
+**Exercise:** why should the app validate future time both in the UI and on the
+server? What timezone mistakes could occur if it stored a string like “6:30 PM”
+instead of an ISO instant?
+
+### Reliability lesson: command idempotency and reconnect state
+
+**Problem:** an activity publish can succeed on the server while the phone loses
+the response. A second tap must return the first activity, not create another
+private meeting point. Chat has the inverse problem: a subscription can recover
+and later fail again, so the fallback poller must restart exactly once.
+
+**Design:** `activity-creation.ts` maps a serialized Host draft to a stable
+request ID. Migration `202610010001_create_activity_idempotency.sql` stores the
+ID under the authenticated host, hashes the draft, locks the row during creation,
+and returns the existing receipt on a retry. The hash prevents a changed form
+from accidentally reusing an old command. `chat-connection.ts` is a small state
+machine: `SUBSCRIBED` means live and stops/unsets polling; failed states mean
+polling and start it only if no timer exists.
+
+**Concept:** an idempotent operation has the same durable result when repeated.
+It is different from a client-side disabled button because the database sees
+requests from retries, app restarts and two network paths. A state machine names
+allowed transitions so asynchronous callback order is reviewed rather than
+guessed.
+
+**Verification:** 96 local tests include unchanged-draft retry, changed-draft
+rotation, repeated chat failure and failure → recovery → failure. The migration
+was applied to the linked development database. This has not yet been proven by
+a hosted fictional actor or a native host retry, so it is not release evidence.
+
+**Interview explanation:** “I separated UX deduplication from command
+idempotency. The phone keeps a request key per unchanged draft; Postgres enforces
+the host-scoped uniqueness and returns the original receipt after a lost
+response. I also modelled Realtime fallback as explicit transitions so a stale
+timer handle cannot suppress a later recovery poll.”
+
+**Exercise:** list three draft fields that must be part of the payload hash and
+explain why omitting the private point would create the wrong safety behavior.
+
+## Lesson 36 — Compose a profile crop from licensed sprite layers
+
+**Problem:** an open-source sprite pack may advertise “faces,” but its files may
+only be eyes, brows, nose, and mouth. A raw crop can omit skin/hair or bring a
+sample-sheet background into the product.
+
+**Prototype:** the CC0 Kenney pack's transparent head, hair, and face-feature
+PNGs are copied to
+[`docs/design-concepts/kenney-avatar-prototype/assets`](design-concepts/kenney-avatar-prototype/assets).
+[`render-preview.swift`](design-concepts/kenney-avatar-prototype/render-preview.swift)
+composites four 256 px circular portrait crops. It is a standalone preview, not
+part of runtime React Native code. The source license is kept next to the assets.
+
+**Concept:** compositing means drawing transparent layers in a deliberate order.
+Order and offsets are part of the asset contract: incorrect order can cover the
+eyes; incorrect anchors can create gaps or clip hair. The portrait can only
+become the account's visual identity after the same stable catalog choice is
+projected consistently to every surface, including the map.
+
+**Verification:** regenerated the preview with Swift/AppKit and visually
+inspected it. This verifies these four document-size crops only. It does not
+verify mobile rendering, accessibility, all possible combinations, or MapLibre.
+No app data or saved avatars changed.
+
+**Interview explanation:** “I treated sprite artwork as versioned input data. I
+kept its CC0 notice, composed a small deterministic proof, corrected a visible
+layer-order defect, and kept the prototype out of production until mobile and
+map parity can be proven.”
+
+**Exercise:** if a profile icon and map marker use different renderers, what
+could make the same user appear to have two different avatars? How could one
+catalog resolver prevent that?

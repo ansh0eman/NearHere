@@ -15,12 +15,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SelectionMap, type SelectionMapHandle } from '@/components/map/selection-map';
+import { SelectionPin } from '@/components/map/selection-pin';
 
 import { DEFAULT_MAP_REGION } from '@/hooks/use-nearby-location';
-import { colors, radii, spacing } from '@/constants/design-tokens';
+import { radii, spacing } from '@/constants/design-tokens';
 import { saveManualLocation } from '@/lib/location-storage';
 import { searchPlaces } from '@/lib/place-search';
 import { PlaceSearchResult } from '@/types/place-search';
+import { useTheme } from '@/providers/theme-provider';
 
 function parseCoordinate(value: string | string[] | undefined, fallback: number) {
   const parsed = Number(Array.isArray(value) ? value[0] : value);
@@ -29,6 +31,8 @@ function parseCoordinate(value: string | string[] | undefined, fallback: number)
 
 export default function LocationPickerScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const mapRef = useRef<SelectionMapHandle>(null);
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
   const initialRegion = useMemo<Region>(
@@ -192,12 +196,7 @@ export default function LocationPickerScreen() {
         </View>
       </SafeAreaView>
 
-      <View pointerEvents="none" style={styles.pinWrap}>
-        <View style={styles.pin}>
-          <Ionicons name="sparkles" size={19} color={colors.onAccent} />
-        </View>
-        <View style={styles.pinShadow} />
-      </View>
+      <SelectionPin />
 
       <SafeAreaView edges={['bottom']} style={styles.bottomArea}>
         <View style={styles.sheet}>
@@ -225,7 +224,8 @@ export default function LocationPickerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
   screen: { backgroundColor: colors.canvas, flex: 1 },
   headerArea: { left: 0, position: 'absolute', right: 0, top: 0 },
   header: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 8 },
@@ -245,9 +245,6 @@ const styles = StyleSheet.create({
   resultRowBorder: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
   resultLabel: { color: colors.text, flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 16 },
   attribution: { color: colors.mutedText, fontSize: 10, paddingBottom: 4, paddingHorizontal: 5, paddingTop: 3, textAlign: 'right', textDecorationLine: 'underline' },
-  pinWrap: { alignItems: 'center', left: '50%', marginLeft: -24, marginTop: -47, position: 'absolute', top: '50%', width: 48 },
-  pin: { alignItems: 'center', backgroundColor: colors.accent, borderColor: colors.text, borderRadius: radii.pill, borderWidth: 3, height: 48, justifyContent: 'center', width: 48 },
-  pinShadow: { backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, height: 7, marginTop: 5, width: 22 },
   bottomArea: { bottom: 0, left: 0, padding: spacing.md, position: 'absolute', right: 0 },
   sheet: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.sheet, borderWidth: 1, padding: spacing.lg },
   sheetTitle: { color: colors.text, fontSize: 21, fontWeight: '800', letterSpacing: -0.6 },
@@ -255,4 +252,5 @@ const styles = StyleSheet.create({
   confirmButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: radii.pill, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 17, minHeight: 50, paddingHorizontal: 18 },
   confirmButtonDisabled: { opacity: 0.65 },
   confirmText: { color: colors.onAccent, fontSize: 14, fontWeight: '800' },
-});
+  });
+}

@@ -278,6 +278,44 @@ async function main() {
     return activity.id;
   }
 
+  async function createActivityIdempotently(session, label) {
+    const startsAt = new Date(Date.now() + 6 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
+    const requestId = `host-retry-${Date.now().toString(36)}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const body = {
+      p_capacity: 2,
+      p_description: 'Development-only idempotency fixture created by the hosted participation harness.',
+      p_ends_at: endsAt.toISOString(),
+      p_join_mode: 'open',
+      p_kind: 'walk',
+      p_private_latitude: 12.9352,
+      p_private_longitude: 77.6245,
+      p_privacy_radius_m: 350,
+      p_request_id: requestId,
+      p_starts_at: startsAt.toISOString(),
+      p_title: `TEST ${label} ${Date.now().toString(36)}`,
+    };
+    const first = await rpc('create_activity_idempotent', body, session.accessToken);
+    assert(first.ok, `Idempotent activity creation failed (${safeErrorDetails(first)}).`);
+    assert(Array.isArray(first.payload) && first.payload.length === 1 && typeof first.payload[0]?.id === 'string',
+      'Idempotent activity creation must return exactly one activity.');
+
+    const retry = await rpc('create_activity_idempotent', body, session.accessToken);
+    assert(retry.ok && Array.isArray(retry.payload) && retry.payload.length === 1,
+      `Idempotent activity retry failed (${safeErrorDetails(retry)}).`);
+    assert(retry.payload[0]?.id === first.payload[0].id,
+      'The same publish request ID must return the original activity ID.');
+
+    const changedDraft = await rpc('create_activity_idempotent', {
+      ...body,
+      p_title: `${body.p_title} changed`,
+    }, session.accessToken);
+    assert(!changedDraft.ok && changedDraft.payload?.code === 'P0005',
+      `A changed draft must be rejected for a reused request ID (${safeErrorDetails(changedDraft)}).`);
+
+    createdActivities.set(first.payload[0].id, first.payload[0]);
+  }
+
   async function join(session, activityId) {
     const response = await rpc(
       'join_activity',
@@ -466,6 +504,10 @@ async function main() {
           `Expected anonymous denial (${safeErrorDetails(response)}).`,
         );
       }
+    });
+
+    await runTest('Host publication retries return one activity and reject changed drafts', async () => {
+      await createActivityIdempotently(sessionA, 'HOST RETRY');
     });
 
     const actorAOnlyId = await createActivity(sessionA, 'open', 'CALLER A ONLY');

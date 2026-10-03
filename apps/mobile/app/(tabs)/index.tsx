@@ -16,7 +16,7 @@ import { HostAvatar } from '@/components/host-avatar';
 import { ActivityMap, type ActivityMapHandle } from '@/components/map/activity-map';
 import { avatarChoice, avatarSeed } from '@/lib/avatar-identity';
 import { buildActivityMapFeatures, resolveSelectedActivity } from '@/lib/activity-map-features';
-import { colors, radii } from '@/constants/design-tokens';
+import { radii } from '@/constants/design-tokens';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useNearbyActivities } from '@/hooks/use-nearby-activities';
@@ -24,6 +24,7 @@ import { useNearbyLocation } from '@/hooks/use-nearby-location';
 import { joinActivity } from '@/lib/activity-repository';
 import { useAuth } from '@/providers/auth-provider';
 import { useProfile } from '@/providers/profile-provider';
+import { useTheme } from '@/providers/theme-provider';
 import type { ActivityFilter, ActivityKind, NearbyActivitySummary } from '@/types/activity';
 
 const KIND_LABELS: Record<ActivityKind, string> = {
@@ -50,6 +51,8 @@ function nearbyCountLabel(count: number) {
 
 export default function NearbyScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const segments = useSegments();
   const mapRef = useRef<ActivityMapHandle>(null);
   const { pendingIntent, session, setPendingIntent } = useAuth();
@@ -354,7 +357,7 @@ export default function NearbyScreen() {
             <View style={styles.selectionTop}>
               <HostAvatar
                 seed={avatarSeed(selected.hostAvatarConfig, selected.hostDisplayName)}
-                avatarId={selected.hostAvatarConfig?.avatarId}
+                avatarId={avatarChoice(selected.hostAvatarConfig, selected.hostDisplayName)}
                 size={40}
               />
               <View style={styles.selectionCopy}>
@@ -409,7 +412,7 @@ export default function NearbyScreen() {
               <Pressable key={activity.id} accessibilityRole="button" accessibilityLabel={`Show ${activity.title} on the map`} onPress={() => { setBrowseOpen(false); centerActivity(activity); }} style={styles.listRow}>
                 <HostAvatar
                   seed={avatarSeed(activity.hostAvatarConfig, activity.hostDisplayName)}
-                  avatarId={activity.hostAvatarConfig?.avatarId}
+                  avatarId={avatarChoice(activity.hostAvatarConfig, activity.hostDisplayName)}
                   size={54}
                 />
                 <View style={styles.selectionCopy}>
@@ -428,10 +431,13 @@ export default function NearbyScreen() {
 }
 
 function FilterPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.filter, active && styles.filterActive]}><Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text></Pressable>;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   topArea: { position: 'absolute', top: 0, left: 0, right: 0 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
@@ -448,8 +454,8 @@ const styles = StyleSheet.create({
   bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16 },
   mapTools: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   mapNoteStack: { flexShrink: 1, alignItems: 'flex-start', justifyContent: 'center', minHeight: 44 },
-  mapNote: { color: colors.text, backgroundColor: 'rgba(17,21,22,0.88)', borderColor: colors.border, borderWidth: 1, fontSize: 10, fontWeight: '600', paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, overflow: 'hidden' },
-  attributionButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 20, marginTop: 2, paddingHorizontal: 8, borderRadius: radii.pill, backgroundColor: 'rgba(17,21,22,0.72)' },
+  mapNote: { color: colors.text, backgroundColor: `${colors.canvas}E8`, borderColor: colors.border, borderWidth: 1, fontSize: 10, fontWeight: '600', paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, overflow: 'hidden' },
+  attributionButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 20, marginTop: 2, paddingHorizontal: 8, borderRadius: radii.pill, backgroundColor: `${colors.canvas}E8` },
   mapAttribution: { color: colors.mutedText, fontSize: 9, lineHeight: 12 },
   locateButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   dock: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 25, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
@@ -487,4 +493,5 @@ const styles = StyleSheet.create({
   listMeta: { color: colors.mutedText, fontSize: 11, marginTop: 6 },
   emptyText: { color: colors.mutedText, fontSize: 15, lineHeight: 23, paddingVertical: 25 },
   plansButton: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, minHeight: 52 },
-});
+  });
+}

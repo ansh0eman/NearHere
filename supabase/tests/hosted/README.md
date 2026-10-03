@@ -1,5 +1,23 @@
 # Hosted profile RLS verification
 
+## Owner-details command (28 September 2026)
+
+`profile-details.mjs` uses the same `PROFILE_RLS_PHONE_A/B` and `PROFILE_RLS_OTP_A/B`
+variables below, with the same ignored mobile environment file. Run:
+
+```sh
+node --env-file=apps/mobile/.env supabase/tests/hosted/profile-details.mjs
+```
+
+It requires migration `202609280001`. It checks owner isolation, anonymous denial,
+atomic field validation, code-point text limits, explicit clearing, protected
+seed/columns, legacy revision advancement and two simultaneous saves from the
+same revision. Only one may succeed. It restores original actor fields in
+`finally`; server timestamps/revisions advance. Both this harness and the older
+profile RLS harness passed on 28 September. No activity is created or deleted.
+Do not run them concurrently with another profile test/editor unless deliberately
+testing conflict recovery. Full teaching notes: `docs/profile-owner-editing.md`.
+
 `profiles-rls.mjs` is a dependency-free, black-box check of the deployed
 `public.profiles` grants, constraints, trigger, and Row Level Security policies.
 It uses two fictional phone identities configured in the hosted Supabase test
@@ -83,6 +101,8 @@ The two-user matrix checks:
   Plans;
 - caller-scoped Plans using one host-only activity per actor;
 - open-mode acceptance and an idempotent Join retry;
+- Host publication retry: the same request ID returns one original activity, and
+  a changed draft using that request ID is rejected;
 - exact location release for an accepted member;
 - public-marker displacement within the configured privacy annulus, measured
   against the accepted host's exact point without printing either coordinate;

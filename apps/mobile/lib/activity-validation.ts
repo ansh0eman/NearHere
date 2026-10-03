@@ -18,7 +18,7 @@ import type {
   MyPlanSummary,
   NearbyActivitySummary,
 } from '@/types/activity';
-import { isAvatarCatalogId } from './avatar-identity.ts';
+import { isAvatarCatalogId, isAvatarSeed, isAvatarV3Configuration } from './avatar-identity.ts';
 
 const ACTIVITY_KINDS: ActivityKind[] = [
   'walk',
@@ -77,11 +77,18 @@ function requireTimestamp(row: Record<string, unknown>, key: string): string {
 
 /** Parse only the small, versioned avatar projection; ignore arbitrary profile JSON. */
 function parseHostAvatarConfig(value: unknown): AvatarConfiguration | null {
-  if (!isRecord(value) || value.version !== 1) return null;
-  const seed = typeof value.seed === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.seed)
-    ? value.seed
-    : undefined;
+  if (!isRecord(value)) return null;
+  if (isAvatarV3Configuration(value)) {
+    return {
+      version: 3,
+      seed: value.seed,
+      catalogVersion: 1,
+      appearanceId: value.appearanceId,
+      fallbackAvatarId: value.fallbackAvatarId,
+    };
+  }
+  if (value.version !== 1) return null;
+  const seed = isAvatarSeed(value.seed) ? value.seed : undefined;
   const avatarId = isAvatarCatalogId(value.avatarId) ? value.avatarId : undefined;
   if (!seed && !avatarId) return null;
   return { version: 1, ...(seed ? { seed } : {}), ...(avatarId ? { avatarId } : {}) };

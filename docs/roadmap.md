@@ -2,13 +2,15 @@
 
 ## Active priority — Night Arcade
 
-Ordered next: baseline/location and durable demos → shared dark theme → six
-original character assets → safe avatar projections → profile editor → custom
-map proof → map integration → all remaining screens → regression/accessibility/
-physical acceptance. See [the implementation playbook](handoffs/night-arcade-execution.md)
-for dependencies and pass criteria, and [status](handoffs/night-arcade-status.md)
-for actual progress. This updates earlier avatar/map deferrals; no release date
-or production readiness is implied.
+The former redesign sequence below is historical. Current implementation order
+and verified completion live in the [Night Arcade ticket ledger](handoffs/night-arcade-status.md)
+and its [detailed execution playbook](handoffs/premium-product-execution.md).
+As of 24 September 2026: P00–P03 are verified to their stated gates; P04 has
+Simulator-verified phone/OTP keyboard, denied-location and manual-search slices,
+but remains in progress. P05–P10 and E01–E08 are not complete. The active next
+work is to finish P04's GPS, auth, host/picker, role and accessibility matrix,
+then continue profile/wardrobe and beta gates. No launch date or production
+readiness is implied.
 
 The roadmap is dependency-ordered rather than date-promised. Dates become meaningful after effort, external setup, and validation are understood.
 

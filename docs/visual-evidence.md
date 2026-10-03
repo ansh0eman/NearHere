@@ -1,5 +1,43 @@
 # NearHere Visual Evidence and Screenshot Log
 
+## 30 September 2026 — first iPad native launch and location permission
+
+[iPad A16 Nearby map](screenshots/p04-ipad-location-map-20260930.png), iOS
+26.5, native Simulator build. The first launch displayed the location prompt;
+“Allow Once” was selected. The map style initially appeared blank, then the
+basemap and blue device-location marker rendered. iPad system logs show initial
+OpenFreeMap tile requests failing with `NSURLErrorDomain -1005`; therefore this
+is evidence of the iPad screen and permission flow, not reliable tile/network
+acceptance. The Simulator was unauthenticated, no activity was joined or
+changed, and no physical-device claim is implied.
+
+[iPad denied-location recovery](screenshots/p04-ipad-location-denied-20260930.png)
+records a separate follow-up after revoking only Simulator location permission
+and relaunching. The permission explanation, Settings and Choose area actions,
+retained Bengaluru area, 17-item count and 14-activity cluster remained visible.
+Neither action was activated. After capture, permission was reset to
+not-determined for the next launch. Existing activities were not mutated. The
+development MapLibre error toast is visible and is not concealed in this
+evidence.
+
+[iPad selected-area persistence](screenshots/p04-ipad-area-persistence-20260930.png)
+shows the same “Selected area,” Bengaluru map and 17 existing nearby activities
+after Browse navigation and reinstalling/relaunching the native development
+build. No device-location marker is visible. This confirms local Simulator
+persistence without GPS authorization, not physical-device or real-GPS
+behavior. Existing activities were only read/displayed.
+
+## 30 September 2026 — App Store T4 map baseline
+
+[Current iPhone 17 Pro Simulator map](screenshots/app-store-t4-home-20260930.png),
+iOS 26.5, installed development build, Bengaluru area, 11 development activities
+shown as clusters/characters. The screen labels the markers “Activity areas, not
+live locations”; no exact meeting point is visible. The development warning
+overlay (“Open debugger to view warnings”) obscures the bottom dock, so this is
+a diagnostic baseline, not store artwork or release visual acceptance. The
+underlying warning was not identified from this capture. No activity data was
+changed to take it.
+
 ## 24 September 2026 — denied location and manual search
 
 V27: [Permission denied with manual area retained](screenshots/location-denied-manual-area-simulator-20260924.png),
@@ -117,6 +155,8 @@ hosted tests prove what the backend permits. Neither replaces the other.
 | V25 | Map gestures | Direct avatar tap, cluster expansion and empty-map deselection | Verified in Simulator; 12/50/200 performance and device parity remain open |
 | V28 | Host searched meeting point | Selected public landmark returns to Host; address preview is limited to two lines | Captured; Host closed without publishing; no fixture changed |
 | V29 | Host quick start — Tomorrow | Tomorrow selected; visible local start date advances to the next day | Captured in Simulator; all three presets visually selected; no activity published |
+| V33 | Selected map label suppression in a dense neighborhood | Category/distance cues do not cover nearby full-body avatars | Captured; suppression confirmed only; isolated label rendering remains open |
+| V34 | Selected farther-from-viewer activity with label guard | Viewer distance does not imply marker isolation | Captured; other avatar points remain nearby; no Join pressed |
 
 ## Screenshot procedure
 
@@ -349,3 +389,44 @@ the prior V1 rows were retained unchanged. Browse exposed 13 nearby rows,
 including the pre-existing activity. Selecting “Demo · Coworking morning”
 returned to the map, centered the result, and displayed its existing preview
 with accessible View activity and Join actions. No Join action was pressed.
+
+## 30 September 2026 — T4 populated Browse and selected host
+
+![T4 Browse list with labeled demo events](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/app-store-t4-browse-20260930.png)
+
+The booted iPhone 17 Pro (iOS 26.5) showed individually labeled Demo activities
+and host characters. Selecting Coffee filtered the list to two results;
+selecting “Demo · Coffee and conversation” returned to the map. The selected
+card identified the viewer as the host and exposed Manage activity, not Join.
+No activity data changed. This accepts only the Browse/filter/map-selection
+Simulator slice. It is not evidence of participant join, private-point access,
+VoiceOver/large text, iPad, physical-device, or production acceptance.
+
+![T4 selected activity map state](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/app-store-t4-selected-20260930.png)
+
+Visual follow-up: two character markers are partly clipped at the left map
+viewport edge. T5 label work did not alter camera/marker placement; edge
+behavior is still open. Preserve the existing fixture set.
+
+## 30 September 2026 — T5 selected-marker label density guard
+
+![Selected activity with label suppressed to protect nearby character art](/Users/ansh0eman/Desktop/NearHere/docs/screenshots/app-store-t5-selected-label-suppression-20260930.png)
+
+V33 shows a selected, non-host activity on the iPhone 17 Pro Simulator. In this
+dense map state the optional category/distance label is suppressed rather than
+overlapping nearby full-body characters. Labels are derived only from canonical
+activity kind and already-public rounded distance; they never include a custom
+title or exact coordinates. A 250 m Haversine guard and a unit regression cover
+the density decision. This screenshot does not prove the positive state (a label
+rendered beside an isolated marker), nor does it resolve the avatar partly
+cropped at the viewport's left edge. The Join control was visible but not tapped;
+no activity record changed. Older `app-store-t5-labels-*` screenshots are
+diagnostic iteration records, not final acceptance evidence.
+
+V34: [Selected farther-from-viewer candidate](screenshots/app-store-t5-selected-isolated-label-20260930.png).
+Selecting “Demo · Sketch the neighbourhood” (766 m from the viewer) still left
+nearby avatars/clusters on-screen, and the optional label remained hidden. This
+is a useful negative-path result: viewer distance cannot stand in for separation
+between two activity points. The filename describes the test intent, not an
+isolated-marker state. The UI screenshot bridge transiently returned
+`noWindowsAvailable`; the Simulator's direct screenshot path succeeded.

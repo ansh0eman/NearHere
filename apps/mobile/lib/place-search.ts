@@ -1,4 +1,6 @@
 import { PlaceSearchResult } from '@/types/place-search';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { parseGooglePlaceSearchResponse } from '@/lib/place-search-contract';
 
 const SEARCH_RESULT_LIMIT = 5;
 const MINIMUM_REQUEST_INTERVAL_MS = 1_100;
@@ -6,6 +8,12 @@ const MAXIMUM_CACHE_ENTRIES = 20;
 const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
 const resultCache = new Map<string, PlaceSearchResult[]>();
 let lastRequestStartedAt = 0;
+
+export type PlaceSearchProvider = 'google_places' | 'nominatim';
+
+function configuredProvider(): PlaceSearchProvider {
+  return process.env.EXPO_PUBLIC_PLACE_SEARCH_PROVIDER === 'google_places' ? 'google_places' : 'nominatim';
+}
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -48,21 +56,22 @@ function parseSearchResult(value: unknown): PlaceSearchResult | null {
   };
 }
 
-export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> {
-  const normalizedQuery = query.trim();
-  if (normalizedQuery.length < 2) return [];
+async function searchGooglePlaces(query: string): Promise<PlaceSearchResult[]> {
+  if (!isSupabaseConfigured || !supabase) throw new Error('Place search is not configured.');
 
-  const cacheKey = normalizedQuery.toLocaleLowerCase();
-  const cachedResults = resultCache.get(cacheKey);
-  if (cachedResults) return cachedResults;
+  const { data, error } = await supabase.functions.invoke('place-search', { body: { query } });
+  if (error) throw new Error('Place search is unavailable.');
+  return parseGooglePlaceSearchResponse(data);
+}
 
+async function searchNominatim(query: string): Promise<PlaceSearchResult[]> {
   const elapsedSincePreviousRequest = Date.now() - lastRequestStartedAt;
   const remainingDelay = MINIMUM_REQUEST_INTERVAL_MS - elapsedSincePreviousRequest;
   if (remainingDelay > 0) await wait(remainingDelay);
 
   lastRequestStartedAt = Date.now();
 
-  const requestUrl = `${NOMINATIM_SEARCH_URL}?format=jsonv2&limit=${SEARCH_RESULT_LIMIT}&q=${encodeURIComponent(normalizedQuery)}`;
+  const requestUrl = `${NOMINATIM_SEARCH_URL}?format=jsonv2&limit=${SEARCH_RESULT_LIMIT}&q=${encodeURIComponent(query)}`;
   const response = await fetch(requestUrl, {
     headers: {
       Accept: 'application/json',
@@ -71,14 +80,25 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> 
     },
   });
 
-  if (!response.ok) {
-    throw new Error(`Place search failed with status ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`Place search failed with status ${response.status}`);
 
   const payload: unknown = await response.json();
   if (!Array.isArray(payload)) throw new Error('Place search returned an invalid response');
 
-  const results = payload.map(parseSearchResult).filter((result): result is PlaceSearchResult => result !== null);
+  return payload.map(parseSearchResult).filter((result): result is PlaceSearchResult => result !== null);
+}
+
+export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 2) return [];
+
+  const cacheKey = `${configuredProvider()}:${normalizedQuery.toLocaleLowerCase()}`;
+  const cachedResults = resultCache.get(cacheKey);
+  if (cachedResults) return cachedResults;
+
+  const results = configuredProvider() === 'google_places'
+    ? await searchGooglePlaces(normalizedQuery)
+    : await searchNominatim(normalizedQuery);
   cacheResults(cacheKey, results);
   return results;
 }

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,11 +17,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { createActivity } from '@/lib/activity-repository';
-import { colors, radii, spacing } from '@/constants/design-tokens';
+import { resolveActivityPublishAttempt, type ActivityPublishAttempt } from '@/lib/activity-creation';
+import { radii, spacing } from '@/constants/design-tokens';
 import { clearMeetingPointDraft, readMeetingPointDraft } from '@/lib/meeting-point-storage';
-import { formatActivityStart, isFutureStart, QUICK_START_OPTIONS, quickStartDate } from '@/lib/activity-time';
+import { combineLocalDateAndTime, formatActivityStart, isFutureStart, QUICK_START_OPTIONS, quickStartDate } from '@/lib/activity-time';
+import { createRequestId } from '@/lib/request-context';
 import type { MeetingPointDraft } from '@/types/meeting-point';
 import type { ActivityKind, JoinMode } from '@/types/activity';
+import { useTheme } from '@/providers/theme-provider';
 
 const KIND_OPTIONS: { kind: ActivityKind; label: string; emoji: string }[] = [
   { kind: 'walk', label: 'Walk', emoji: '🚶' },
@@ -34,22 +37,40 @@ const KIND_OPTIONS: { kind: ActivityKind; label: string; emoji: string }[] = [
 
 export default function CreateActivityScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const params = useLocalSearchParams<{ latitude?: string; longitude?: string }>();
   const initialLatitude = Number(params.latitude);
   const initialLongitude = Number(params.longitude);
-  const hasInitialLocation = Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude);
   const [kind, setKind] = useState<ActivityKind>('walk');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startsAt, setStartsAt] = useState(() => quickStartDate(60));
   const [selectedQuickStart, setSelectedQuickStart] = useState<string | null>('1h');
-  const [meetingPoint, setMeetingPoint] = useState<MeetingPointDraft | null>(() => hasInitialLocation ? {
-    latitude: initialLatitude,
-    longitude: initialLongitude,
-    label: 'Current discovery area',
-  } : null);
+  // The discovery/device center is only a starting view for the picker, never
+  // an implicit private meeting point. Hosting requires an explicit pin/search.
+  const [meetingPoint, setMeetingPoint] = useState<MeetingPointDraft | null>(null);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+  const [draftStart, setDraftStart] = useState(startsAt);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+  const pickerGeneration = useRef(0);
+  const androidPickerOpen = useRef(false);
+  const publishInFlight = useRef(false);
+  const publishAttempt = useRef<ActivityPublishAttempt | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      pickerGeneration.current += 1;
+      if (Platform.OS === 'android' && androidPickerOpen.current) {
+        androidPickerOpen.current = false;
+        void DateTimePickerAndroid.dismiss('date').catch(() => {});
+        void DateTimePickerAndroid.dismiss('time').catch(() => {});
+      }
+    };
+  }, []);
   const [capacity, setCapacity] = useState(8);
   const [joinMode, setJoinMode] = useState<JoinMode>('open');
   const [isSaving, setIsSaving] = useState(false);
@@ -75,13 +96,63 @@ export default function CreateActivityScreen() {
   }
 
   function updateStart(event: DateTimePickerEvent, nextValue?: Date) {
-    if (Platform.OS === 'android') setDatePickerVisible(false);
-    if (event.type === 'dismissed' || !nextValue) return;
-    setStartsAt(nextValue);
+    if (event.type !== 'set' || !nextValue) return;
+    setDraftStart(nextValue);
+    setPickerError(null);
+  }
+
+  function applyCustomStart(value: Date): boolean {
+    // Recheck at the moment of confirmation: a future draft can become past
+    // while a person leaves the picker open.
+    if (!isFutureStart(value)) {
+      const message = 'Choose a start time in the future.';
+      if (Platform.OS === 'android') setErrorMessage(message);
+      else setPickerError(message);
+      return false;
+    }
+    setStartsAt(value);
     setSelectedQuickStart(null);
+    setPickerError(null);
+    return true;
+  }
+
+  function openCustomStart() {
+    setPickerError(null);
+    if (Platform.OS !== 'android') {
+      setDraftStart(new Date(startsAt));
+      setPickerMode('date');
+      setDatePickerVisible(true);
+      return;
+    }
+    if (androidPickerOpen.current) return;
+    androidPickerOpen.current = true;
+    const generation = ++pickerGeneration.current;
+    const active = () => mounted.current && generation === pickerGeneration.current;
+    const onPickerError = () => {
+      if (!active()) return;
+      androidPickerOpen.current = false;
+      setErrorMessage('The date selector could not open. Try again or choose a quick start time.');
+    };
+    DateTimePickerAndroid.open({
+      value: startsAt, mode: 'date', minimumDate: new Date(), onError: onPickerError,
+      onChange: (dateEvent, day) => {
+        if (!active()) return;
+        if (dateEvent.type !== 'set' || !day) { androidPickerOpen.current = false; return; }
+        DateTimePickerAndroid.open({
+          value: combineLocalDateAndTime(day, startsAt), mode: 'time', onError: onPickerError,
+          onChange: (timeEvent, clock) => {
+            if (!active()) return;
+            androidPickerOpen.current = false;
+            if (timeEvent.type !== 'set' || !clock) return;
+            applyCustomStart(combineLocalDateAndTime(day, clock));
+          },
+        });
+      },
+    });
   }
 
   async function publishActivity() {
+    if (publishInFlight.current) return;
     setErrorMessage(null);
     const normalizedTitle = title.trim();
     if (normalizedTitle.length < 3 || normalizedTitle.length > 80) {
@@ -102,8 +173,10 @@ export default function CreateActivityScreen() {
     }
 
     const endsAt = new Date(startsAt.getTime() + 60 * 60_000);
+    publishInFlight.current = true;
     setIsSaving(true);
-    const result = await createActivity({
+    try {
+    const draft = {
       kind,
       title: normalizedTitle,
       description: description.trim(),
@@ -114,16 +187,28 @@ export default function CreateActivityScreen() {
       privacyRadiusM: 350,
       capacity,
       joinMode,
-    });
-    setIsSaving(false);
+    };
+    const fingerprint = JSON.stringify(draft);
+    const attempt = resolveActivityPublishAttempt(publishAttempt.current, fingerprint, () => createRequestId('publish'));
+    publishAttempt.current = attempt;
+    const result = await createActivity({ ...draft, requestId: attempt.requestId });
+    if (!mounted.current) return;
 
     if (!result.ok) {
       setErrorMessage(result.message);
       return;
     }
     await clearMeetingPointDraft();
+    publishAttempt.current = null;
+    if (!mounted.current) return;
     router.dismissAll();
     router.replace('/');
+    } catch {
+      if (mounted.current) setErrorMessage('We could not confirm publication. Try again; the same draft will not create a duplicate.');
+    } finally {
+      publishInFlight.current = false;
+      if (mounted.current) setIsSaving(false);
+    }
   }
 
   return (
@@ -180,13 +265,13 @@ export default function CreateActivityScreen() {
           <Text style={styles.label}>START TIME</Text>
           <View style={styles.segmentRow}>
             {QUICK_START_OPTIONS.map((option) => (
-              <Pressable key={option.id} onPress={() => selectQuickStart(option.id, option.minutes)} style={[styles.segment, selectedQuickStart === option.id && styles.segmentSelected]}>
+              <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ checked: selectedQuickStart === option.id }} onPress={() => selectQuickStart(option.id, option.minutes)} style={[styles.segment, selectedQuickStart === option.id && styles.segmentSelected]}>
                 <Text style={[styles.segmentText, selectedQuickStart === option.id && styles.segmentTextSelected]}>{option.label}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Pressable accessibilityHint="Opens a date and time selector" accessibilityLabel="Choose a custom start date and time" accessibilityRole="button" onPress={() => setDatePickerVisible(true)} style={styles.timePickerRow}>
+          <Pressable accessibilityHint="Opens a date and time selector" accessibilityLabel="Choose a custom start date and time" accessibilityValue={{ text: formatActivityStart(startsAt) }} accessibilityRole="button" onPress={openCustomStart} style={styles.timePickerRow}>
             <View style={styles.locationIcon}><Ionicons name="calendar-outline" size={19} color={colors.accent} /></View>
             <View style={styles.locationCopy}><Text style={styles.locationTitle}>Custom date & time</Text><Text style={styles.locationCoordinate}>{formatActivityStart(startsAt)}</Text></View>
             <Ionicons color={colors.mutedText} name="chevron-forward" size={18} />
@@ -196,7 +281,7 @@ export default function CreateActivityScreen() {
             <View style={styles.locationIcon}><Ionicons name="location" size={19} color={colors.accent} /></View>
             <View style={styles.locationCopy}>
               <Text style={styles.locationTitle}>Private meeting point</Text>
-              <Text style={styles.locationCoordinate}>{meetingPoint?.label ?? coordinateLabel}</Text>
+              <Text ellipsizeMode="tail" numberOfLines={2} style={styles.locationCoordinate}>{meetingPoint?.label ?? coordinateLabel}</Text>
               <Text style={styles.locationPrivacy}>Search or drop a pin. Discovery receives a separately generated approximate marker within 350 m.</Text>
             </View>
             <Ionicons color={colors.mutedText} name="chevron-forward" size={18} />
@@ -227,20 +312,27 @@ export default function CreateActivityScreen() {
         </Pressable>
 
         <Modal animationType="slide" onRequestClose={() => setDatePickerVisible(false)} transparent visible={isDatePickerVisible}>
-          <Pressable accessibilityLabel="Close date and time selector" onPress={() => setDatePickerVisible(false)} style={styles.modalBackdrop}>
-            <Pressable onPress={(event) => event.stopPropagation()} style={styles.timeSheet}>
-              <View style={styles.timeSheetHeader}><Text style={styles.timeSheetTitle}>Choose when it starts</Text><Pressable accessibilityLabel="Close date and time selector" onPress={() => setDatePickerVisible(false)} style={styles.doneButton}><Text style={styles.doneText}>Done</Text></Pressable></View>
-              <View style={styles.pickerTabs}><Pressable onPress={() => setPickerMode('date')} style={[styles.pickerTab, pickerMode === 'date' && styles.pickerTabActive]}><Text style={[styles.pickerTabText, pickerMode === 'date' && styles.pickerTabTextActive]}>Date</Text></Pressable><Pressable onPress={() => setPickerMode('time')} style={[styles.pickerTab, pickerMode === 'time' && styles.pickerTabActive]}><Text style={[styles.pickerTabText, pickerMode === 'time' && styles.pickerTabTextActive]}>Time</Text></Pressable></View>
-              <DateTimePicker display={Platform.OS === 'ios' ? 'spinner' : 'default'} minimumDate={new Date()} mode={pickerMode} onChange={updateStart} value={startsAt} />
-            </Pressable>
-          </Pressable>
+          <View style={styles.modalBackdrop}>
+            <Pressable accessible={false} onPress={() => setDatePickerVisible(false)} style={StyleSheet.absoluteFill} />
+            <View accessibilityViewIsModal style={styles.timeSheet}>
+              <View style={styles.timeSheetHeader}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Cancel date and time changes" onPress={() => setDatePickerVisible(false)} style={styles.doneButton}><Text style={styles.doneText}>Cancel</Text></Pressable>
+                <Text style={styles.timeSheetTitle}>Start time</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel="Apply custom date and time" onPress={() => { if (applyCustomStart(draftStart)) setDatePickerVisible(false); }} style={styles.doneButton}><Text style={styles.doneText}>Done</Text></Pressable>
+              </View>
+              <View style={styles.pickerTabs}><Pressable accessibilityRole="tab" accessibilityState={{ selected: pickerMode === 'date' }} onPress={() => setPickerMode('date')} style={[styles.pickerTab, pickerMode === 'date' && styles.pickerTabActive]}><Text style={[styles.pickerTabText, pickerMode === 'date' && styles.pickerTabTextActive]}>Date</Text></Pressable><Pressable accessibilityRole="tab" accessibilityState={{ selected: pickerMode === 'time' }} onPress={() => setPickerMode('time')} style={[styles.pickerTab, pickerMode === 'time' && styles.pickerTabActive]}><Text style={[styles.pickerTabText, pickerMode === 'time' && styles.pickerTabTextActive]}>Time</Text></Pressable></View>
+              <DateTimePicker themeVariant="dark" display="spinner" minimumDate={new Date()} mode={pickerMode} onChange={updateStart} value={draftStart} />
+              {pickerError && <Text accessibilityRole="alert" style={styles.error}>{pickerError}</Text>}
+            </View>
+          </View>
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
   capacityText: { color: colors.text, fontSize: 16, fontWeight: '800', minWidth: 25, textAlign: 'center' },
   closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.pill, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
   content: { paddingBottom: spacing.xl, paddingHorizontal: spacing.lg },
@@ -287,4 +379,5 @@ const styles = StyleSheet.create({
   stepText: { color: colors.text, fontSize: 21, fontWeight: '700' },
   stepper: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.control, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, minHeight: 48 },
   twoColumnRow: { flexDirection: 'row', gap: spacing.md },
-});
+  });
+}

@@ -227,7 +227,7 @@ async function main() {
 
     await runTest('owner can update allowed fields and updated_at is server-maintained', async () => {
       const response = await patchProfile(sessionA, sessionA.userId, {
-        avatar_config: { source: 'hosted-rls-harness', version: 1 },
+        avatar_config: { ...originalA.avatar_config, source: 'hosted-rls-harness', version: 1 },
         display_name: 'RLS Harness A',
         interests: ['integration-testing'],
         onboarding_status: 'complete',

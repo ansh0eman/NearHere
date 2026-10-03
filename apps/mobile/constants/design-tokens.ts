@@ -8,6 +8,8 @@ export const colors = {
   subtleText: '#82908B',
   accent: '#D4F76A',
   onAccent: '#182013',
+  // Signal orange is reserved for the temporary exact point being selected on a map.
+  mapPin: '#FF724C',
   border: '#3B4643',
   danger: '#FF9E96',
   warningSurface: '#332B1C',

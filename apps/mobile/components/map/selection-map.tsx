@@ -2,15 +2,13 @@ import {
   Camera,
   Map as MapLibreMap,
   type CameraRef,
-  type StyleSpecification,
   type ViewStateChangeEvent,
 } from '@maplibre/maplibre-react-native';
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import nearhereMapStyle from '@/assets/maps/nearhere-night-arcade-v1.json';
-
-const MAP_STYLE = nearhereMapStyle as unknown as StyleSpecification;
+import { makeMapStyle } from '@/lib/map-style';
+import { useTheme } from '@/providers/theme-provider';
 
 export type SelectionMapHandle = {
   moveTo(center: [longitude: number, latitude: number], zoom: number, duration: number): void;
@@ -32,6 +30,8 @@ export const SelectionMap = forwardRef<SelectionMapHandle, SelectionMapProps>(fu
 ) {
   const mapRef = useRef<React.ElementRef<typeof MapLibreMap>>(null);
   const cameraRef = useRef<CameraRef>(null);
+  const { mode } = useTheme();
+  const mapStyle = useMemo(() => makeMapStyle(mode), [mode]);
 
   useImperativeHandle(forwardedRef, () => ({
     moveTo(nextCenter, nextZoom, duration) {
@@ -52,7 +52,7 @@ export const SelectionMap = forwardRef<SelectionMapHandle, SelectionMapProps>(fu
       <MapLibreMap
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        mapStyle={MAP_STYLE}
+        mapStyle={mapStyle}
         attribution
         logo
         compass={false}

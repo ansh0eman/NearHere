@@ -61,6 +61,25 @@ test('nearby parser accepts only a versioned UUID avatar seed projection', () =>
   );
 });
 
+test('nearby parser accepts a bounded v3 appearance and strips malformed variants', () => {
+  const config = {
+    version: 3,
+    seed: '64d823ee-0d7a-4e13-a5a1-8d1774cc876e',
+    catalogVersion: 1,
+    appearanceId: 'kenney-04',
+    fallbackAvatarId: 'v1-04',
+    rawProfileField: 'must not enter the domain model',
+  };
+  assert.deepEqual(parseNearbyActivityRow({ ...validRow, host_avatar_config: config }).hostAvatarConfig, {
+    version: 3,
+    seed: config.seed,
+    catalogVersion: 1,
+    appearanceId: config.appearanceId,
+    fallbackAvatarId: config.fallbackAvatarId,
+  });
+  assert.equal(parseNearbyActivityRow({ ...validRow, host_avatar_config: { ...config, fallbackAvatarId: 'anything' } }).hostAvatarConfig, null);
+});
+
 test('activity message parser maps the private chat projection', () => {
   const [message] = parseActivityMessageRows([{
     id: 'message-1',

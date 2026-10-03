@@ -314,7 +314,8 @@ export async function createActivity(
     return { ok: false, message: 'Activity creation is unavailable. Check the Supabase configuration.' };
   }
 
-  const { data, error } = await supabase.rpc('create_activity', {
+  const { data, error } = await supabase.rpc('create_activity_idempotent', {
+    p_request_id: request.requestId,
     p_kind: request.kind,
     p_title: request.title,
     p_description: request.description,
@@ -329,6 +330,7 @@ export async function createActivity(
 
   if (error) {
     if (error.code === 'P0001') return { ok: false, message: 'Complete your profile before hosting.' };
+    if (error.code === 'P0005') return { ok: false, message: 'This publish retry no longer matches the activity draft. Review the details and try again.' };
     return { ok: false, message: 'NearHere could not create the activity. Check the details and try again.' };
   }
 
