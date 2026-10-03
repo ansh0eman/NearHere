@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
@@ -132,6 +132,7 @@ export default function PhoneScreen() {
           <Button label="Send one-time code" icon="arrow-forward" loading={isSending} onPress={() => void sendCode()} style={[styles.primaryButton, Platform.OS === 'ios' && keyboardHeight > 0 && styles.iosPrimaryButton]} />
           {keyboardHeight > 0 ? <Pressable accessibilityLabel="Dismiss keyboard" accessibilityRole="button" onPress={Keyboard.dismiss} style={styles.keyboardDismissButton}><Text style={styles.doneKeyboardText}>Done</Text></Pressable> : null}
         </View>
+        {keyboardHeight === 0 ? <Pressable accessibilityRole="button" accessibilityLabel="Continue with email instead" onPress={() => router.push('/auth/email' as Href)} style={styles.emailLink}><Text style={styles.emailLinkText}>Continue with email instead</Text></Pressable> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -161,5 +162,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
   iosPrimaryButton: { flex: 1 },
   keyboardDismissButton: { alignItems: 'center', backgroundColor: colors.raised, borderRadius: radii.pill, borderColor: colors.border, borderWidth: 1, justifyContent: 'center', minHeight: 54, paddingHorizontal: 17 },
   doneKeyboardText: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  emailLink: { alignItems: 'center', backgroundColor: colors.canvas, paddingBottom: spacing.lg, paddingTop: spacing.xs },
+  emailLinkText: { ...typeScale.label, color: colors.accent, fontWeight: '700' },
   });
 }

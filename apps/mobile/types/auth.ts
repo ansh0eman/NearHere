@@ -5,6 +5,9 @@ export type AuthStatus =
   | 'sendingCode'
   | 'awaitingCode'
   | 'verifyingCode'
+  | 'sendingEmailLink'
+  | 'awaitingEmailLink'
+  | 'exchangingEmailLink'
   | 'signedIn';
 
 export type ProtectedIntent =

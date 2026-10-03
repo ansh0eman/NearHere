@@ -12,6 +12,23 @@ TypeScript and Expo lint passed after this slice. The username and v3 Avatar
 Studio migrations are deployed to the linked development project; native/
 Simulator acceptance and authenticated v3 save evidence are still open.
 
+## 4 October 2026 — email sign-in slice
+
+The previously phone-only native auth surface now includes an email magic-link
+route. The client requests `nearhere://auth/callback`, validates the returned
+URL at a narrow pure boundary, exchanges only a callback code, and persists the
+result through the existing Supabase/AsyncStorage client. The Supabase
+development project allow-list was updated from empty to that exact callback;
+initial email requests were accepted for the two user-authorized test inboxes.
+Fresh requests after the configuration change were responsibly stopped after
+the provider returned `429 email rate limit exceeded`. Local
+checks: 112 unit tests, TypeScript, Expo lint and diff check pass. This does not
+prove native callback handling: a fresh iPhone Simulator build is blocked by a
+stalled direct Xcode process and Expo's inability to find Simulator.app. Do not
+call email login device-verified until a freshly installed build opens a new
+link and the session remains after relaunch. The focused teaching note is
+`docs/email-sign-in.md`.
+
 The user has already authorized using Kenney sprites. A matching head crop and
 full-body map view are valid presentations of the same appearance; identical
 framing is unnecessary. Begin S0 then S1 and carry the approved assets through

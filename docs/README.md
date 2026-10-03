@@ -12,6 +12,12 @@ revisioned save contract, strict activity projections and username screen now
 exist in source. The migration and new Studio have not yet been hosted/device
 accepted; the chapter distinguishes that clearly.
 
+**Current email-auth slice (4 October):** [Email magic-link sign-in](email-sign-in.md).
+Native email and phone sign-in now coexist in source. The narrow Supabase
+callback allow-list and client code are verified; a freshly delivered native
+Simulator callback remains open because the provider rate-limited immediate
+retries and the build path stalled.
+
 **Latest product handoff (3 October):**
 [Day/night maps, custom Avatar Studio, usernames and sign-in options](handoffs/daylight-avatar-identity-20261002.md).
 This is the active implementation entry point. It contains source findings,
@@ -132,14 +138,14 @@ flowchart TD
 ## Current canonical decisions
 
 - NearHere is an installable iOS/Android app built with Expo, React Native, and TypeScript; the old web concept is reference material only.
-- Anyone may browse activities without an account. Joining or hosting requires phone OTP authentication.
+- Anyone may browse activities without an account. Joining or hosting requires authentication; development supports phone OTP and email magic links.
 - The app asks for foreground location permission. Denial leads to searchable manual location and map-pin selection.
 - Public activity locations are approximate. The exact meeting point is released through the caller-scoped Plans read model only for an accepted member while the activity is published and not ended.
 - Eight locally bundled Avatar Studio looks are implemented with a versioned,
   owner-only save contract; granular wardrobe parts and 3D rendering remain
   deferred. The character is decorative identity and never implies verification
   or live location.
-- Supabase provides hosted phone authentication and PostgreSQL. PostGIS provides geospatial querying.
+- Supabase provides hosted phone/email authentication and PostgreSQL. PostGIS provides geospatial querying.
 - A modular monolith is the initial application architecture. Redis, custom WebSockets, payments, direct messages, recurring-event administration, and complex recommendations are deferred until requirements and measurements justify them.
 
 ## Current implementation snapshot

@@ -2,6 +2,7 @@ import { Session } from '@supabase/supabase-js';
 import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { parseEmailAuthLink } from '@/lib/auth-link';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
   AuthOperationResult,
@@ -12,7 +13,10 @@ import {
 type AuthContextValue = {
   isConfigured: boolean;
   pendingIntent: ProtectedIntent | null;
+  pendingEmail: string | null;
   pendingPhone: string | null;
+  completeEmailLink: (url: string | null | undefined) => Promise<AuthOperationResult>;
+  requestEmailMagicLink: (email: string) => Promise<AuthOperationResult>;
   requestOtp: (phone: string) => Promise<AuthOperationResult>;
   retrySessionRestore: () => void;
   restoreErrorMessage: string | null;
@@ -29,7 +33,7 @@ function unavailableResult(): AuthOperationResult {
   return {
     ok: false,
     message:
-      'Phone authentication is not configured yet. Add the Supabase URL and publishable key, then configure an SMS provider.',
+      'Authentication is not configured yet. Add the Supabase URL and publishable key, then configure a sign-in provider.',
   };
 }
 
@@ -37,6 +41,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<AuthStatus>('restoring');
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [pendingIntent, setPendingIntent] = useState<ProtectedIntent | null>(null);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [restoreErrorMessage, setRestoreErrorMessage] = useState<string | null>(null);
@@ -104,6 +109,44 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { ok: true };
   }
 
+  async function requestEmailMagicLink(email: string): Promise<AuthOperationResult> {
+    if (!supabase) return unavailableResult();
+
+    setStatus('sendingEmailLink');
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: 'nearhere://auth/callback' },
+    });
+    if (error) {
+      setStatus('signedOut');
+      return { ok: false, message: error.message };
+    }
+
+    setPendingEmail(email);
+    setStatus('awaitingEmailLink');
+    return { ok: true };
+  }
+
+  async function completeEmailLink(url: string | null | undefined): Promise<AuthOperationResult> {
+    if (!supabase) return unavailableResult();
+
+    const link = parseEmailAuthLink(url);
+    if (link.kind === 'ignored') return { ok: false, message: 'This is not a NearHere sign-in link.' };
+    if (link.kind === 'error') return { ok: false, message: link.message };
+
+    setStatus('exchangingEmailLink');
+    const { data, error } = await supabase.auth.exchangeCodeForSession(link.code);
+    if (error || !data.session) {
+      setStatus('awaitingEmailLink');
+      return { ok: false, message: error?.message ?? 'NearHere could not complete this sign-in link. Request a new one.' };
+    }
+
+    setSession(data.session);
+    setPendingEmail(null);
+    setStatus('signedIn');
+    return { ok: true };
+  }
+
   async function verifyOtp(token: string): Promise<AuthOperationResult> {
     if (!supabase || !pendingPhone) {
       return {
@@ -138,6 +181,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     setSession(null);
     setPendingIntent(null);
+    setPendingEmail(null);
     setPendingPhone(null);
     setStatus('signedOut');
     return { ok: true };
@@ -147,7 +191,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       isConfigured: isSupabaseConfigured,
       pendingIntent,
+      pendingEmail,
       pendingPhone,
+      completeEmailLink,
+      requestEmailMagicLink,
       requestOtp,
       retrySessionRestore,
       restoreErrorMessage,
@@ -158,7 +205,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       verifyOtp,
     }),
     // Functions intentionally close over current auth state and are refreshed with the context value.
-    [pendingIntent, pendingPhone, restoreErrorMessage, session, status],
+    [pendingEmail, pendingIntent, pendingPhone, restoreErrorMessage, session, status],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

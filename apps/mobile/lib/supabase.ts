@@ -13,6 +13,9 @@ export const supabase =
         auth: {
           autoRefreshToken: true,
           detectSessionInUrl: false,
+          // Native email links hand the app a short-lived code, not URL tokens.
+          // The callback route exchanges that code explicitly after validation.
+          flowType: 'pkce',
           lock: processLock,
           persistSession: true,
           storage: AsyncStorage,
