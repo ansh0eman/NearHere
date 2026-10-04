@@ -1,10 +1,12 @@
-# Email magic-link sign-in
+# Email sign-in: supported magic link and OTP gate
 
 ## What this adds
 
-NearHere now offers email in addition to phone OTP. A person enters an email
-address, Supabase sends a one-time sign-in link, and the link returns to the
-native app at `nearhere://auth/callback`.
+NearHere offers email in addition to phone OTP. In the current development
+project, a person enters an email address, Supabase sends a magic link, and the
+link returns to the native app at `nearhere://auth/callback`. The product plan
+prefers an email code; that requires changing the hosted email template to emit
+`{{ .Token }}`, which this free project's default mailer does not permit.
 
 ```mermaid
 sequenceDiagram
@@ -49,27 +51,42 @@ default implicit flow would not match this code-exchange callback design.
 
 ## Verification boundary — 4 October 2026
 
-- Implemented and local-verified: callback parser, email screen, session
-  exchange path, TypeScript, Expo lint, and 112 unit tests.
-- Hosted request verified: Supabase accepted initial magic-link requests for the
-  two user-authorized test inboxes without exposing a URL or token in logs.
-  Fresh requests immediately after the redirect allow-list change received the
-  provider's `429 email rate limit exceeded` response, so a post-change email
-  delivery/callback is deliberately not claimed yet.
-- Hosted configuration verified: email provider enabled; the native callback was
-  allow-listed with a narrow Auth configuration PATCH.
-- Still open: an installed fresh native build must open a newly sent link and
-  demonstrate a persisted session in the iPhone Simulator. A direct Xcode build
-  is currently stalling in this environment; that is not treated as a pass.
+- Implemented and locally verified: callback parser, native URL route, email
+  screen, PKCE code exchange path, TypeScript, Expo lint and unit suite. A direct
+  Xcode build succeeded; the fresh app installed and ran on the iPhone 17 Pro
+  Simulator. The email screen and safe expired/invalid callback state are
+  captured at [`email screen`](screenshots/email-signin-simulator-20261004.png)
+  and [`callback error`](screenshots/email-callback-error-simulator-20261004.png).
+- Gmail read-only inspection confirmed a Supabase Auth confirmation message
+  reached each of the two user-authorized test inboxes. Message bodies, tokens,
+  links, and mailbox contents were not recorded. This proves receipt of those
+  earlier signup/confirmation emails, not a post-allow-list session exchange.
+- Hosted configuration verified without reading secrets: phone and email are
+  enabled, `nearhere://auth/callback` is allow-listed, Google and Apple are
+  disabled, no custom SMTP host exists, and Supabase email sending is capped at
+  two per hour. Initial requests for the two owner-authorized test inboxes were
+  accepted; immediate fresh requests received HTTP 429. This proves request
+  acceptance only, not inbox delivery or successful sign-in.
+- Challenge discovered: Supabase rejected changing the free project's default
+  magic-link template into an OTP-code template (HTTP 400: template changes are
+  unavailable with the default email provider on the free tier). No hosted
+  email-template setting was changed. Email-code authentication therefore
+  remains blocked until custom SMTP is configured or the project is upgraded.
+- Still open: using a fresh allowed-list-compliant email on the same Simulator
+  to complete PKCE exchange and prove the persisted session after relaunch. A
+  fake callback code was used only to verify friendly error handling; it is not
+  an authentication pass.
 
 ## Release implication
 
-Email sign-in does not configure Google, Apple, Instagram, or production email
-delivery branding. Those need their own provider-console credentials and tested
-redirect URLs. Do not represent them as implemented merely because the email
-screen exists.
+Email magic-link sign-in does not configure Google, Apple, Instagram, or
+production email delivery. Google/Apple provider credentials are absent. A
+monitored SMTP sender is required for dependable production email volume and
+for the planned email-code template. Do not represent these gates as complete
+merely because the email screen exists.
 
 ## Primary references
 
 - [Supabase native mobile deep-linking](https://supabase.com/docs/guides/auth/native-mobile-deep-linking)
 - [Supabase passwordless email sign-in](https://supabase.com/docs/guides/auth/auth-email-passwordless)
+- [Supabase email templates](https://supabase.com/docs/guides/auth/auth-email-templates)

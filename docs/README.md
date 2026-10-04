@@ -12,11 +12,12 @@ revisioned save contract, strict activity projections and username screen now
 exist in source. The migration and new Studio have not yet been hosted/device
 accepted; the chapter distinguishes that clearly.
 
-**Current email-auth slice (4 October):** [Email magic-link sign-in](email-sign-in.md).
-Native email and phone sign-in now coexist in source. The narrow Supabase
-callback allow-list and client code are verified; a freshly delivered native
-Simulator callback remains open because the provider rate-limited immediate
-retries and the build path stalled.
+**Current email-auth slice (4 October):** [Email sign-in](email-sign-in.md).
+Native email magic-link and phone sign-in coexist in source; the direct Xcode
+build and Simulator callback error route pass. Successful same-device PKCE
+sign-in is still open. Email OTP is preferred in the product plan but the free
+default-mailer tier blocks custom templates; Google/Apple also need provider
+credentials. See the focused handoff for evidence and next gates.
 
 **Latest product handoff (3 October):**
 [Day/night maps, custom Avatar Studio, usernames and sign-in options](handoffs/daylight-avatar-identity-20261002.md).

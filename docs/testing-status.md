@@ -2,24 +2,17 @@
 
 ## 4 October 2026 — email magic-link implementation
 
-Email magic-link sign-in is now implemented as a native callback flow, with
-two parser regression tests bringing the full local unit suite to **112 passed,
-0 failed**. TypeScript, Expo lint and `git diff --check` passed. The linked
-development project's email provider was already enabled. A narrow Auth-config
-update allow-listed `nearhere://auth/callback` after verification showed the old
-allow-list empty and the site URL set to localhost. Supabase accepted initial
-requests for the two user-authorized test inboxes; no link, token, password or
-message content is recorded here. Fresh requests after the allow-list update
-received `429 email rate limit exceeded`, so post-change delivery/callback is
-not established.
-
-This is not complete Simulator sign-in acceptance: the existing direct
-`xcodebuild` route stalled before a fresh development bundle could be installed,
-and Expo CLI cannot locate the separate Simulator.app installation even though
-the iPhone 17 Pro device is booted. The callback/session path therefore remains
-code- and provider-verified, not native-runtime-verified. See
-[Email magic-link sign-in](email-sign-in.md) for the exact boundary and file
-trace.
+Email magic-link sign-in now has a native callback route and is installed on
+the iPhone 17 Pro Simulator. Xcode build, startup, email-screen rendering and a
+safe invalid-code callback error all passed. A fake callback code proves only
+error rendering, not sign-in. The local unit suite, TypeScript and Expo lint
+pass. Supabase accepted initial requests to both authorized test inboxes, but
+Gmail read-only inspection confirmed both initial confirmation emails arrived.
+Immediate retries were HTTP 429 and a post-allow-list successful session reload
+remain unproven. Hosted inspection found Google/Apple disabled, no custom SMTP,
+and a two-email-per-hour limit. A template change needed for email OTP was
+rejected by the free-tier default-mailer restriction; OTP is deferred pending
+custom SMTP or upgrade. Details and screenshots: [email sign-in](email-sign-in.md).
 
 **30 September 2026 — App Store T0 baseline:** 88 unit tests passed, TypeScript
 and Expo lint passed, and `git diff --check` passed. Xcode 26.6 is installed.

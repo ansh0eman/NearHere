@@ -119,10 +119,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
     if (error) {
       setStatus('signedOut');
-      return { ok: false, message: error.message };
+      return {
+        ok: false,
+        message: error.status === 429
+          ? 'Too many sign-in links were requested. Please wait before trying again.'
+          : 'We could not send a sign-in link. Check the email address and try again.',
+      };
     }
 
-    setPendingEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    setPendingEmail(normalizedEmail);
     setStatus('awaitingEmailLink');
     return { ok: true };
   }
@@ -132,13 +138,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const link = parseEmailAuthLink(url);
     if (link.kind === 'ignored') return { ok: false, message: 'This is not a NearHere sign-in link.' };
-    if (link.kind === 'error') return { ok: false, message: link.message };
+    if (link.kind === 'error') {
+      setPendingEmail(null);
+      setStatus(session ? 'signedIn' : 'signedOut');
+      return { ok: false, message: link.message };
+    }
 
     setStatus('exchangingEmailLink');
     const { data, error } = await supabase.auth.exchangeCodeForSession(link.code);
     if (error || !data.session) {
-      setStatus('awaitingEmailLink');
-      return { ok: false, message: error?.message ?? 'NearHere could not complete this sign-in link. Request a new one.' };
+      setPendingEmail(null);
+      setStatus(session ? 'signedIn' : 'signedOut');
+      return {
+        ok: false,
+        message: 'This sign-in link could not be completed. It may have expired or been opened on a different device. Request a new link on this device.',
+      };
     }
 
     setSession(data.session);

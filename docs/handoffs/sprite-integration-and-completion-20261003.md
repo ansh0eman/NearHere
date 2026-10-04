@@ -311,7 +311,7 @@ feedback does not cancel the already authorized Kenney implementation.
 | S4 | implemented, not hosted accepted | Avatar Studio route, draft/randomize/save/error flow and all existing consumers use the shared renderer; Simulator/device evidence remains open |
 | S5 | deployed, not hosted accepted | Provider/UI username claim route and its migration are deployed; collision/first-claim acceptance remains open |
 | S6 | partial inherited code | Theme/native/motion/scale acceptance |
-| S7 | phone exists; additions pending | Email then configured Google/Apple |
+| S7 | email magic-link code/native route implemented; request acceptance partial; OTP blocked by free-tier template restriction; Google/Apple not configured | Complete real same-device PKCE/session reload when mail limit permits; obtain SMTP or upgrade for OTP; configure OAuth providers before exposing them |
 | S8 | pending | Cumulative tests and explicit release gaps |
 
 Resume instruction: **Read this file, start S0 then S1, and continue through

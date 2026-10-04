@@ -31,7 +31,9 @@ export default function EmailScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const isSending = status === 'sendingEmailLink';
-  const linkSent = status === 'awaitingEmailLink';
+  // Require a destination as well as the shared status, so a stale auth state
+  // can never render an empty "check inbox" success card.
+  const linkSent = status === 'awaitingEmailLink' && pendingEmail !== null;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -48,7 +50,6 @@ export default function EmailScreen() {
       setErrorMessage('Enter a valid email address.');
       return;
     }
-
     const result = await requestEmailMagicLink(normalizedEmail);
     if (!result.ok) setErrorMessage(result.message);
   }
