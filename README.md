@@ -31,12 +31,13 @@ The Supabase development project is connected. Profile identity, PostGIS activit
 ## Start the installed development build
 
 ```bash
-cd /Users/ansh0eman/Desktop/NearHere/apps/mobile
+git clone https://github.com/ansh0eman/NearHere.git
+cd NearHere/apps/mobile
 npm install
 npx expo start --dev-client
 ```
 
-Open the already-installed NearHere development build in iOS Simulator. Rebuild it only when native dependencies or native configuration change:
+Open a NearHere development build in iOS Simulator (install or build it first if this is your first run). Rebuild it only when native dependencies or native configuration change:
 
 ```bash
 npx expo run:ios --device "iPhone 17 Pro"
